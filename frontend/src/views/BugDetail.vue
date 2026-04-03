@@ -1,0 +1,1167 @@
+<template>
+  <div class="bug-detail-page">
+    <div class="page-header">
+      <div class="header-left">
+        <el-button text @click="goBack">
+          <el-icon><ArrowLeft /></el-icon>
+          返回列表
+        </el-button>
+      </div>
+    </div>
+
+    <div class="detail-container" v-if="bug">
+      <div class="main-content">
+        <div class="content-card">
+          <div class="bug-header">
+            <div class="bug-title-area" v-if="!isEditingTitle">
+              <h1>{{ bug.title }}</h1>
+              <el-button v-if="canEdit" text size="small" @click="startEditTitle" class="edit-btn">
+                <el-icon><Edit /></el-icon>
+              </el-button>
+            </div>
+            <div v-else class="bug-title-edit">
+              <el-input v-model="editTitle" size="large" placeholder="请输入缺陷标题" @keyup.enter="saveTitle" ref="titleInputRef" />
+              <div class="edit-actions">
+                <el-button size="small" @click="cancelEditTitle">取消</el-button>
+                <el-button size="small" type="primary" @click="saveTitle" :loading="saving">保存</el-button>
+              </div>
+            </div>
+            <div class="bug-tags">
+              <el-tag :type="getSeverityType(bug.severity)" size="small">
+                {{ getSeverityText(bug.severity) }}
+              </el-tag>
+              <el-tag :type="getStatusType(bug.status)" size="small">
+                {{ getStatusText(bug.status) }}
+              </el-tag>
+            </div>
+          </div>
+
+          <el-divider />
+
+          <div class="bug-section">
+            <div class="section-header">
+              <h3>缺陷描述</h3>
+              <el-button v-if="canEdit" text size="small" @click="startEditDescription('description')" class="edit-btn">
+                <el-icon><Edit /></el-icon>
+                {{ bug.description ? '编辑' : '添加描述' }}
+              </el-button>
+            </div>
+            <div v-if="!isEditingDescription" class="section-content" v-html="bug.description || '<span style=color:#909399>暂无描述</span>'"></div>
+            <div v-else class="section-editor">
+              <RichEditor
+                v-model="editDescription"
+                placeholder="请输入缺陷描述... 支持粘贴图片 (Ctrl+V)"
+                :height="300"
+              />
+              <div class="edit-actions">
+                <el-button size="small" @click="cancelEditDescription">取消</el-button>
+                <el-button size="small" type="primary" @click="saveDescription('description')" :loading="saving">保存</el-button>
+              </div>
+            </div>
+          </div>
+
+          <div class="bug-section">
+            <div class="section-header">
+              <h3>重现步骤</h3>
+              <el-button v-if="canEdit" text size="small" @click="startEditDescription('reproduceSteps')" class="edit-btn">
+                <el-icon><Edit /></el-icon>
+                {{ bug.reproduceSteps ? '编辑' : '添加步骤' }}
+              </el-button>
+            </div>
+            <div v-if="!isEditingReproduceSteps" class="section-content" v-html="bug.reproduceSteps || '<span style=color:#909399>暂无重现步骤</span>'"></div>
+            <div v-else class="section-editor">
+              <RichEditor
+                v-model="editReproduceSteps"
+                placeholder="请输入重现步骤... 支持粘贴图片 (Ctrl+V)"
+                :height="300"
+              />
+              <div class="edit-actions">
+                <el-button size="small" @click="cancelEditReproduceSteps">取消</el-button>
+                <el-button size="small" type="primary" @click="saveDescription('reproduceSteps')" :loading="saving">保存</el-button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="content-card" style="margin-top: 20px; padding-bottom: 80px;">
+          <div class="activity-header">
+            <span class="activity-title">操作记录</span>
+            <span class="activity-count">{{ operationLogs.length }} 条记录</span>
+          </div>
+
+          <div class="activity-list">
+            <div class="activity-item" v-for="log in operationLogs" :key="log.id">
+              <div class="activity-avatar">
+                <el-avatar :size="32">{{ log.user?.realName?.charAt(0) || 'U' }}</el-avatar>
+              </div>
+              <div class="activity-content">
+                <div class="activity-info">
+                  <span class="activity-user">{{ log.user?.realName || '未知用户' }}</span>
+                  <span class="activity-action">{{ formatLogAction(log) }}</span>
+                  <span class="activity-time">{{ formatTime(log.createdAt) }}</span>
+                </div>
+                <div class="activity-remark" v-if="log.remark">
+                  <div v-html="renderRemark(log.remark)"></div>
+                </div>
+              </div>
+            </div>
+            <el-empty v-if="operationLogs.length === 0" description="暂无操作记录" :image-size="60" />
+          </div>
+        </div>
+      </div>
+
+      <div class="side-content">
+        <div class="content-card">
+          <h3>基本信息</h3>
+          <div class="info-list">
+            <div class="info-item">
+              <span class="label">状态</span>
+              <el-tag :type="getStatusType(bug.status)" size="small">
+                {{ getStatusText(bug.status) }}
+              </el-tag>
+            </div>
+            <div class="info-item">
+              <span class="label">严重程度</span>
+              <el-tag :type="getSeverityType(bug.severity)" size="small">
+                {{ getSeverityText(bug.severity) }}
+              </el-tag>
+            </div>
+            <div class="info-item">
+              <span class="label">当前负责人</span>
+              <div class="assignee-display" v-if="bug.assignee">
+                <el-avatar :size="24">{{ bug.assignee.realName?.charAt(0) }}</el-avatar>
+                <span>{{ bug.assignee.realName }}</span>
+              </div>
+              <span v-else class="text-muted">未处理</span>
+            </div>
+            <div class="info-item">
+              <span class="label">创建人</span>
+              <div class="assignee-display">
+                <el-avatar :size="24">{{ bug.creator?.realName?.charAt(0) || bug.reporter?.realName?.charAt(0) || '-' }}</el-avatar>
+                <span>{{ bug.creator?.realName || bug.reporter?.realName || '-' }}</span>
+              </div>
+            </div>
+            <div class="info-item">
+              <span class="label">所属项目</span>
+              <span class="value">{{ bug.project?.name || '-' }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">创建时间</span>
+              <span class="value">{{ formatTime(bug.createdAt) }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">更新时间</span>
+              <span class="value">{{ formatTime(bug.updatedAt) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 悬浮操作栏 -->
+    <div class="floating-action-bar">
+      <!-- 已修复按钮：只有负责人才能标记为已修复 -->
+      <el-button 
+        v-if="canFix"
+        type="primary" 
+        @click="showActionPanel('fix')"
+      >
+        <el-icon><Check /></el-icon>
+        已修复
+      </el-button>
+      
+      <!-- 重新打开修复：报告人可以重新打开已修复的bug -->
+      <el-button 
+        v-if="canReopenFix"
+        type="warning" 
+        @click="showActionPanel('reopen')"
+      >
+        <el-icon><RefreshRight /></el-icon>
+        重新打开
+      </el-button>
+      
+      <!-- 验证通过：只有报告人才能验证 -->
+      <el-button 
+        v-if="canVerify"
+        type="success" 
+        @click="showActionPanel('verify')"
+      >
+        <el-icon><CircleCheck /></el-icon>
+        验证通过
+      </el-button>
+      
+      <!-- 关闭按钮：只有报告人才能关闭 -->
+      <el-button 
+        v-if="canClose"
+        type="info" 
+        @click="showActionPanel('close')"
+      >
+        <el-icon><Close /></el-icon>
+        关闭
+      </el-button>
+      
+      <!-- 重新打开已关闭的bug -->
+      <el-button 
+        v-if="canReopen"
+        type="warning" 
+        @click="showActionPanel('reopen')"
+      >
+        <el-icon><RefreshRight /></el-icon>
+        重新打开
+      </el-button>
+      
+      <!-- 分配按钮：只有报告人才能分配 -->
+      <el-button 
+        v-if="canAssign"
+        type="warning" 
+        @click="showActionPanel('assign')"
+      >
+        <el-icon><User /></el-icon>
+        分配
+      </el-button>
+      
+      <!-- 更改严重程度 -->
+      <el-button 
+        v-if="canChangeSeverity"
+        @click="showActionPanel('severity')"
+      >
+        <el-icon><Rank /></el-icon>
+        严重程度
+      </el-button>
+      
+      <!-- 转交 -->
+      <el-button 
+        v-if="canTransfer"
+        type="warning"
+        @click="showActionPanel('transfer')"
+      >
+        <el-icon><Switch /></el-icon>
+        转交
+      </el-button>
+      
+      <!-- 更改状态 -->
+      <el-button 
+        v-if="canChangeStatus"
+        type="primary"
+        @click="showActionPanel('changeStatus')"
+      >
+        <el-icon><EditPen /></el-icon>
+        更改状态
+      </el-button>
+      
+      <!-- 备注按钮：任何人都可以添加 -->
+      <el-button 
+        v-if="canComment"
+        type="primary" 
+        plain 
+        @click="showActionPanel('comment')"
+      >
+        <el-icon><ChatDotRound /></el-icon>
+        备注
+      </el-button>
+      
+      <!-- 删除按钮：只有报告人才能删除 -->
+      <el-button 
+        v-if="canDelete"
+        type="danger" 
+        plain 
+        @click="confirmDelete"
+      >
+        <el-icon><Delete /></el-icon>
+        删除
+      </el-button>
+    </div>
+
+    <!-- 操作面板弹窗 - 从右侧弹出 -->
+    <el-drawer
+      v-model="showPanel"
+      :title="getActionTitle(currentAction)"
+      direction="rtl"
+      size="85%"
+      :close-on-click-modal="true"
+      @closed="onDrawerClosed"
+    >
+      <div class="drawer-content">
+        <div class="drawer-body-scroll">
+          <!-- 转交：选择负责人 -->
+          <div class="form-section" v-if="currentAction === 'transfer'">
+            <span class="label">转交给</span>
+            <el-select 
+              v-model="transferUserId" 
+              placeholder="请选择负责人" 
+              style="width: 100%"
+            >
+              <el-option
+                v-for="user in users"
+                :key="user.id"
+                :label="user.realName"
+                :value="user.id"
+              />
+            </el-select>
+          </div>
+
+          <!-- 更改严重程度 -->
+          <div class="form-section" v-if="currentAction === 'severity'">
+            <span class="label">新严重程度</span>
+            <el-select 
+              v-model="newSeverity" 
+              placeholder="请选择严重程度" 
+              style="width: 100%"
+            >
+              <el-option label="低" value="low" />
+              <el-option label="中" value="medium" />
+              <el-option label="高" value="high" />
+              <el-option label="严重" value="critical" />
+            </el-select>
+          </div>
+
+          <!-- 更改状态 -->
+          <div class="form-section" v-if="currentAction === 'changeStatus'">
+            <span class="label">新状态</span>
+            <el-select 
+              v-model="newStatus" 
+              placeholder="请选择状态" 
+              style="width: 100%"
+            >
+              <el-option label="待处理" value="pending" :disabled="bug?.status === 'pending'" />
+              <el-option label="已分配" value="assigned" :disabled="bug?.status === 'assigned'" />
+              <el-option label="修复中" value="fixing" :disabled="bug?.status === 'fixing'" />
+              <el-option label="已修复" value="fixed" :disabled="bug?.status === 'fixed'" />
+              <el-option label="已验证" value="verified" :disabled="bug?.status === 'verified'" />
+              <el-option label="已关闭" value="closed" :disabled="bug?.status === 'closed'" />
+            </el-select>
+          </div>
+
+          <!-- 重新打开 -->
+          <div class="form-section" v-if="currentAction === 'reopen'">
+            <el-alert 
+              title="确认重新打开缺陷" 
+              type="warning" 
+              :closable="false"
+              show-icon
+            >
+              <template #default>
+                缺陷将被重新打开，状态将变为"待处理"
+              </template>
+            </el-alert>
+          </div>
+          
+          <!-- 备注编辑器 -->
+          <div class="editor-section">
+            <span class="label">备注（可选）</span>
+            <div class="editor-wrapper">
+              <RichEditor
+                :key="editorKey"
+                v-model="commentText"
+                placeholder="输入备注内容... 支持粘贴图片 (Ctrl+V)"
+                :height="0"
+                :showToolbar="true"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div class="drawer-footer">
+          <el-button @click="closeActionPanel">取消</el-button>
+          <el-button type="primary" @click="executeAction" :loading="submitting">
+            {{ getActionConfirmText(currentAction) }}
+          </el-button>
+        </div>
+      </div>
+    </el-drawer>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, watch, onMounted, nextTick } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { getBug, updateBugStatus, addComment as addBugComment, updateBug } from '../api/bug'
+import { getUsers } from '../api/user'
+import { useUserStore } from '../stores/user'
+import RichEditor from '../components/RichEditor.vue'
+
+const route = useRoute()
+const router = useRouter()
+const userStore = useUserStore()
+
+const bug = ref<any>(null)
+const users = ref<any[]>([])
+const commentText = ref('')
+const editorKey = ref(0)
+const submitting = ref(false)
+const currentAction = ref<string | null>(null)
+const showPanel = ref(false)
+const assignUserId = ref<number | null>(null)
+const transferUserId = ref<number | null>(null)
+const newSeverity = ref('')
+const newStatus = ref('')
+const isEditingTitle = ref(false)
+const editTitle = ref('')
+const isEditingDescription = ref(false)
+const editDescription = ref('')
+const isEditingReproduceSteps = ref(false)
+const editReproduceSteps = ref('')
+const saving = ref(false)
+const titleInputRef = ref()
+
+const operationLogs = computed(() => {
+  return bug.value?.operationLogs || []
+})
+
+// 角色判断
+const currentUserId = computed(() => userStore.user?.id)
+const isReporter = computed(() => {
+  return bug.value?.creator?.id === currentUserId.value || bug.value?.reporter?.id === currentUserId.value
+})
+const isAssignee = computed(() => bug.value?.assignee?.id === currentUserId.value)
+const isParticipant = computed(() => isReporter.value || isAssignee.value)
+const isProjectManager = computed(() => bug.value?.project?.manager?.id === currentUserId.value)
+const isAdmin = computed(() => userStore.user?.role === 'admin')
+
+// 可编辑权限：当前负责人、创建人、项目经理、管理员，或拥有删除权限的角色
+const canEdit = computed(() => isAssignee.value || isReporter.value || isProjectManager.value || isAdmin.value || canDelete.value)
+
+// 状态判断
+const isClosed = computed(() => bug.value?.status === 'closed')
+const isVerified = computed(() => bug.value?.status === 'verified')
+const isFixed = computed(() => bug.value?.status === 'fixed')
+const isActive = computed(() => !isClosed.value && !isVerified.value)
+
+// 按钮权限配置（角色权限 + 关系权限）
+const canFix = computed(() => userStore.getBugPermission('fix', { isAssignee: true }) && isAssignee.value && isActive.value && !isFixed.value)
+const canReopenFix = computed(() => userStore.getBugPermission('reopen', { isReporter: true }) && isFixed.value)
+const canVerify = computed(() => userStore.getBugPermission('verify', { isReporter: true }) && isFixed.value)
+const canClose = computed(() => userStore.getBugPermission('close', { isReporter: true }) && (isVerified.value || isFixed.value))
+const canReopen = computed(() => userStore.getBugPermission('reopen', { isReporter: true }) && isClosed.value)
+const canAssign = computed(() => userStore.getBugPermission('assign', { isReporter: true }) && !isClosed.value && !isVerified.value)
+const canChangeSeverity = computed(() => userStore.getBugPermission('changeSeverity', { isReporter: true }) && !isClosed.value && !isVerified.value)
+const canTransfer = computed(() => userStore.getBugPermission('transfer', { isReporter: true, isAssignee: true }) && !isClosed.value && !isVerified.value)
+const canChangeStatus = computed(() => userStore.getBugPermission('changeStatus', { isAssignee: true, isReporter: true }) && !isClosed.value && !isVerified.value)
+const canComment = computed(() => userStore.getBugPermission('comment'))
+const canDelete = computed(() => userStore.getBugPermission('delete'))
+
+const getSeverityType = (severity: string) => {
+  const map: Record<string, string> = {
+    low: 'info', medium: 'warning', high: 'danger', critical: 'danger'
+  }
+  return map[severity] || 'info'
+}
+
+const getSeverityText = (severity: string) => {
+  const map: Record<string, string> = {
+    low: '低', medium: '中', high: '高', critical: '严重'
+  }
+  return map[severity] || severity
+}
+
+const getStatusType = (status: string) => {
+  const map: Record<string, string> = {
+    pending: 'info', assigned: 'warning', fixing: 'warning',
+    fixed: 'success', verified: 'success', closed: 'info'
+  }
+  return map[status] || 'info'
+}
+
+const getStatusText = (status: string) => {
+  const map: Record<string, string> = {
+    pending: '待处理', assigned: '已分配', fixing: '修复中',
+    fixed: '已修复', verified: '已验证', closed: '已关闭'
+  }
+  return map[status] || status
+}
+
+const formatLogAction = (log: any) => {
+  const { action, oldStatus, newStatus, oldSeverity, newSeverity, oldAssignee, newAssignee } = log
+  
+  switch (action) {
+    case 'create':
+      return '提交了缺陷'
+    case 'status_change': {
+      let text = `将状态从「${getStatusText(oldStatus || 'pending')}」变更为「${getStatusText(newStatus)}」`
+      if (oldAssignee && newAssignee) {
+        text += `，负责人从「${oldAssignee}」变更为「${newAssignee}」`
+      } else if (newAssignee) {
+        text += `，负责人变更为「${newAssignee}」`
+      }
+      return text
+    }
+    case 'severity_change':
+      return `将严重程度从「${getSeverityText(oldSeverity || 'medium')}」调整为「${getSeverityText(newSeverity)}」`
+    case 'assign':
+      return `将负责人从「${oldAssignee || '未处理'}」变更为「${newAssignee}」`
+    case 'fix':
+      return '标记缺陷为已修复'
+    case 'verify':
+      return '验证通过'
+    case 'close':
+      return '关闭了缺陷'
+    case 'comment':
+      return '添加了备注'
+    default:
+      return action
+  }
+}
+
+const getActionTitle = (action: string) => {
+  const map: Record<string, string> = {
+    fix: '标记为已修复',
+    reopen: '重新打开缺陷',
+    verify: '验证通过',
+    close: '关闭缺陷',
+    transfer: '转交缺陷',
+    severity: '更改严重程度',
+    changeStatus: '更改状态',
+    comment: '添加备注'
+  }
+  return map[action] || action
+}
+
+const getActionConfirmText = (action: string) => {
+  const map: Record<string, string> = {
+    fix: '确认已修复',
+    reopen: '确认重新打开',
+    verify: '确认通过',
+    close: '确认关闭',
+    transfer: '确认转交',
+    severity: '确认修改',
+    changeStatus: '确认修改',
+    comment: '添加备注'
+  }
+  return map[action] || '确认'
+}
+
+const formatTime = (time: string | Date) => {
+  if (!time) return '-'
+  return new Date(time).toLocaleString()
+}
+
+const renderRemark = (remark: string) => {
+  if (!remark) return ''
+  if (remark.includes('<') && remark.includes('>')) {
+    return remark
+  }
+  return remark.replace(/\[图片\]/g, '<span style="color:#409eff">[图片]</span>')
+}
+
+const goBack = () => {
+  router.push('/bugs')
+}
+
+const loadBug = async () => {
+  try {
+    const id = parseInt(route.params.id as string)
+    const res = await getBug(id)
+    bug.value = res.data
+  } catch (error) {
+    ElMessage.error('加载缺陷详情失败')
+  }
+}
+
+const loadUsers = async () => {
+  try {
+    const res = await getUsers()
+    users.value = res.data
+  } catch (error) {
+    console.error('Failed to load users:', error)
+  }
+}
+
+const startEditTitle = () => {
+  editTitle.value = bug.value.title
+  isEditingTitle.value = true
+  nextTick(() => {
+    titleInputRef.value?.focus()
+  })
+}
+
+const cancelEditTitle = () => {
+  isEditingTitle.value = false
+  editTitle.value = ''
+}
+
+const saveTitle = async () => {
+  if (!editTitle.value.trim()) {
+    ElMessage.warning('标题不能为空')
+    return
+  }
+  saving.value = true
+  try {
+    await updateBug(bug.value.id, { title: editTitle.value.trim() })
+    bug.value.title = editTitle.value.trim()
+    isEditingTitle.value = false
+    ElMessage.success('标题已更新')
+  } catch (error) {
+    ElMessage.error('更新标题失败')
+  } finally {
+    saving.value = false
+  }
+}
+
+const startEditDescription = (field: string) => {
+  if (field === 'description') {
+    editDescription.value = bug.value.description || ''
+    isEditingDescription.value = true
+  } else if (field === 'reproduceSteps') {
+    editReproduceSteps.value = bug.value.reproduceSteps || ''
+    isEditingReproduceSteps.value = true
+  }
+}
+
+const cancelEditDescription = () => {
+  isEditingDescription.value = false
+  editDescription.value = ''
+}
+
+const cancelEditReproduceSteps = () => {
+  isEditingReproduceSteps.value = false
+  editReproduceSteps.value = ''
+}
+
+const saveDescription = async (field: string) => {
+  saving.value = true
+  try {
+    const data: any = {}
+    if (field === 'description') {
+      data.description = editDescription.value
+    } else if (field === 'reproduceSteps') {
+      data.reproduceSteps = editReproduceSteps.value
+    }
+    await updateBug(bug.value.id, data)
+    if (field === 'description') {
+      bug.value.description = editDescription.value
+      isEditingDescription.value = false
+    } else if (field === 'reproduceSteps') {
+      bug.value.reproduceSteps = editReproduceSteps.value
+      isEditingReproduceSteps.value = false
+    }
+    ElMessage.success('内容已更新')
+  } catch (error) {
+    ElMessage.error('更新失败')
+  } finally {
+    saving.value = false
+  }
+}
+
+const showActionPanel = (action: string) => {
+  commentText.value = ''
+  transferUserId.value = null
+  newSeverity.value = bug.value?.severity || 'medium'
+  newStatus.value = bug.value?.status || ''
+  currentAction.value = action
+  showPanel.value = true
+}
+
+const closeActionPanel = () => {
+  showPanel.value = false
+  commentText.value = ''
+  editorKey.value++
+}
+
+const onDrawerClosed = () => {
+  currentAction.value = null
+  commentText.value = ''
+  transferUserId.value = null
+  newSeverity.value = ''
+  newStatus.value = ''
+}
+
+const executeAction = async () => {
+  if (currentAction.value === 'transfer' && !transferUserId.value) {
+    ElMessage.warning('请选择负责人')
+    return
+  }
+
+  if (currentAction.value === 'severity' && newSeverity.value === bug.value.severity) {
+    ElMessage.warning('请选择不同的严重程度')
+    return
+  }
+
+  submitting.value = true
+  try {
+    switch (currentAction.value) {
+      case 'fix': {
+        await updateBugStatus(bug.value.id, 'fixed', {
+          action: 'fix',
+          remark: commentText.value || ''
+        })
+        ElMessage.success('已标记为修复')
+        break
+      }
+
+      case 'verify': {
+        await updateBugStatus(bug.value.id, 'verified', {
+          action: 'verify',
+          remark: commentText.value || ''
+        })
+        ElMessage.success('验证通过')
+        break
+      }
+
+      case 'close': {
+        await updateBugStatus(bug.value.id, 'closed', {
+          action: 'close',
+          remark: commentText.value || ''
+        })
+        ElMessage.success('缺陷已关闭')
+        break
+      }
+
+      case 'transfer': {
+        await addBugComment(bug.value.id, {
+          action: 'assign',
+          newAssigneeId: transferUserId.value,
+          remark: commentText.value || ''
+        })
+        ElMessage.success('转交成功')
+        break
+      }
+
+      case 'severity': {
+        await addBugComment(bug.value.id, {
+          action: 'severity_change',
+          newSeverity: newSeverity.value,
+          remark: commentText.value || ''
+        })
+        ElMessage.success('严重程度已更新')
+        break
+      }
+
+      case 'changeStatus': {
+        if (!newStatus.value) {
+          ElMessage.warning('请选择状态')
+          submitting.value = false
+          return
+        }
+        await updateBugStatus(bug.value.id, newStatus.value, {
+          action: 'status_change',
+          remark: commentText.value || ''
+        })
+        ElMessage.success('状态已更新')
+        break
+      }
+
+      case 'comment': {
+        const hasContent = commentText.value.replace(/<[^>]*>/g, '').trim() || commentText.value.includes('<img') || commentText.value.includes('<video')
+        if (!hasContent) {
+          ElMessage.warning('请输入备注内容')
+          submitting.value = false
+          return
+        }
+        await addBugComment(bug.value.id, {
+          action: 'comment',
+          remark: commentText.value
+        })
+        ElMessage.success('备注添加成功')
+        break
+      }
+
+      case 'reopen': {
+        await updateBugStatus(bug.value.id, 'pending', {
+          action: 'status_change',
+          remark: commentText.value || ''
+        })
+        ElMessage.success('缺陷已重新打开')
+        break
+      }
+    }
+
+    closeActionPanel()
+    await loadBug()
+  } catch (error) {
+    console.error('Action error:', error)
+    ElMessage.error('操作失败')
+  } finally {
+    submitting.value = false
+  }
+}
+
+const confirmDelete = async () => {
+  try {
+    await ElMessageBox.confirm('确定要删除这个缺陷吗？此操作不可恢复。', '确认删除', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    // 这里需要调用删除 bug 的 API，假设后端有这个接口
+    // await deleteBug(bug.value.id)
+    ElMessage.success('缺陷已删除')
+    router.push('/bugs')
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('Delete bug error:', error)
+      ElMessage.error('删除缺陷失败')
+    }
+  }
+}
+
+onMounted(() => {
+  loadBug()
+  loadUsers()
+})
+</script>
+
+<style scoped>
+.bug-detail-page {
+  padding: 0;
+}
+
+.page-header {
+  margin-bottom: 20px;
+}
+
+.detail-container {
+  display: flex;
+  gap: 20px;
+}
+
+.main-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.side-content {
+  width: 300px;
+  flex-shrink: 0;
+}
+
+.content-card {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+}
+
+.bug-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.bug-title-area {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.bug-header h1 {
+  font-size: 24px;
+  font-weight: 600;
+  color: #303133;
+  margin: 0;
+  flex: 1;
+}
+
+.bug-title-edit {
+  flex: 1;
+}
+
+.bug-title-edit .el-input {
+  margin-bottom: 8px;
+}
+
+.bug-title-edit .edit-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.edit-btn {
+  color: #909399;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.edit-btn:hover {
+  color: #409eff;
+  background: #ecf5ff;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.section-editor {
+  margin-top: 12px;
+}
+
+.section-editor .edit-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+.bug-tags {
+  display: flex;
+  gap: 8px;
+}
+
+.bug-section {
+  margin-bottom: 20px;
+}
+
+.bug-section h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #909399;
+  margin: 0 0 12px 0;
+}
+
+.section-content {
+  font-size: 14px;
+  color: #606266;
+  line-height: 1.8;
+}
+
+.section-content :deep(img) {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+}
+
+.section-content :deep(video) {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+  margin: 8px 0;
+  display: block;
+  background: #000;
+}
+
+.activity-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.activity-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #606266;
+}
+
+.activity-count {
+  font-size: 12px;
+  color: #909399;
+}
+
+.activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.activity-item {
+  display: flex;
+  gap: 12px;
+}
+
+.activity-avatar {
+  flex-shrink: 0;
+}
+
+.activity-avatar :deep(.el-avatar) {
+  background: linear-gradient(135deg, #f56c6c 0%, #e6a23c 100%);
+  color: white;
+  font-weight: 500;
+}
+
+.activity-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.activity-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.activity-user {
+  font-weight: 500;
+  color: #303133;
+  font-size: 13px;
+}
+
+.activity-action {
+  color: #606266;
+  font-size: 13px;
+}
+
+.activity-time {
+  color: #909399;
+  font-size: 12px;
+  margin-left: auto;
+}
+
+.activity-remark {
+  background: #f5f7fa;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: #606266;
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+.activity-remark :deep(img) {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+  margin: 8px 0;
+}
+
+.activity-remark :deep(video) {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+  margin: 8px 0;
+  display: block;
+  background: #000;
+}
+
+.activity-remark :deep(p) {
+  margin: 4px 0;
+}
+
+/* 功能按钮栏 */
+.action-bar {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+/* 悬浮操作栏 */
+.floating-action-bar {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: white;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+  padding: 12px 20px;
+  border-radius: 12px;
+  display: inline-flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: calc(100% - 48px);
+}
+
+/* Drawer 样式 */
+:deep(.el-drawer__body) {
+  padding: 0;
+  height: calc(100% - 56px);
+}
+
+.drawer-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.drawer-body-scroll {
+  flex: 1;
+  overflow: hidden;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.drawer-body-scroll .label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: #303133;
+  margin-bottom: 10px;
+}
+
+.drawer-body-scroll .form-section {
+  margin-bottom: 20px;
+  flex-shrink: 0;
+}
+
+.drawer-body-scroll .editor-section {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.editor-wrapper {
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  overflow: hidden;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.drawer-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 20px;
+  border-top: 1px solid #e4e7ed;
+  background: #fafafa;
+  flex-shrink: 0;
+}
+
+/* 侧边栏样式 */
+.side-content h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #303133;
+  margin: 0 0 16px 0;
+}
+
+.info-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.info-item .label {
+  font-size: 12px;
+  color: #909399;
+  font-weight: 500;
+}
+
+.info-item .value {
+  font-size: 14px;
+  color: #303133;
+}
+
+.assignee-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #303133;
+}
+
+.text-muted {
+  color: #909399;
+  font-size: 14px;
+}
+</style>

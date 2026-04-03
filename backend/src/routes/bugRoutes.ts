@@ -1,0 +1,25 @@
+import { Router } from "express";
+import { bugController } from "../controllers/bugController";
+import { bugPermissionMiddleware } from "../middleware/authMiddleware";
+
+const router = Router();
+
+router.post("/", bugPermissionMiddleware("create"), bugController.createBug);
+
+router.get("/", bugController.getAllBugs);
+
+router.get("/:id", bugController.getBugById);
+
+router.put("/:id", bugController.updateBug);
+
+router.patch("/:id/status", bugController.updateBugStatus);
+
+router.post("/:id/comments", bugController.addComment);
+
+router.patch("/:id/assign", bugController.assignBug);
+
+router.delete("/:id", bugPermissionMiddleware("delete"), bugController.deleteBug);
+
+router.get("/stats", bugController.getBugStats);
+
+export default router;

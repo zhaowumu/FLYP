@@ -1,0 +1,1426 @@
+<template>
+  <div class="task-detail-page">
+    <div class="page-header">
+      <div class="header-left">
+        <el-button text @click="goBack">
+          <el-icon><ArrowLeft /></el-icon>
+          返回列表
+        </el-button>
+      </div>
+    </div>
+
+    <div class="detail-container" v-if="task">
+      <div class="main-content">
+        <div class="content-card">
+          <div class="task-header">
+            <div class="task-title-area" v-if="!isEditingTitle">
+              <h1>{{ task.title }}</h1>
+              <el-button v-if="canEdit" text size="small" @click="startEditTitle" class="edit-btn">
+                <el-icon><Edit /></el-icon>
+              </el-button>
+            </div>
+            <div v-else class="task-title-edit">
+              <el-input v-model="editTitle" size="large" placeholder="请输入任务标题" @keyup.enter="saveTitle" ref="titleInputRef" />
+              <div class="edit-actions">
+                <el-button size="small" @click="cancelEditTitle">取消</el-button>
+                <el-button size="small" type="primary" @click="saveTitle" :loading="saving">保存</el-button>
+              </div>
+            </div>
+            <div class="task-tags">
+              <el-tag :type="getPriorityType(task.priority)" size="small">
+                {{ getPriorityText(task.priority) }}
+              </el-tag>
+              <el-tag :type="getStatusType(task.status)" size="small">
+                {{ getStatusText(task.status) }}
+              </el-tag>
+            </div>
+          </div>
+
+          <el-divider />
+
+          <div class="task-description">
+            <div class="description-header">
+              <h3>任务描述</h3>
+              <el-button v-if="canEdit" text size="small" @click="startEditDescription" class="edit-btn">
+                <el-icon><Edit /></el-icon>
+                {{ task.description ? '编辑' : '添加描述' }}
+              </el-button>
+            </div>
+            <div v-if="!isEditingDescription" class="description-content" v-html="task.description || '<span style=color:#909399>暂无描述</span>'"></div>
+            <div v-else class="description-editor">
+              <RichEditor
+                v-model="editDescription"
+                placeholder="请输入任务描述... 支持粘贴图片 (Ctrl+V)"
+                :height="300"
+              />
+              <div class="edit-actions">
+                <el-button size="small" @click="cancelEditDescription">取消</el-button>
+                <el-button size="small" type="primary" @click="saveDescription" :loading="saving">保存</el-button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="content-card" style="margin-top: 20px; padding-bottom: 80px;">
+          <!-- 子任务列表区域 - 仅在有子任务时显示 -->
+          <div v-if="task.subtasks && task.subtasks.length > 0" class="subtasks-section">
+            <div class="subtasks-header">
+              <span class="subtasks-title">
+                <el-icon><List /></el-icon>
+                子任务列表 ({{ task.subtasks.length }})
+              </span>
+            </div>
+            <div class="subtasks-tree-list">
+              <div 
+                v-for="(subtask, index) in task.subtasks" 
+                :key="subtask.id" 
+                class="subtask-tree-item"
+                @click="viewSubtask(subtask)"
+              >
+                <span class="tree-icon">{{ index === task.subtasks.length - 1 ? '└──' : '├──' }}</span>
+                <el-tag :type="getStatusType(subtask.status)" size="small" class="subtask-status">
+                  {{ getStatusText(subtask.status) }}
+                </el-tag>
+                <el-tag :type="getPriorityType(subtask.priority)" size="small" class="subtask-priority-tag">
+                  {{ getPriorityText(subtask.priority) }}
+                </el-tag>
+                <span class="subtask-link-title">{{ subtask.title }}</span>
+                <el-icon class="arrow-icon"><ArrowRight /></el-icon>
+              </div>
+            </div>
+          </div>
+
+          <el-divider v-if="task.subtasks && task.subtasks.length > 0" />
+
+          <div class="activity-header">
+            <span class="activity-title">操作记录</span>
+            <span class="activity-count">{{ operationLogs.length }} 条记录</span>
+          </div>
+
+          <div class="activity-list">
+            <div class="activity-item" v-for="log in operationLogs" :key="log.id">
+              <div class="activity-avatar">
+                <el-avatar :size="32">{{ log.user?.realName?.charAt(0) || 'U' }}</el-avatar>
+              </div>
+              <div class="activity-content">
+                <div class="activity-info">
+                  <span class="activity-user">{{ log.user?.realName || '未知用户' }}</span>
+                  <span class="activity-action">{{ formatLogAction(log) }}</span>
+                  <span class="activity-time">{{ formatTime(log.createdAt) }}</span>
+                </div>
+                <div class="activity-remark" v-if="log.remark">
+                  <div v-html="renderRemark(log.remark)"></div>
+                </div>
+              </div>
+            </div>
+            <el-empty v-if="operationLogs.length === 0" description="暂无操作记录" :image-size="60" />
+          </div>
+        </div>
+      </div>
+
+      <div class="side-content">
+        <div class="content-card">
+          <h3>基本信息</h3>
+          <div class="info-list">
+            <div class="info-item">
+              <span class="label">状态</span>
+              <el-tag :type="getStatusType(task.status)" size="small">
+                {{ getStatusText(task.status) }}
+              </el-tag>
+            </div>
+            <div class="info-item">
+              <span class="label">优先级</span>
+              <el-tag :type="getPriorityType(task.priority)" size="small">
+                {{ getPriorityText(task.priority) }}
+              </el-tag>
+            </div>
+            <div class="info-item">
+              <span class="label">当前负责人</span>
+              <div class="assignee-display" v-if="task.assignee">
+                <el-avatar :size="24">{{ task.assignee.realName?.charAt(0) }}</el-avatar>
+                <span>{{ task.assignee.realName }}</span>
+              </div>
+              <span v-else class="text-muted">未处理</span>
+            </div>
+            <div class="info-item">
+              <span class="label">创建人</span>
+              <div class="assignee-display">
+                <el-avatar :size="24">{{ task.creator?.realName?.charAt(0) || '-' }}</el-avatar>
+                <span>{{ task.creator?.realName || '-' }}</span>
+              </div>
+            </div>
+            <div class="info-item">
+              <span class="label">所属项目</span>
+              <span class="value">{{ task.project?.name || '-' }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">截止日期</span>
+              <span class="value">{{ task.dueDate ? new Date(task.dueDate).toLocaleDateString() : '未设置' }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">创建时间</span>
+              <span class="value">{{ formatTime(task.createdAt) }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">更新时间</span>
+              <span class="value">{{ formatTime(task.updatedAt) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 悬浮操作栏 -->
+    <div class="floating-action-bar">
+      <!-- 完成按钮：只有负责人才能完成 -->
+      <el-button 
+        v-if="canComplete"
+        type="success" 
+        @click="showActionPanel('complete')"
+      >
+        <el-icon><Check /></el-icon>
+        完成
+      </el-button>
+      
+      <!-- 重新打开按钮：已完成的任务可以重新打开 -->
+      <el-button 
+        v-if="canReopen"
+        type="warning" 
+        @click="showActionPanel('reopen')"
+      >
+        <el-icon><RefreshRight /></el-icon>
+        重新打开
+      </el-button>
+      
+      <!-- 关闭按钮：只有创建人才能关闭 -->
+      <el-button 
+        v-if="canClose"
+        type="info" 
+        @click="showActionPanel('close')"
+      >
+        <el-icon><Close /></el-icon>
+        关闭
+      </el-button>
+      
+      <!-- 转交按钮：创建人和负责人都可以转交 -->
+      <el-button 
+        v-if="canTransfer"
+        type="warning" 
+        @click="showActionPanel('transfer')"
+      >
+        <el-icon><Switch /></el-icon>
+        转交
+      </el-button>
+      
+      <!-- 更改优先级：创建人和负责人都可以更改 -->
+      <el-button 
+        v-if="canChangePriority"
+        @click="showActionPanel('priority')"
+      >
+        <el-icon><Rank /></el-icon>
+        优先级
+      </el-button>
+      
+      <!-- 更改状态 -->
+      <el-button 
+        v-if="canChangeStatus"
+        type="primary"
+        @click="showActionPanel('changeStatus')"
+      >
+        <el-icon><EditPen /></el-icon>
+        更改状态
+      </el-button>
+      
+      <!-- 备注按钮：任何人都可以添加 -->
+      <el-button 
+        v-if="canComment"
+        type="primary" 
+        plain 
+        @click="showActionPanel('comment')"
+      >
+        <el-icon><ChatDotRound /></el-icon>
+        备注
+      </el-button>
+      
+      <!-- 删除按钮：只有创建人才能删除 -->
+      <el-button 
+        v-if="canDelete"
+        type="danger" 
+        plain 
+        @click="confirmDelete"
+      >
+        <el-icon><Delete /></el-icon>
+        删除
+      </el-button>
+    </div>
+
+    <!-- 操作面板弹窗 - 从右侧弹出 -->
+    <el-drawer
+      v-model="showPanel"
+      :title="getActionTitle(currentAction)"
+      direction="rtl"
+      size="85%"
+      :close-on-click-modal="true"
+      @closed="onDrawerClosed"
+    >
+      <div class="drawer-content">
+        <div class="drawer-body-scroll">
+          <!-- 转交：选择负责人 -->
+          <div class="form-section" v-if="currentAction === 'transfer'">
+            <span class="label">转交给</span>
+            <el-select 
+              v-model="transferUserId" 
+              placeholder="请选择负责人" 
+              style="width: 100%"
+            >
+              <el-option
+                v-for="user in users"
+                :key="user.id"
+                :label="user.realName"
+                :value="user.id"
+              />
+            </el-select>
+          </div>
+
+          <!-- 更改优先级 -->
+          <div class="form-section" v-if="currentAction === 'priority'">
+            <span class="label">新优先级</span>
+            <el-select 
+              v-model="newPriority" 
+              placeholder="请选择优先级" 
+              style="width: 100%"
+            >
+              <el-option label="低" value="low" />
+              <el-option label="中" value="medium" />
+              <el-option label="高" value="high" />
+              <el-option label="紧急" value="urgent" />
+            </el-select>
+          </div>
+
+          <!-- 更改状态 -->
+          <div class="form-section" v-if="currentAction === 'changeStatus'">
+            <span class="label">新状态</span>
+            <el-select 
+              v-model="newStatus" 
+              placeholder="请选择状态" 
+              style="width: 100%"
+            >
+              <el-option label="待处理" value="pending" :disabled="task?.status === 'pending'" />
+              <el-option label="进行中" value="in_progress" :disabled="task?.status === 'in_progress'" />
+              <el-option label="已完成" value="completed" :disabled="task?.status === 'completed'" />
+              <el-option label="已关闭" value="closed" :disabled="task?.status === 'closed'" />
+            </el-select>
+          </div>
+
+          <!-- 重新打开 -->
+          <div class="form-section" v-if="currentAction === 'reopen'">
+            <el-alert 
+              title="确认重新打开任务" 
+              type="warning" 
+              :closable="false"
+              show-icon
+            >
+              <template #default>
+                任务将被重新打开，状态将变为"进行中"
+              </template>
+            </el-alert>
+          </div>
+          
+          <!-- 备注编辑器 -->
+          <div class="editor-section">
+            <span class="label">备注（可选）</span>
+            <div class="editor-wrapper">
+              <RichEditor
+                :key="editorKey"
+                v-model="commentText"
+                placeholder="输入备注内容... 支持粘贴图片 (Ctrl+V)"
+                :height="0"
+                :showToolbar="true"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div class="drawer-footer">
+          <el-button @click="closeActionPanel">取消</el-button>
+          <el-button type="primary" @click="executeAction" :loading="submitting">
+            {{ getActionConfirmText(currentAction) }}
+          </el-button>
+        </div>
+      </div>
+    </el-drawer>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, watch, onMounted, nextTick } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { getTask, updateTaskStatus, addComment as addTaskComment, updateTask, deleteTask } from '../api/task'
+import { getUsers } from '../api/user'
+import { useUserStore } from '../stores/user'
+import RichEditor from '../components/RichEditor.vue'
+
+const route = useRoute()
+const router = useRouter()
+const userStore = useUserStore()
+
+const task = ref<any>(null)
+const users = ref<any[]>([])
+const commentText = ref('')
+const editorKey = ref(0)
+const submitting = ref(false)
+const currentAction = ref<string | null>(null)
+const showPanel = ref(false)
+const transferUserId = ref<number | null>(null)
+const newPriority = ref('')
+const newStatus = ref('')
+const isEditingTitle = ref(false)
+const editTitle = ref('')
+const isEditingDescription = ref(false)
+const editDescription = ref('')
+const saving = ref(false)
+const titleInputRef = ref()
+
+const operationLogs = computed(() => {
+  return task.value?.operationLogs || []
+})
+
+// 角色判断
+const currentUserId = computed(() => userStore.user?.id)
+const isCreator = computed(() => task.value?.creator?.id === currentUserId.value)
+const isAssignee = computed(() => task.value?.assignee?.id === currentUserId.value)
+const isParticipant = computed(() => isCreator.value || isAssignee.value)
+const isProjectManager = computed(() => task.value?.project?.manager?.id === currentUserId.value)
+const isAdmin = computed(() => userStore.user?.role === 'admin')
+
+// 可编辑权限：当前负责人、创建人、项目经理、管理员，或拥有删除权限的角色
+const canEdit = computed(() => isAssignee.value || isCreator.value || isProjectManager.value || isAdmin.value || canDelete.value)
+
+// 状态判断
+const isClosed = computed(() => task.value?.status === 'closed')
+const isCompleted = computed(() => task.value?.status === 'completed')
+const isActive = computed(() => !isClosed.value && !isCompleted.value)
+
+// 按钮权限配置（角色权限 + 关系权限）
+const canComplete = computed(() => userStore.getTaskPermission('complete', { isAssignee: true }) && isAssignee.value && isActive.value)
+const canReopen = computed(() => userStore.getTaskPermission('reopen', { isCreator: true }) && isCompleted.value)
+const canClose = computed(() => userStore.getTaskPermission('close', { isCreator: true }) && !isClosed.value)
+const canTransfer = computed(() => userStore.getTaskPermission('transfer', { isAssignee: true, isCreator: true }) && !isClosed.value)
+const canChangePriority = computed(() => userStore.getTaskPermission('changePriority', { isCreator: true }) && !isClosed.value)
+const canChangeStatus = computed(() => userStore.getTaskPermission('changeStatus', { isAssignee: true, isCreator: true }) && !isClosed.value)
+const canComment = computed(() => userStore.getTaskPermission('comment'))
+const canDelete = computed(() => userStore.getTaskPermission('delete'))
+
+const getPriorityType = (priority: string) => {
+  const map: Record<string, string> = {
+    low: 'info', medium: 'warning', high: 'danger', urgent: 'danger'
+  }
+  return map[priority] || 'info'
+}
+
+const getPriorityText = (priority: string) => {
+  const map: Record<string, string> = {
+    low: '低', medium: '中', high: '高', urgent: '紧急'
+  }
+  return map[priority] || priority
+}
+
+const getStatusType = (status: string) => {
+  const map: Record<string, string> = {
+    pending: 'info', in_progress: 'warning', completed: 'success', closed: 'info'
+  }
+  return map[status] || 'info'
+}
+
+const getStatusText = (status: string) => {
+  const map: Record<string, string> = {
+    pending: '待处理', in_progress: '进行中', completed: '已完成', closed: '已关闭'
+  }
+  return map[status] || status
+}
+
+const formatLogAction = (log: any) => {
+  const { action, oldStatus, newStatus, oldPriority, newPriority, oldAssignee, newAssignee, remark } = log
+  
+  switch (action) {
+    case 'create':
+      return '创建了任务'
+    case 'status_change': {
+      let text = `将状态从「${getStatusText(oldStatus || 'pending')}」变更为「${getStatusText(newStatus)}」`
+      if (oldAssignee && newAssignee) {
+        text += `，负责人从「${oldAssignee}」变更为「${newAssignee}」`
+      } else if (newAssignee) {
+        text += `，负责人变更为「${newAssignee}」`
+      }
+      return text
+    }
+    case 'priority_change':
+      return `将优先级从「${getPriorityText(oldPriority || 'medium')}」调整为「${getPriorityText(newPriority)}」`
+    case 'assign':
+      return `将负责人从「${oldAssignee || '未处理'}」变更为「${newAssignee}」`
+    case 'complete': {
+      let text = '完成了任务'
+      if (oldAssignee && newAssignee && oldAssignee !== newAssignee) {
+        text += `，负责人从「${oldAssignee}」变更为「${newAssignee}」`
+      }
+      return text
+    }
+    case 'close':
+      return '关闭了任务'
+    case 'comment':
+      return '添加了备注'
+    default:
+      return action
+  }
+}
+
+const getActionTitle = (action: string) => {
+  const map: Record<string, string> = {
+    complete: '完成任务',
+    reopen: '重新打开任务',
+    close: '关闭任务',
+    transfer: '转交任务',
+    priority: '更改优先级',
+    changeStatus: '更改状态',
+    comment: '添加备注'
+  }
+  return map[action] || action
+}
+
+const getActionConfirmText = (action: string) => {
+  const map: Record<string, string> = {
+    complete: '确认完成',
+    reopen: '确认重新打开',
+    close: '确认关闭',
+    transfer: '确认转交',
+    priority: '确认修改',
+    changeStatus: '确认修改',
+    comment: '添加备注'
+  }
+  return map[action] || '确认'
+}
+
+const formatTime = (time: string | Date) => {
+  if (!time) return '-'
+  const date = new Date(time)
+  return date.toLocaleString()
+}
+
+const renderRemark = (remark: string) => {
+  if (!remark) return ''
+  if (remark.includes('<') && remark.includes('>')) {
+    return remark
+  }
+  return remark.replace(/\[图片\]/g, '<span style="color:#409eff">[图片]</span>')
+}
+
+const goBack = () => {
+  router.push('/tasks')
+}
+
+const loadTask = async () => {
+  try {
+    const id = parseInt(route.params.id as string)
+    const res = await getTask(id)
+    task.value = res.data
+  } catch (error) {
+    ElMessage.error('加载任务详情失败')
+  }
+}
+
+const loadUsers = async () => {
+  try {
+    const res = await getUsers()
+    users.value = res.data
+  } catch (error) {
+    console.error('Failed to load users:', error)
+  }
+}
+
+const startEditTitle = () => {
+  editTitle.value = task.value.title
+  isEditingTitle.value = true
+  nextTick(() => {
+    titleInputRef.value?.focus()
+  })
+}
+
+const cancelEditTitle = () => {
+  isEditingTitle.value = false
+  editTitle.value = ''
+}
+
+const saveTitle = async () => {
+  if (!editTitle.value.trim()) {
+    ElMessage.warning('标题不能为空')
+    return
+  }
+  saving.value = true
+  try {
+    await updateTask(task.value.id, { title: editTitle.value.trim() })
+    task.value.title = editTitle.value.trim()
+    isEditingTitle.value = false
+    ElMessage.success('标题已更新')
+  } catch (error) {
+    ElMessage.error('更新标题失败')
+  } finally {
+    saving.value = false
+  }
+}
+
+const startEditDescription = () => {
+  editDescription.value = task.value.description || ''
+  isEditingDescription.value = true
+}
+
+const cancelEditDescription = () => {
+  isEditingDescription.value = false
+  editDescription.value = ''
+}
+
+const saveDescription = async () => {
+  saving.value = true
+  try {
+    await updateTask(task.value.id, { description: editDescription.value })
+    task.value.description = editDescription.value
+    isEditingDescription.value = false
+    ElMessage.success('描述已更新')
+  } catch (error) {
+    ElMessage.error('更新描述失败')
+  } finally {
+    saving.value = false
+  }
+}
+
+const showActionPanel = (action: string) => {
+  commentText.value = ''
+  transferUserId.value = null
+  newPriority.value = task.value?.priority || 'medium'
+  newStatus.value = task.value?.status || ''
+  currentAction.value = action
+  showPanel.value = true
+}
+
+const closeActionPanel = () => {
+  showPanel.value = false
+  commentText.value = ''
+  editorKey.value++
+}
+
+const onDrawerClosed = () => {
+  currentAction.value = null
+  transferUserId.value = null
+  newPriority.value = ''
+  newStatus.value = ''
+}
+
+const executeAction = async () => {
+  if (currentAction.value === 'transfer' && !transferUserId.value) {
+    ElMessage.warning('请选择负责人')
+    return
+  }
+
+  if (currentAction.value === 'priority' && newPriority.value === task.value.priority) {
+    ElMessage.warning('请选择不同的优先级')
+    return
+  }
+
+  submitting.value = true
+  try {
+    switch (currentAction.value) {
+      case 'complete': {
+        const oldAssigneeName = task.value.assignee?.realName || '未处理'
+        const creatorName = task.value.creator?.realName
+        await updateTaskStatus(task.value.id, 'completed', {
+          action: 'complete',
+          oldAssignee: oldAssigneeName,
+          newAssignee: creatorName,
+          remark: commentText.value || ''
+        })
+        ElMessage.success('任务已完成')
+        break
+      }
+
+      case 'reopen': {
+        await updateTaskStatus(task.value.id, 'in_progress', {
+          action: 'status_change',
+          remark: commentText.value || ''
+        })
+        ElMessage.success('任务已重新打开')
+        break
+      }
+
+      case 'close': {
+        await updateTaskStatus(task.value.id, 'closed', {
+          action: 'close',
+          remark: commentText.value || ''
+        })
+        ElMessage.success('任务已关闭')
+        break
+      }
+
+      case 'transfer': {
+        const newAssignee = users.value.find(u => u.id === transferUserId.value)
+        await updateTask(task.value.id, {
+          assigneeId: transferUserId.value,
+          log: { remark: commentText.value || '' }
+        })
+        ElMessage.success('转交成功')
+        break
+      }
+
+      case 'priority': {
+        await addTaskComment(task.value.id, {
+          action: 'priority_change',
+          oldPriority: task.value.priority,
+          newPriority: newPriority.value,
+          remark: commentText.value || ''
+        })
+        ElMessage.success('优先级已更新')
+        break
+      }
+
+      case 'changeStatus': {
+        if (!newStatus.value) {
+          ElMessage.warning('请选择状态')
+          submitting.value = false
+          return
+        }
+        await updateTaskStatus(task.value.id, newStatus.value, {
+          action: 'status_change',
+          remark: commentText.value || ''
+        })
+        ElMessage.success('状态已更新')
+        break
+      }
+
+      case 'comment': {
+        const hasContent = commentText.value.replace(/<[^>]*>/g, '').trim() || commentText.value.includes('<img') || commentText.value.includes('<video')
+        if (!hasContent) {
+          ElMessage.warning('请输入备注内容')
+          submitting.value = false
+          return
+        }
+        await addTaskComment(task.value.id, {
+          action: 'comment',
+          remark: commentText.value
+        })
+        ElMessage.success('备注添加成功')
+        break
+      }
+    }
+
+    closeActionPanel()
+    await loadTask()
+  } catch (error) {
+    console.error('Action error:', error)
+    ElMessage.error('操作失败')
+  } finally {
+    submitting.value = false
+  }
+}
+
+// 子任务相关方法
+const viewSubtask = (subtask: any) => {
+  router.push(`/tasks/${subtask.id}`)
+}
+
+const goToTaskList = () => {
+  router.push('/tasks')
+}
+
+const confirmDelete = async () => {
+  try {
+    await ElMessageBox.confirm('确定要删除这个任务吗？此操作不可恢复。', '确认删除', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    await deleteTask(task.value.id)
+    ElMessage.success('任务已删除')
+    router.push('/tasks')
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('Delete task error:', error)
+      ElMessage.error('删除任务失败')
+    }
+  }
+}
+
+onMounted(() => {
+  loadTask()
+  loadUsers()
+})
+
+// 监听路由参数变化，重新加载任务数据
+watch(() => route.params.id, (newId) => {
+  if (newId) {
+    loadTask()
+  }
+})
+</script>
+
+<style scoped>
+.task-detail-page {
+  padding: 0;
+  background: #f5f7fa;
+  min-height: calc(100vh - 120px);
+}
+
+.page-header {
+  margin-bottom: 16px;
+  background: white;
+  padding: 16px 20px;
+  border-radius: 8px;
+}
+
+.detail-container {
+  display: flex;
+  gap: 16px;
+}
+
+.main-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.side-content {
+  width: 280px;
+  flex-shrink: 0;
+}
+
+.content-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+}
+
+.task-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #ebeef5;
+}
+
+.task-title-area {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.task-header h1 {
+  font-size: 22px;
+  font-weight: 600;
+  color: #303133;
+  margin: 0;
+  flex: 1;
+  line-height: 1.4;
+}
+
+.edit-btn {
+  color: #909399;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.edit-btn:hover {
+  color: #409eff;
+  background: #ecf5ff;
+}
+
+.task-title-edit {
+  flex: 1;
+}
+
+.task-title-edit .el-input {
+  margin-bottom: 8px;
+}
+
+.task-title-edit .edit-actions,
+.description-editor .edit-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.description-editor {
+  margin-top: 12px;
+}
+
+.description-editor .edit-actions {
+  margin-top: 12px;
+}
+
+.task-tags {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.task-description {
+  padding-top: 16px;
+}
+
+.description-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.task-description h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #909399;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.task-description h3::before {
+  content: '';
+  width: 4px;
+  height: 16px;
+  background: #409eff;
+  border-radius: 2px;
+}
+
+.description-content {
+  font-size: 14px;
+  color: #606266;
+  line-height: 1.8;
+  padding: 16px;
+  background: #fafafa;
+  border-radius: 8px;
+  min-height: 80px;
+}
+
+.description-content :deep(img) {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  margin: 8px 0;
+}
+
+.description-content :deep(video) {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  margin: 8px 0;
+  display: block;
+  background: #000;
+}
+
+/* 子任务区域 */
+.subtasks-section {
+  padding: 16px 0;
+  border-bottom: 1px solid #ebeef5;
+}
+
+.subtasks-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.subtasks-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #606266;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.subtasks-tree-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.subtask-tree-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: #f5f7fa;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+}
+
+.subtask-tree-item:hover {
+  background: #ecf5ff;
+  border-color: #409eff;
+}
+
+.tree-icon {
+  font-family: monospace;
+  font-size: 12px;
+  color: #909399;
+  flex-shrink: 0;
+}
+
+.subtask-status {
+  flex-shrink: 0;
+}
+
+.subtask-priority-tag {
+  flex-shrink: 0;
+}
+
+.subtask-link-title {
+  flex: 1;
+  font-size: 13px;
+  color: #303133;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color 0.2s;
+}
+
+.subtask-tree-item:hover .subtask-link-title {
+  color: #409eff;
+}
+
+.arrow-icon {
+  color: #c0c4cc;
+  font-size: 12px;
+  transition: color 0.2s;
+}
+
+.subtask-tree-item:hover .arrow-icon {
+  color: #409eff;
+}
+
+/* 操作记录 */
+.activity-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 0;
+}
+
+.activity-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #606266;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.activity-count {
+  font-size: 12px;
+  color: #909399;
+}
+
+.activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.activity-item {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  background: #fafafa;
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+
+.activity-item:hover {
+  background: #f0f2f5;
+}
+
+.activity-avatar {
+  flex-shrink: 0;
+}
+
+.activity-avatar :deep(.el-avatar) {
+  background: linear-gradient(135deg, #409eff 0%, #67c23a 100%);
+  color: white;
+  font-weight: 500;
+  font-size: 12px;
+}
+
+.activity-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.activity-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.activity-user {
+  font-weight: 500;
+  color: #303133;
+  font-size: 13px;
+}
+
+.activity-action {
+  color: #606266;
+  font-size: 13px;
+}
+
+.activity-time {
+  color: #c0c4cc;
+  font-size: 12px;
+  margin-left: auto;
+}
+
+.activity-remark {
+  background: white;
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: #606266;
+  line-height: 1.6;
+  word-break: break-word;
+  border: 1px solid #ebeef5;
+}
+
+.activity-remark :deep(img) {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+  margin: 6px 0;
+}
+
+.activity-remark :deep(video) {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+  margin: 6px 0;
+  display: block;
+  background: #000;
+}
+
+.activity-remark :deep(p) {
+  margin: 4px 0;
+}
+
+/* 侧边栏信息 */
+.side-content .content-card {
+  position: sticky;
+  top: 20px;
+}
+
+.side-content h3 {
+  font-size: 15px;
+  font-weight: 600;
+  color: #303133;
+  margin: 0 0 16px 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #ebeef5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.side-content h3::before {
+  content: '';
+  width: 4px;
+  height: 16px;
+  background: #409eff;
+  border-radius: 2px;
+}
+
+.info-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.info-item .label {
+  font-size: 12px;
+  color: #909399;
+  font-weight: 500;
+}
+
+.info-item .value {
+  font-size: 14px;
+  color: #303133;
+}
+
+.assignee-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #303133;
+}
+
+.assignee-display .el-avatar {
+  background: #409eff;
+}
+
+.text-muted {
+  color: #c0c4cc;
+  font-size: 14px;
+}
+
+/* 悬浮操作栏 */
+.floating-action-bar {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 12px;
+  padding: 16px 24px;
+  background: white;
+  border-radius: 50px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+}
+
+.floating-action-bar .el-button {
+  border-radius: 20px;
+  padding: 10px 20px;
+  font-weight: 500;
+}
+
+/* 操作面板 */
+.form-section {
+  margin-bottom: 20px;
+}
+
+.form-section .label {
+  display: block;
+  font-size: 14px;
+  color: #606266;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+/* 空状态 */
+:deep(.el-empty) {
+  padding: 40px 0;
+}
+
+:deep(.el-empty__description) {
+  margin-top: 8px;
+}
+
+/* 分割线 */
+:deep(.el-divider) {
+  margin: 0;
+}
+
+:deep(.el-divider--horizontal) {
+  margin: 16px 0;
+}
+
+/* Drawer 样式 */
+:deep(.el-drawer__body) {
+  padding: 0;
+  height: calc(100% - 56px);
+}
+
+.drawer-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.drawer-body-scroll {
+  flex: 1;
+  overflow: hidden;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.drawer-body-scroll .label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: #303133;
+  margin-bottom: 10px;
+}
+
+.drawer-body-scroll .form-section {
+  margin-bottom: 20px;
+  flex-shrink: 0;
+}
+
+.drawer-body-scroll .editor-section {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.editor-wrapper {
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  overflow: hidden;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+}
+
+.drawer-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 20px;
+  border-top: 1px solid #e4e7ed;
+  background: #fafafa;
+  flex-shrink: 0;
+}
+
+/* 侧边栏样式 */
+.side-content h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #303133;
+  margin: 0 0 16px 0;
+}
+
+.info-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.info-item .label {
+  font-size: 12px;
+  color: #909399;
+  font-weight: 500;
+}
+
+.info-item .value {
+  font-size: 14px;
+  color: #303133;
+}
+
+.assignee-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #303133;
+}
+
+.text-muted {
+  color: #909399;
+  font-size: 14px;
+}
+
+/* 子任务列表区域样式 */
+.subtasks-section {
+  margin-bottom: 20px;
+}
+
+.subtasks-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.subtasks-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #606266;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.subtasks-tree-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-left: 8px;
+}
+
+.subtask-tree-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: #f5f7fa;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.subtask-tree-item:hover {
+  background: #e8eaed;
+}
+
+.subtask-tree-item:hover .subtask-link-title {
+  color: #409eff;
+}
+
+.tree-icon {
+  font-family: monospace;
+  font-size: 14px;
+  color: #909399;
+  flex-shrink: 0;
+  width: 24px;
+}
+
+.subtask-status {
+  flex-shrink: 0;
+}
+
+.subtask-priority-tag {
+  flex-shrink: 0;
+}
+
+.subtask-link-title {
+  flex: 1;
+  font-size: 14px;
+  color: #303133;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color 0.2s;
+}
+
+.arrow-icon {
+  color: #909399;
+  font-size: 14px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.subtask-tree-item:hover .arrow-icon {
+  opacity: 1;
+}
+</style>
