@@ -362,7 +362,7 @@ const filteredTasks = computed(() => {
 const tabs = computed(() => {
   const userId = userStore.user?.id
   return [
-    { key: 'my', label: '我的', count: tasks.value.filter((t: any) => t.assignee?.id === userId || t.creator?.id === userId).length },
+    { key: 'my', label: '我参与的', count: tasks.value.filter((t: any) => t.assignee?.id === userId || t.creator?.id === userId).length },
     { key: 'created', label: '我创建的', count: tasks.value.filter((t: any) => t.creator?.id === userId).length },
     { key: 'assigned', label: '我负责的', count: tasks.value.filter((t: any) => t.assignee?.id === userId).length },
     { key: 'all', label: '全部', count: tasks.value.length },

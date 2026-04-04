@@ -81,17 +81,23 @@ export const taskController = {
 
   async getAllTasks(req: Request, res: Response) {
     try {
-      const { projectId, status, assigneeId } = req.query;
+      const { projectId, status, assigneeId, creatorId, priority, sortBy, sortOrder } = req.query;
       const where: any = {};
 
       if (projectId) where.project = { id: projectId };
       if (status) where.status = status;
       if (assigneeId) where.assignee = { id: assigneeId };
+      if (creatorId) where.creator = { id: creatorId };
+      if (priority) where.priority = priority;
+
+      const validSortFields = ["createdAt", "updatedAt", "priority", "dueDate", "status", "title"];
+      const sortField = sortBy && validSortFields.includes(sortBy as string) ? sortBy as string : "createdAt";
+      const order = sortOrder === "ASC" ? "ASC" : "DESC";
 
       const tasks = await taskRepository.find({
         where,
         relations: ["project", "project.manager", "assignee", "creator", "parentTask", "subtasks", "dependencies"],
-        order: { createdAt: "DESC" },
+        order: { [sortField]: order },
       });
 
       res.json(tasks);

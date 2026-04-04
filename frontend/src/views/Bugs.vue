@@ -235,7 +235,7 @@ const filteredBugs = computed(() => {
 const tabs = computed(() => {
   const userId = userStore.user?.id
   return [
-    { key: 'my', label: '我的', count: bugs.value.filter((b: any) => b.assignee?.id === userId || b.reporter?.id === userId).length },
+    { key: 'my', label: '我参与的', count: bugs.value.filter((b: any) => b.assignee?.id === userId || b.reporter?.id === userId).length },
     { key: 'reported', label: '我报告的', count: bugs.value.filter((b: any) => b.reporter?.id === userId).length },
     { key: 'assigned', label: '我负责的', count: bugs.value.filter((b: any) => b.assignee?.id === userId).length },
     { key: 'all', label: '全部', count: bugs.value.length },

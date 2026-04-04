@@ -75,18 +75,23 @@ export const bugController = {
 
   async getAllBugs(req: Request, res: Response) {
     try {
-      const { projectId, status, severity, assigneeId } = req.query;
+      const { projectId, status, severity, assigneeId, reporterId, sortBy, sortOrder } = req.query;
       const where: any = {};
 
       if (projectId) where.project = { id: projectId };
       if (status) where.status = status;
       if (severity) where.severity = severity;
       if (assigneeId) where.assignee = { id: assigneeId };
+      if (reporterId) where.reporter = { id: reporterId };
+
+      const validSortFields = ["createdAt", "updatedAt", "severity", "dueDate", "status", "title"];
+      const sortField = sortBy && validSortFields.includes(sortBy as string) ? sortBy as string : "createdAt";
+      const order = sortOrder === "ASC" ? "ASC" : "DESC";
 
       const bugs = await bugRepository.find({
         where,
         relations: ["project", "project.manager", "assignee", "reporter"],
-        order: { createdAt: "DESC" },
+        order: { [sortField]: order },
       });
 
       res.json(bugs);
