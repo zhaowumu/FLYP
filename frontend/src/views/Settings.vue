@@ -218,6 +218,7 @@ const taskActions = [
   { key: 'changeStatus', label: '更改状态' },
   { key: 'comment', label: '备注' },
   { key: 'delete', label: '删除' },
+  { key: 'extendDueDate', label: '延期' },
 ]
 
 const projectActions = [
@@ -240,33 +241,33 @@ const bugActions = [
 
 const DEFAULT_PERMISSIONS = {
   admin: {
-    task: { create: true, complete: true, reopen: true, close: true, transfer: true, changePriority: true, changeStatus: true, comment: true, delete: true },
-    bug: { create: true, fix: true, reopen: true, verify: true, close: true, transfer: true, changeSeverity: true, changeStatus: true, comment: true, delete: true },
+    task: { create: true, complete: true, reopen: true, close: true, transfer: true, changePriority: true, changeStatus: true, comment: true, delete: true, extendDueDate: true },
+    bug: { create: true, fix: true, reopen: true, verify: true, close: true, transfer: true, changeSeverity: true, changeStatus: true, comment: true, delete: true, extendDueDate: true },
     project: { create: true, delete: true },
   },
   project_manager: {
-    task: { create: true, complete: true, reopen: true, close: true, transfer: true, changePriority: true, changeStatus: true, comment: true, delete: true },
-    bug: { create: true, fix: true, reopen: true, verify: true, close: true, transfer: true, changeSeverity: true, changeStatus: true, comment: true, delete: true },
+    task: { create: true, complete: true, reopen: true, close: true, transfer: true, changePriority: true, changeStatus: true, comment: true, delete: true, extendDueDate: true },
+    bug: { create: true, fix: true, reopen: true, verify: true, close: true, transfer: true, changeSeverity: true, changeStatus: true, comment: true, delete: true, extendDueDate: true },
     project: { create: true, delete: false },
   },
   developer: {
-    task: { create: true, complete: false, reopen: false, close: false, transfer: false, changePriority: false, changeStatus: false, comment: true, delete: false },
-    bug: { create: true, fix: false, reopen: false, verify: false, close: false, transfer: false, changeSeverity: false, changeStatus: false, comment: true, delete: false },
+    task: { create: true, complete: false, reopen: false, close: false, transfer: false, changePriority: false, changeStatus: false, comment: true, delete: false, extendDueDate: false },
+    bug: { create: true, fix: false, reopen: false, verify: false, close: false, transfer: false, changeSeverity: false, changeStatus: false, comment: true, delete: false, extendDueDate: false },
     project: { create: false, delete: false },
   },
   artist: {
-    task: { create: true, complete: false, reopen: false, close: false, transfer: false, changePriority: false, changeStatus: false, comment: true, delete: false },
-    bug: { create: true, fix: false, reopen: false, verify: false, close: false, transfer: false, changeSeverity: false, changeStatus: false, comment: true, delete: false },
+    task: { create: true, complete: false, reopen: false, close: false, transfer: false, changePriority: false, changeStatus: false, comment: true, delete: false, extendDueDate: false },
+    bug: { create: true, fix: false, reopen: false, verify: false, close: false, transfer: false, changeSeverity: false, changeStatus: false, comment: true, delete: false, extendDueDate: false },
     project: { create: false, delete: false },
   },
   designer: {
-    task: { create: true, complete: false, reopen: false, close: false, transfer: false, changePriority: false, changeStatus: false, comment: true, delete: false },
-    bug: { create: true, fix: false, reopen: false, verify: false, close: false, transfer: false, changeSeverity: false, changeStatus: false, comment: true, delete: false },
+    task: { create: true, complete: false, reopen: false, close: false, transfer: false, changePriority: false, changeStatus: false, comment: true, delete: false, extendDueDate: false },
+    bug: { create: true, fix: false, reopen: false, verify: false, close: false, transfer: false, changeSeverity: false, changeStatus: false, comment: true, delete: false, extendDueDate: false },
     project: { create: false, delete: false },
   },
   tester: {
-    task: { create: true, complete: false, reopen: false, close: false, transfer: false, changePriority: false, changeStatus: false, comment: true, delete: false },
-    bug: { create: true, fix: false, reopen: false, verify: false, close: false, transfer: false, changeSeverity: false, changeStatus: false, comment: true, delete: false },
+    task: { create: true, complete: false, reopen: false, close: false, transfer: false, changePriority: false, changeStatus: false, comment: true, delete: false, extendDueDate: false },
+    bug: { create: true, fix: false, reopen: false, verify: false, close: false, transfer: false, changeSeverity: false, changeStatus: false, comment: true, delete: false, extendDueDate: false },
     project: { create: false, delete: false },
   },
 }

@@ -22,4 +22,6 @@ router.post("/:id/subtasks", taskController.addSubtask);
 
 router.get("/:id/dependencies", taskController.getTaskDependencies);
 
+router.patch("/:id/extend", taskController.extendDueDate);
+
 export default router;

@@ -22,4 +22,6 @@ router.delete("/:id", bugPermissionMiddleware("delete"), bugController.deleteBug
 
 router.get("/stats", bugController.getBugStats);
 
+router.patch("/:id/extend", bugController.extendDueDate);
+
 export default router;

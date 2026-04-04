@@ -31,6 +31,9 @@ export class Bug {
   @ManyToOne(() => User, user => user.reportedBugs)
   reporter: User;
 
+  @Column({ nullable: true })
+  dueDate: Date;
+
   @CreateDateColumn()
   createdAt: Date;
 

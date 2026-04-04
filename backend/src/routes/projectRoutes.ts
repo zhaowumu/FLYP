@@ -16,8 +16,4 @@ router.patch("/:id/archive", projectController.archiveProject);
 
 router.delete("/:id", projectPermissionMiddleware("delete"), projectController.deleteProject);
 
-router.post("/:id/members", projectController.addProjectMember);
-
-router.delete("/:id/members/:userId", projectController.removeProjectMember);
-
 export default router;

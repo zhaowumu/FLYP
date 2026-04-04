@@ -1,5 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, ManyToMany } from "typeorm";
-import { Team } from "./Team";
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany } from "typeorm";
 import { User } from "./User";
 import { Task } from "./Task";
 import { Bug } from "./Bug";
@@ -23,12 +22,6 @@ export class Project {
 
   @ManyToOne(() => User, { nullable: true })
   manager: User;
-
-  @ManyToOne(() => Team, team => team.projects)
-  team: Team;
-
-  @ManyToMany(() => User, user => user.projects)
-  members: User[];
 
   @OneToMany(() => Task, task => task.project)
   tasks: Task[];

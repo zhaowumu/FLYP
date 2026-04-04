@@ -23,11 +23,3 @@ export const deleteProject = (id: number) => {
 export const archiveProject = (id: number) => {
   return api.patch(`/projects/${id}/archive`)
 }
-
-export const addProjectMember = (id: number, userId: number) => {
-  return api.post(`/projects/${id}/members`, { userId })
-}
-
-export const removeProjectMember = (id: number, userId: number) => {
-  return api.delete(`/projects/${id}/members/${userId}`)
-}

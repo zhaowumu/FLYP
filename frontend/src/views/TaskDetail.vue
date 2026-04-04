@@ -242,6 +242,17 @@
         备注
       </el-button>
       
+      <!-- 延期按钮：仅管理员和项目经理 -->
+      <el-button 
+        v-if="canExtend"
+        type="warning" 
+        plain 
+        @click="showActionPanel('extend')"
+      >
+        <el-icon><Clock /></el-icon>
+        延期
+      </el-button>
+      
       <!-- 删除按钮：只有创建人才能删除 -->
       <el-button 
         v-if="canDelete"
@@ -312,6 +323,22 @@
             </el-select>
           </div>
 
+          <!-- 延期 -->
+          <div class="form-section" v-if="currentAction === 'extend'">
+            <span class="label">当前截止日期</span>
+            <div style="margin-bottom: 12px; color: #909399; font-size: 13px;">
+              {{ task?.dueDate ? new Date(task.dueDate).toLocaleString() : '未设置' }}
+            </div>
+            <span class="label">新截止日期</span>
+            <el-date-picker
+              v-model="newDueDate"
+              type="datetime"
+              placeholder="选择新的截止日期"
+              style="width: 100%"
+              format="YYYY-MM-DD HH:mm"
+            />
+          </div>
+
           <!-- 重新打开 -->
           <div class="form-section" v-if="currentAction === 'reopen'">
             <el-alert 
@@ -356,7 +383,7 @@
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getTask, updateTaskStatus, addComment as addTaskComment, updateTask, deleteTask } from '../api/task'
+import { getTask, updateTaskStatus, addComment as addTaskComment, updateTask, deleteTask, extendDueDate as extendTaskDueDate } from '../api/task'
 import { getUsers } from '../api/user'
 import { useUserStore } from '../stores/user'
 import RichEditor from '../components/RichEditor.vue'
@@ -381,6 +408,7 @@ const isEditingDescription = ref(false)
 const editDescription = ref('')
 const saving = ref(false)
 const titleInputRef = ref()
+const newDueDate = ref<Date | null>(null)
 
 const operationLogs = computed(() => {
   return task.value?.operationLogs || []
@@ -411,6 +439,7 @@ const canChangePriority = computed(() => userStore.getTaskPermission('changePrio
 const canChangeStatus = computed(() => userStore.getTaskPermission('changeStatus', { isAssignee: true, isCreator: true }) && !isClosed.value)
 const canComment = computed(() => userStore.getTaskPermission('comment'))
 const canDelete = computed(() => userStore.getTaskPermission('delete'))
+const canExtend = computed(() => userStore.getTaskPermission('extendDueDate') && !isClosed.value)
 
 const getPriorityType = (priority: string) => {
   const map: Record<string, string> = {
@@ -441,7 +470,7 @@ const getStatusText = (status: string) => {
 }
 
 const formatLogAction = (log: any) => {
-  const { action, oldStatus, newStatus, oldPriority, newPriority, oldAssignee, newAssignee, remark } = log
+  const { action, oldStatus, newStatus, oldPriority, newPriority, oldAssignee, newAssignee, remark, oldDueDate, newDueDate } = log
   
   switch (action) {
     case 'create':
@@ -470,6 +499,8 @@ const formatLogAction = (log: any) => {
       return '关闭了任务'
     case 'comment':
       return '添加了备注'
+    case 'extend_due_date':
+      return `将截止日期从「${formatTime(oldDueDate)}」延期至「${formatTime(newDueDate)}」`
     default:
       return action
   }
@@ -483,7 +514,8 @@ const getActionTitle = (action: string) => {
     transfer: '转交任务',
     priority: '更改优先级',
     changeStatus: '更改状态',
-    comment: '添加备注'
+    comment: '添加备注',
+    extend: '延期任务'
   }
   return map[action] || action
 }
@@ -496,7 +528,8 @@ const getActionConfirmText = (action: string) => {
     transfer: '确认转交',
     priority: '确认修改',
     changeStatus: '确认修改',
-    comment: '添加备注'
+    comment: '添加备注',
+    extend: '确认延期'
   }
   return map[action] || '确认'
 }
@@ -598,6 +631,7 @@ const showActionPanel = (action: string) => {
   transferUserId.value = null
   newPriority.value = task.value?.priority || 'medium'
   newStatus.value = task.value?.status || ''
+  newDueDate.value = task.value?.dueDate ? new Date(task.value.dueDate) : null
   currentAction.value = action
   showPanel.value = true
 }
@@ -613,6 +647,7 @@ const onDrawerClosed = () => {
   transferUserId.value = null
   newPriority.value = ''
   newStatus.value = ''
+  newDueDate.value = null
 }
 
 const executeAction = async () => {
@@ -624,6 +659,17 @@ const executeAction = async () => {
   if (currentAction.value === 'priority' && newPriority.value === task.value.priority) {
     ElMessage.warning('请选择不同的优先级')
     return
+  }
+
+  if (currentAction.value === 'extend') {
+    if (!newDueDate.value) {
+      ElMessage.warning('请选择新的截止日期')
+      return
+    }
+    if (task.value.dueDate && newDueDate.value.getTime() <= new Date(task.value.dueDate).getTime()) {
+      ElMessage.warning('新截止日期必须晚于当前截止日期')
+      return
+    }
   }
 
   submitting.value = true
@@ -707,6 +753,16 @@ const executeAction = async () => {
           remark: commentText.value
         })
         ElMessage.success('备注添加成功')
+        break
+      }
+
+      case 'extend': {
+        const oldDueDate = task.value.dueDate
+        await extendTaskDueDate(task.value.id, {
+          newDueDate: newDueDate.value.toISOString(),
+          remark: commentText.value || ''
+        })
+        ElMessage.success(`截止日期已从 ${formatTime(oldDueDate)} 延期至 ${formatTime(newDueDate.value)}`)
         break
       }
     }

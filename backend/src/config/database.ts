@@ -1,6 +1,5 @@
 import { DataSource } from "typeorm";
 import { User } from "../entities/User";
-import { Team } from "../entities/Team";
 import { Project } from "../entities/Project";
 import { Task } from "../entities/Task";
 import { Bug } from "../entities/Bug";
@@ -13,7 +12,7 @@ export const AppDataSource = new DataSource({
   database: path.join(__dirname, "../../data/flyp.db"),
   synchronize: true,
   logging: false,
-  entities: [User, Team, Project, Task, Bug, SystemConfig, OperationLog],
+  entities: [User, Project, Task, Bug, SystemConfig, OperationLog],
   subscribers: [],
   migrations: [],
 });

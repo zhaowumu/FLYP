@@ -368,4 +368,51 @@ export const taskController = {
       res.status(500).json({ error: "Failed to get task dependencies" });
     }
   },
+
+  async extendDueDate(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { newDueDate, remark } = req.body;
+      const userId = (req as any).user.id;
+
+      const task = await taskRepository.findOne({
+        where: { id: parseInt(id as string) },
+        relations: ["assignee", "creator"],
+      });
+
+      if (!task) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+
+      const user = await userRepository.findOne({ where: { id: userId } });
+      const userName = user?.realName || "未知用户";
+
+      const oldDueDate = task.dueDate;
+      task.dueDate = new Date(newDueDate);
+
+      await taskRepository.save(task);
+
+      await createOperationLog(
+        task.id,
+        userId,
+        userName,
+        "extend_due_date",
+        {
+          oldDueDate: oldDueDate ? oldDueDate.toISOString() : undefined,
+          newDueDate: task.dueDate.toISOString(),
+          remark: remark || "",
+        }
+      );
+
+      const updatedTask = await taskRepository.findOne({
+        where: { id: parseInt(id as string) },
+        relations: ["project", "project.manager", "assignee", "creator", "parentTask", "subtasks", "dependencies"],
+      });
+
+      res.json(updatedTask);
+    } catch (error) {
+      console.error("Error extending task due date:", error);
+      res.status(500).json({ error: "Failed to extend task due date" });
+    }
+  },
 };

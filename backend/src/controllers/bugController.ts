@@ -395,4 +395,51 @@ export const bugController = {
       res.status(500).json({ error: "Failed to get bug stats" });
     }
   },
+
+  async extendDueDate(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { newDueDate, remark } = req.body;
+      const userId = (req as any).user.id;
+
+      const bug = await bugRepository.findOne({
+        where: { id: parseInt(id as string) },
+        relations: ["assignee", "reporter"],
+      });
+
+      if (!bug) {
+        return res.status(404).json({ error: "Bug not found" });
+      }
+
+      const user = await userRepository.findOne({ where: { id: userId } });
+      const userName = user?.realName || "未知用户";
+
+      const oldDueDate = bug.dueDate;
+      bug.dueDate = new Date(newDueDate);
+
+      await bugRepository.save(bug);
+
+      await createOperationLog(
+        bug.id,
+        userId,
+        userName,
+        "extend_due_date",
+        {
+          oldDueDate: oldDueDate ? oldDueDate.toISOString() : undefined,
+          newDueDate: bug.dueDate.toISOString(),
+          remark: remark || "",
+        }
+      );
+
+      const updatedBug = await bugRepository.findOne({
+        where: { id: parseInt(id as string) },
+        relations: ["project", "project.manager", "assignee", "reporter"],
+      });
+
+      res.json(updatedBug);
+    } catch (error) {
+      console.error("Error extending bug due date:", error);
+      res.status(500).json({ error: "Failed to extend bug due date" });
+    }
+  },
 };

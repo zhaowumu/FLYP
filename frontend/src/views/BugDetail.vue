@@ -260,6 +260,17 @@
         备注
       </el-button>
       
+      <!-- 延期按钮：仅管理员和项目经理 -->
+      <el-button 
+        v-if="canExtend"
+        type="warning" 
+        plain 
+        @click="showActionPanel('extend')"
+      >
+        <el-icon><Clock /></el-icon>
+        延期
+      </el-button>
+      
       <!-- 删除按钮：只有报告人才能删除 -->
       <el-button 
         v-if="canDelete"
@@ -332,6 +343,22 @@
             </el-select>
           </div>
 
+          <!-- 延期 -->
+          <div class="form-section" v-if="currentAction === 'extend'">
+            <span class="label">当前截止日期</span>
+            <div style="margin-bottom: 12px; color: #909399; font-size: 13px;">
+              {{ bug?.dueDate ? new Date(bug.dueDate).toLocaleString() : '未设置' }}
+            </div>
+            <span class="label">新截止日期</span>
+            <el-date-picker
+              v-model="newDueDate"
+              type="datetime"
+              placeholder="选择新的截止日期"
+              style="width: 100%"
+              format="YYYY-MM-DD HH:mm"
+            />
+          </div>
+
           <!-- 重新打开 -->
           <div class="form-section" v-if="currentAction === 'reopen'">
             <el-alert 
@@ -373,10 +400,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, nextTick, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getBug, updateBugStatus, addComment as addBugComment, updateBug } from '../api/bug'
+import { getBug, updateBugStatus, addComment as addBugComment, updateBug, extendDueDate as extendBugDueDate } from '../api/bug'
 import { getUsers } from '../api/user'
 import { useUserStore } from '../stores/user'
 import RichEditor from '../components/RichEditor.vue'
@@ -404,6 +431,7 @@ const isEditingReproduceSteps = ref(false)
 const editReproduceSteps = ref('')
 const saving = ref(false)
 const titleInputRef = ref()
+const newDueDate = ref<Date | null>(null)
 
 const operationLogs = computed(() => {
   return bug.value?.operationLogs || []
@@ -440,6 +468,7 @@ const canTransfer = computed(() => userStore.getBugPermission('transfer', { isRe
 const canChangeStatus = computed(() => userStore.getBugPermission('changeStatus', { isAssignee: true, isReporter: true }) && !isClosed.value && !isVerified.value)
 const canComment = computed(() => userStore.getBugPermission('comment'))
 const canDelete = computed(() => userStore.getBugPermission('delete'))
+const canExtend = computed(() => userStore.getBugPermission('extendDueDate') && !isClosed.value)
 
 const getSeverityType = (severity: string) => {
   const map: Record<string, string> = {
@@ -472,7 +501,7 @@ const getStatusText = (status: string) => {
 }
 
 const formatLogAction = (log: any) => {
-  const { action, oldStatus, newStatus, oldSeverity, newSeverity, oldAssignee, newAssignee } = log
+  const { action, oldStatus, newStatus, oldSeverity, newSeverity, oldAssignee, newAssignee, oldDueDate, newDueDate } = log
   
   switch (action) {
     case 'create':
@@ -498,6 +527,8 @@ const formatLogAction = (log: any) => {
       return '关闭了缺陷'
     case 'comment':
       return '添加了备注'
+    case 'extend_due_date':
+      return `将截止日期从「${formatTime(oldDueDate)}」延期至「${formatTime(newDueDate)}」`
     default:
       return action
   }
@@ -512,7 +543,8 @@ const getActionTitle = (action: string) => {
     transfer: '转交缺陷',
     severity: '更改严重程度',
     changeStatus: '更改状态',
-    comment: '添加备注'
+    comment: '添加备注',
+    extend: '延期缺陷'
   }
   return map[action] || action
 }
@@ -526,7 +558,8 @@ const getActionConfirmText = (action: string) => {
     transfer: '确认转交',
     severity: '确认修改',
     changeStatus: '确认修改',
-    comment: '添加备注'
+    comment: '添加备注',
+    extend: '确认延期'
   }
   return map[action] || '确认'
 }
@@ -648,6 +681,7 @@ const showActionPanel = (action: string) => {
   transferUserId.value = null
   newSeverity.value = bug.value?.severity || 'medium'
   newStatus.value = bug.value?.status || ''
+  newDueDate.value = bug.value?.dueDate ? new Date(bug.value.dueDate) : null
   currentAction.value = action
   showPanel.value = true
 }
@@ -664,6 +698,7 @@ const onDrawerClosed = () => {
   transferUserId.value = null
   newSeverity.value = ''
   newStatus.value = ''
+  newDueDate.value = null
 }
 
 const executeAction = async () => {
@@ -675,6 +710,17 @@ const executeAction = async () => {
   if (currentAction.value === 'severity' && newSeverity.value === bug.value.severity) {
     ElMessage.warning('请选择不同的严重程度')
     return
+  }
+
+  if (currentAction.value === 'extend') {
+    if (!newDueDate.value) {
+      ElMessage.warning('请选择新的截止日期')
+      return
+    }
+    if (bug.value.dueDate && newDueDate.value.getTime() <= new Date(bug.value.dueDate).getTime()) {
+      ElMessage.warning('新截止日期必须晚于当前截止日期')
+      return
+    }
   }
 
   submitting.value = true
@@ -764,6 +810,16 @@ const executeAction = async () => {
         ElMessage.success('缺陷已重新打开')
         break
       }
+
+      case 'extend': {
+        const oldDueDate = bug.value.dueDate
+        await extendBugDueDate(bug.value.id, {
+          newDueDate: newDueDate.value.toISOString(),
+          remark: commentText.value || ''
+        })
+        ElMessage.success(`截止日期已从 ${formatTime(oldDueDate)} 延期至 ${formatTime(newDueDate.value)}`)
+        break
+      }
     }
 
     closeActionPanel()
@@ -793,6 +849,35 @@ const confirmDelete = async () => {
       ElMessage.error('删除缺陷失败')
     }
   }
+}
+
+const showExtendDialog = () => {
+  extendForm.days = 7
+  extendForm.remark = ''
+  extendDialogVisible.value = true
+}
+
+const submitExtend = async () => {
+  if (!extendFormRef.value) return
+  
+  await extendFormRef.value.validate(async (valid: boolean) => {
+    if (valid) {
+      submitting.value = true
+      try {
+        await extendBugDueDate(bug.value.id, {
+          days: extendForm.days,
+          remark: extendForm.remark
+        })
+        ElMessage.success('延期成功')
+        extendDialogVisible.value = false
+        await loadBug()
+      } catch (error) {
+        ElMessage.error('延期失败')
+      } finally {
+        submitting.value = false
+      }
+    }
+  })
 }
 
 onMounted(() => {

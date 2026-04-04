@@ -10,6 +10,7 @@ export const DEFAULT_ROLE_PERMISSIONS = {
       changeStatus: true,
       comment: true,
       delete: true,
+      extendDueDate: true,
     },
     bug: {
       create: true,
@@ -22,6 +23,7 @@ export const DEFAULT_ROLE_PERMISSIONS = {
       changeStatus: true,
       comment: true,
       delete: true,
+      extendDueDate: true,
     },
     project: {
       create: true,
@@ -39,6 +41,7 @@ export const DEFAULT_ROLE_PERMISSIONS = {
       changeStatus: true,
       comment: true,
       delete: true,
+      extendDueDate: true,
     },
     bug: {
       create: true,
@@ -51,6 +54,7 @@ export const DEFAULT_ROLE_PERMISSIONS = {
       changeStatus: true,
       comment: true,
       delete: true,
+      extendDueDate: true,
     },
     project: {
       create: true,
@@ -68,6 +72,7 @@ export const DEFAULT_ROLE_PERMISSIONS = {
       changeStatus: false,
       comment: true,
       delete: false,
+      extendDueDate: false,
     },
     bug: {
       create: true,
@@ -80,6 +85,7 @@ export const DEFAULT_ROLE_PERMISSIONS = {
       changeStatus: false,
       comment: true,
       delete: false,
+      extendDueDate: false,
     },
     project: {
       create: false,
@@ -97,6 +103,7 @@ export const DEFAULT_ROLE_PERMISSIONS = {
       changeStatus: false,
       comment: true,
       delete: false,
+      extendDueDate: false,
     },
     bug: {
       create: true,
@@ -109,6 +116,7 @@ export const DEFAULT_ROLE_PERMISSIONS = {
       changeStatus: false,
       comment: true,
       delete: false,
+      extendDueDate: false,
     },
     project: {
       create: false,
@@ -126,6 +134,7 @@ export const DEFAULT_ROLE_PERMISSIONS = {
       changeStatus: false,
       comment: true,
       delete: false,
+      extendDueDate: false,
     },
     bug: {
       create: true,
@@ -138,6 +147,7 @@ export const DEFAULT_ROLE_PERMISSIONS = {
       changeStatus: false,
       comment: true,
       delete: false,
+      extendDueDate: false,
     },
     project: {
       create: false,
@@ -155,6 +165,7 @@ export const DEFAULT_ROLE_PERMISSIONS = {
       changeStatus: false,
       comment: true,
       delete: false,
+      extendDueDate: false,
     },
     bug: {
       create: true,
@@ -167,6 +178,7 @@ export const DEFAULT_ROLE_PERMISSIONS = {
       changeStatus: false,
       comment: true,
       delete: false,
+      extendDueDate: false,
     },
     project: {
       create: false,

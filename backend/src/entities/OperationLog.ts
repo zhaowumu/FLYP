@@ -42,6 +42,12 @@ export class OperationLog {
   @Column({ nullable: true })
   newSeverity: string;
 
+  @Column({ nullable: true })
+  oldDueDate: string;
+
+  @Column({ nullable: true })
+  newDueDate: string;
+
   @Column({ type: "text", nullable: true })
   remark: string;
 

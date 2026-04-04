@@ -94,6 +94,14 @@
             {{ new Date(row.createdAt).toLocaleString() }}
           </template>
         </el-table-column>
+        <el-table-column label="剩余时间" width="130">
+          <template #default="{ row }">
+            <span v-if="row.dueDate" :class="{ 'overdue': isOverdue(row.dueDate), 'time-remaining': true }">
+              {{ getRemainingTime(row.dueDate) }}
+            </span>
+            <span v-else class="text-muted">-</span>
+          </template>
+        </el-table-column>
       </el-table>
     </div>
 
@@ -262,6 +270,29 @@ const getStatusText = (status: string) => {
     fixed: '已修复', verified: '已验证', closed: '已关闭'
   }
   return map[status] || status
+}
+
+const getRemainingTime = (dueDate: Date | string) => {
+  const now = new Date()
+  const due = new Date(dueDate)
+  const diffMs = due.getTime() - now.getTime()
+  
+  if (diffMs <= 0) {
+    const absDiff = Math.abs(diffMs)
+    const days = Math.floor(absDiff / (1000 * 60 * 60 * 24))
+    const hours = Math.floor((absDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+    return `已超时${days}天${hours}小时`
+  }
+  
+  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+  const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+  return `剩余${days}天${hours}小时`
+}
+
+const isOverdue = (dueDate: Date | string) => {
+  const now = new Date()
+  const due = new Date(dueDate)
+  return due.getTime() < now.getTime()
 }
 
 const loadBugs = async () => {
@@ -436,5 +467,14 @@ onMounted(() => {
 
 .text-muted {
   color: #909399;
+}
+
+.time-remaining {
+  font-size: 13px;
+}
+
+.time-remaining.overdue {
+  color: #f56c6c;
+  font-weight: 500;
 }
 </style>

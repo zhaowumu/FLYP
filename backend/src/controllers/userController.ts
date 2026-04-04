@@ -101,7 +101,6 @@ export const userController = {
       const { id } = req.params;
       const user = await userRepository.findOne({
         where: { id: parseInt(id as string) },
-        relations: ["team", "projects"],
       });
 
       if (!user) {

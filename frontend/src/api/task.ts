@@ -35,3 +35,7 @@ export const getTaskDependencies = (id: number) => {
 export const addComment = (id: number, log: any) => {
   return api.post(`/tasks/${id}/comments`, log)
 }
+
+export const extendDueDate = (id: number, data: { newDueDate: string; remark?: string }) => {
+  return api.patch(`/tasks/${id}/extend`, data)
+}

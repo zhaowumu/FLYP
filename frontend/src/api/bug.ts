@@ -35,3 +35,7 @@ export const getBugStats = (params?: any) => {
 export const addComment = (id: number, log: any) => {
   return api.post(`/bugs/${id}/comments`, log)
 }
+
+export const extendDueDate = (id: number, data: { newDueDate: string; remark?: string }) => {
+  return api.patch(`/bugs/${id}/extend`, data)
+}

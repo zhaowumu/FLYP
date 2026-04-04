@@ -1,6 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, ManyToMany, JoinTable } from "typeorm";
-import { Team } from "./Team";
-import { Project } from "./Project";
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from "typeorm";
 import { Task } from "./Task";
 import { Bug } from "./Bug";
 
@@ -26,13 +24,6 @@ export class User {
 
   @Column({ default: true })
   isActive: boolean;
-
-  @ManyToOne(() => Team, team => team.users, { nullable: true })
-  team: Team;
-
-  @ManyToMany(() => Project, project => project.members)
-  @JoinTable()
-  projects: Project[];
 
   @OneToMany(() => Task, task => task.assignee)
   assignedTasks: Task[];
