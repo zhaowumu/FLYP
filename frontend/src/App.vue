@@ -12,10 +12,10 @@
           :default-active="activeMenu"
           class="sidebar-menu"
           :collapse="isCollapse"
-          router
           background-color="#1d1e1f"
           text-color="#a0a3a8"
           active-text-color="#409eff"
+          @select="handleMenuSelect"
         >
           <el-menu-item index="/dashboard">
             <el-icon><DataLine /></el-icon>
@@ -40,6 +40,14 @@
           <el-menu-item index="/settings" v-if="userStore.isAdmin">
             <el-icon><Setting /></el-icon>
             <template #title>系统设置</template>
+          </el-menu-item>
+          <el-menu-item
+            v-for="link in customLinks"
+            :key="link.url"
+            :index="link.url"
+          >
+            <el-icon><component :is="iconMap[link.icon] || iconMap['Link']" /></el-icon>
+            <template #title>{{ link.name }}</template>
           </el-menu-item>
         </el-menu>
         <div class="collapse-btn" @click="isCollapse = !isCollapse">
@@ -87,14 +95,38 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, watch, markRaw } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from './stores/user'
+import { getCustomLinks } from './api/customLink'
+import { ElMessage } from 'element-plus'
+import {
+  Link,
+  Document,
+  Reading,
+  Monitor,
+  DataAnalysis,
+  Tools,
+  ChatDotRound,
+  FolderOpened,
+} from '@element-plus/icons-vue'
+
+const iconMap: Record<string, any> = {
+  Document: markRaw(Document),
+  Link: markRaw(Link),
+  Reading: markRaw(Reading),
+  Monitor: markRaw(Monitor),
+  DataAnalysis: markRaw(DataAnalysis),
+  Tools: markRaw(Tools),
+  ChatDotRound: markRaw(ChatDotRound),
+  FolderOpened: markRaw(FolderOpened),
+}
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 const isCollapse = ref(false)
+const customLinks = ref<Array<{ name: string; url: string; icon: string; type: string }>>([])
 
 const activeMenu = computed(() => route.path)
 
@@ -118,6 +150,52 @@ const handleLogout = () => {
   userStore.logout()
   router.push('/login')
 }
+
+const handleMenuSelect = (index: string) => {
+  const link = customLinks.value.find(l => l.url === index)
+  if (!link) {
+    router.push(index)
+    return
+  }
+  if (link.type === 'folder') {
+    navigator.clipboard.writeText(link.url).then(() => {
+      ElMessage({
+        message: `路径已复制到剪贴板，请按 Win+R 粘贴打开`,
+        type: 'success',
+        duration: 3000,
+      })
+    }).catch(() => {
+      ElMessage.warning('复制失败，请手动复制路径')
+    })
+  } else if (link.type === 'markdown') {
+    router.push({ path: '/markdown', query: { path: link.url, name: link.name } })
+  } else {
+    window.open(index, '_blank')
+  }
+}
+
+async function loadCustomLinks() {
+  try {
+    const res = await getCustomLinks()
+    if (res.data) {
+      customLinks.value = res.data
+    }
+  } catch {
+    customLinks.value = []
+  }
+}
+
+onMounted(() => {
+  if (userStore.isLoggedIn) {
+    loadCustomLinks()
+  }
+})
+
+watch(() => userStore.isLoggedIn, (val) => {
+  if (val) {
+    loadCustomLinks()
+  }
+})
 </script>
 
 <style>

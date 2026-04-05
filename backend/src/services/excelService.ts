@@ -4,6 +4,8 @@ import { Task } from "../entities/Task";
 import { Bug } from "../entities/Bug";
 import { User } from "../entities/User";
 import { Project } from "../entities/Project";
+import { OperationLog } from "../entities/OperationLog";
+import { SystemConfig } from "../entities/SystemConfig";
 
 export class ExcelService {
   // 去除HTML标签
@@ -148,43 +150,50 @@ export class ExcelService {
       const projectRepository = AppDataSource.getRepository(Project);
       const taskRepository = AppDataSource.getRepository(Task);
       const bugRepository = AppDataSource.getRepository(Bug);
+      const operationLogRepository = AppDataSource.getRepository(OperationLog);
+      const systemConfigRepository = AppDataSource.getRepository(SystemConfig);
 
-      // 获取所有数据
       const users = await userRepository.find();
-      const projects = await projectRepository.find({ relations: ["members"] });
+      const projects = await projectRepository.find();
       const tasks = await taskRepository.find({
         relations: ["project", "assignee", "creator", "parentTask"],
       });
       const bugs = await bugRepository.find({
         relations: ["project", "assignee", "reporter"],
       });
+      const logs = await operationLogRepository.find({
+        relations: ["user"],
+        order: { createdAt: "DESC" },
+      });
+      const configs = await systemConfigRepository.find();
 
-      // 创建工作簿
       const workbook = XLSX.utils.book_new();
 
-      // Sheet 1: 用户信息
       const usersData = users.map(user => ({
         "用户ID": user.id,
         "用户名": user.username,
         "真实姓名": user.realName,
+        "手机号": user.phone || "",
         "角色": user.role,
+        "状态": user.isActive ? "启用" : "禁用",
         "创建时间": user.createdAt ? new Date(user.createdAt).toLocaleString() : "",
+        "更新时间": user.updatedAt ? new Date(user.updatedAt).toLocaleString() : "",
       }));
       const usersSheet = XLSX.utils.json_to_sheet(usersData);
       XLSX.utils.book_append_sheet(workbook, usersSheet, "用户信息");
 
-      // Sheet 2: 项目信息
       const projectsData = projects.map(project => ({
         "项目ID": project.id,
         "项目名称": project.name,
         "项目描述": this.stripHtml(project.description || ""),
         "状态": project.status,
+        "创建人ID": project.createdBy,
         "创建时间": project.createdAt ? new Date(project.createdAt).toLocaleString() : "",
+        "更新时间": project.updatedAt ? new Date(project.updatedAt).toLocaleString() : "",
       }));
       const projectsSheet = XLSX.utils.json_to_sheet(projectsData);
       XLSX.utils.book_append_sheet(workbook, projectsSheet, "项目信息");
 
-      // Sheet 3: 任务信息
       const tasksData = tasks.map(task => ({
         "任务ID": task.id,
         "任务标题": task.title,
@@ -202,7 +211,6 @@ export class ExcelService {
       const tasksSheet = XLSX.utils.json_to_sheet(tasksData);
       XLSX.utils.book_append_sheet(workbook, tasksSheet, "任务信息");
 
-      // Sheet 4: 缺陷信息
       const bugsData = bugs.map(bug => ({
         "缺陷ID": bug.id,
         "缺陷标题": bug.title,
@@ -213,13 +221,40 @@ export class ExcelService {
         "负责人": bug.assignee?.realName || "未分配",
         "报告人": bug.reporter?.realName,
         "所属项目": bug.project?.name,
+        "截止日期": bug.dueDate ? new Date(bug.dueDate).toLocaleDateString() : "无",
         "创建时间": new Date(bug.createdAt).toLocaleString(),
         "更新时间": new Date(bug.updatedAt).toLocaleString(),
       }));
       const bugsSheet = XLSX.utils.json_to_sheet(bugsData);
       XLSX.utils.book_append_sheet(workbook, bugsSheet, "缺陷信息");
 
-      // 生成Buffer
+      const logsData = logs.map(log => ({
+        "日志ID": log.id,
+        "目标类型": log.targetType === "task" ? "任务" : "缺陷",
+        "目标ID": log.targetId,
+        "操作类型": log.action,
+        "操作人": log.user?.realName || "未知",
+        "旧状态": log.oldStatus || "",
+        "新状态": log.newStatus || "",
+        "旧优先级": log.oldPriority || "",
+        "新优先级": log.newPriority || "",
+        "备注": log.remark || "",
+        "创建时间": log.createdAt ? new Date(log.createdAt).toLocaleString() : "",
+      }));
+      const logsSheet = XLSX.utils.json_to_sheet(logsData);
+      XLSX.utils.book_append_sheet(workbook, logsSheet, "操作日志");
+
+      const configsData = configs.map(config => ({
+        "配置ID": config.id,
+        "配置键": config.key,
+        "配置值": config.value,
+        "描述": config.description || "",
+        "创建时间": config.createdAt ? new Date(config.createdAt).toLocaleString() : "",
+        "更新时间": config.updatedAt ? new Date(config.updatedAt).toLocaleString() : "",
+      }));
+      const configsSheet = XLSX.utils.json_to_sheet(configsData);
+      XLSX.utils.book_append_sheet(workbook, configsSheet, "系统配置");
+
       const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
       return buffer;
     } catch (error) {

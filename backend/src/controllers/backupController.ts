@@ -4,40 +4,40 @@ import { Task } from "../entities/Task";
 import { Bug } from "../entities/Bug";
 import { Project } from "../entities/Project";
 import { User } from "../entities/User";
+import { OperationLog } from "../entities/OperationLog";
+import { SystemConfig } from "../entities/SystemConfig";
 
 export const backupController = {
-  // 备份所有数据
   async backup(req: Request, res: Response) {
     try {
       const taskRepository = AppDataSource.getRepository(Task);
       const bugRepository = AppDataSource.getRepository(Bug);
       const projectRepository = AppDataSource.getRepository(Project);
       const userRepository = AppDataSource.getRepository(User);
+      const logRepository = AppDataSource.getRepository(OperationLog);
+      const configRepository = AppDataSource.getRepository(SystemConfig);
 
-      // 获取所有数据
+      const users = await userRepository.find();
+      const projects = await projectRepository.find({ relations: ["manager"] });
       const tasks = await taskRepository.find({
         relations: ["project", "assignee", "creator", "parentTask"],
       });
-
       const bugs = await bugRepository.find({
         relations: ["project", "assignee", "reporter"],
       });
+      const logs = await logRepository.find({ relations: ["user"] });
+      const configs = await configRepository.find();
 
-      const projects = await projectRepository.find({
-        relations: ["members"],
-      });
-
-      const users = await userRepository.find();
-
-      // 构建备份数据
       const backupData = {
-        version: "1.0",
+        version: "2.0",
         timestamp: new Date().toISOString(),
         data: {
           users,
           projects,
           tasks,
           bugs,
+          logs,
+          configs,
         },
       };
 
@@ -50,7 +50,6 @@ export const backupController = {
     }
   },
 
-  // 恢复数据
   async restore(req: Request, res: Response) {
     const queryRunner = AppDataSource.createQueryRunner();
     await queryRunner.startTransaction();
@@ -62,61 +61,64 @@ export const backupController = {
         return res.status(400).json({ error: "无效的备份文件" });
       }
 
-      const { users, projects, tasks, bugs } = backupData.data;
+      const { users, projects, tasks, bugs, logs, configs } = backupData.data;
 
-      // 清空现有数据（按依赖顺序）
+      await queryRunner.manager.delete(OperationLog, {});
       await queryRunner.manager.delete(Bug, {});
       await queryRunner.manager.delete(Task, {});
       await queryRunner.manager.delete(Project, {});
-      // 不删除用户，只更新或插入
+      await queryRunner.manager.delete(User, {});
 
-      // 恢复用户
       if (users && users.length > 0) {
-        for (const user of users) {
-          const existingUser = await queryRunner.manager.findOne(User, { where: { username: user.username } });
-          if (!existingUser) {
-            const newUser = queryRunner.manager.create(User, {
-              username: user.username,
-              realName: user.realName,
-              email: user.email,
-              phone: user.phone,
-              role: user.role,
-              password: "123456", // 默认密码
-            });
-            await queryRunner.manager.save(newUser);
-          }
+        for (const u of users) {
+          const newUser = queryRunner.manager.create(User, {
+            username: u.username,
+            password: u.password,
+            realName: u.realName,
+            phone: u.phone,
+            role: u.role,
+            isActive: u.isActive,
+          });
+          await queryRunner.manager.save(newUser);
         }
       }
 
-      // 恢复项目
       if (projects && projects.length > 0) {
-        for (const project of projects) {
+        for (const p of projects) {
+          let managerId: number | null = null;
+          if (p.manager) {
+            const manager = await queryRunner.manager.findOne(User, { where: { username: p.manager.username } });
+            if (manager) managerId = manager.id;
+          }
+          if (!managerId && p.createdBy) {
+            managerId = p.createdBy;
+          }
           const newProject = queryRunner.manager.create(Project, {
-            name: project.name,
-            description: project.description,
-            status: project.status,
+            name: p.name,
+            description: p.description,
+            status: p.status,
+            createdBy: managerId || 1,
+            manager: managerId ? { id: managerId } as any : null,
           });
           await queryRunner.manager.save(newProject);
         }
       }
 
-      // 恢复任务
       if (tasks && tasks.length > 0) {
-        // 先恢复没有父任务的任务
         const rootTasks = tasks.filter((t: any) => !t.parentTask);
         const subtasks = tasks.filter((t: any) => t.parentTask);
 
-        for (const task of rootTasks) {
-          const project = await queryRunner.manager.findOne(Project, { where: { name: task.project?.name } });
-          const assignee = task.assignee ? await queryRunner.manager.findOne(User, { where: { username: task.assignee.username } }) : null;
-          const creator = task.creator ? await queryRunner.manager.findOne(User, { where: { username: task.creator.username } }) : null;
+        for (const t of rootTasks) {
+          const project = t.project ? await queryRunner.manager.findOne(Project, { where: { name: t.project.name } }) : null;
+          const assignee = t.assignee ? await queryRunner.manager.findOne(User, { where: { username: t.assignee.username } }) : null;
+          const creator = t.creator ? await queryRunner.manager.findOne(User, { where: { username: t.creator.username } }) : null;
 
           const newTask = queryRunner.manager.create(Task, {
-            title: task.title,
-            description: task.description,
-            priority: task.priority,
-            status: task.status,
-            dueDate: task.dueDate,
+            title: t.title,
+            description: t.description,
+            priority: t.priority,
+            status: t.status,
+            dueDate: t.dueDate,
             project: project ? { id: project.id } as any : null,
             assignee: assignee ? { id: assignee.id } as any : null,
             creator: creator ? { id: creator.id } as any : null,
@@ -124,19 +126,18 @@ export const backupController = {
           await queryRunner.manager.save(newTask);
         }
 
-        // 恢复子任务
-        for (const task of subtasks) {
-          const project = await queryRunner.manager.findOne(Project, { where: { name: task.project?.name } });
-          const assignee = task.assignee ? await queryRunner.manager.findOne(User, { where: { username: task.assignee.username } }) : null;
-          const creator = task.creator ? await queryRunner.manager.findOne(User, { where: { username: task.creator.username } }) : null;
-          const parentTask = task.parentTask ? await queryRunner.manager.findOne(Task, { where: { title: task.parentTask.title } }) : null;
+        for (const t of subtasks) {
+          const project = t.project ? await queryRunner.manager.findOne(Project, { where: { name: t.project.name } }) : null;
+          const assignee = t.assignee ? await queryRunner.manager.findOne(User, { where: { username: t.assignee.username } }) : null;
+          const creator = t.creator ? await queryRunner.manager.findOne(User, { where: { username: t.creator.username } }) : null;
+          const parentTask = t.parentTask ? await queryRunner.manager.findOne(Task, { where: { title: t.parentTask.title } }) : null;
 
           const newTask = queryRunner.manager.create(Task, {
-            title: task.title,
-            description: task.description,
-            priority: task.priority,
-            status: task.status,
-            dueDate: task.dueDate,
+            title: t.title,
+            description: t.description,
+            priority: t.priority,
+            status: t.status,
+            dueDate: t.dueDate,
             project: project ? { id: project.id } as any : null,
             assignee: assignee ? { id: assignee.id } as any : null,
             creator: creator ? { id: creator.id } as any : null,
@@ -146,24 +147,59 @@ export const backupController = {
         }
       }
 
-      // 恢复缺陷
       if (bugs && bugs.length > 0) {
-        for (const bug of bugs) {
-          const project = await queryRunner.manager.findOne(Project, { where: { name: bug.project?.name } });
-          const assignee = bug.assignee ? await queryRunner.manager.findOne(User, { where: { username: bug.assignee.username } }) : null;
-          const reporter = bug.reporter ? await queryRunner.manager.findOne(User, { where: { username: bug.reporter.username } }) : null;
+        for (const b of bugs) {
+          const project = b.project ? await queryRunner.manager.findOne(Project, { where: { name: b.project.name } }) : null;
+          const assignee = b.assignee ? await queryRunner.manager.findOne(User, { where: { username: b.assignee.username } }) : null;
+          const reporter = b.reporter ? await queryRunner.manager.findOne(User, { where: { username: b.reporter.username } }) : null;
 
           const newBug = queryRunner.manager.create(Bug, {
-            title: bug.title,
-            description: bug.description,
-            severity: bug.severity,
-            status: bug.status,
-            reproduceSteps: bug.reproduceSteps,
+            title: b.title,
+            description: b.description,
+            severity: b.severity,
+            status: b.status,
+            reproduceSteps: b.reproduceSteps,
+            dueDate: b.dueDate,
             project: project ? { id: project.id } as any : null,
             assignee: assignee ? { id: assignee.id } as any : null,
             reporter: reporter ? { id: reporter.id } as any : null,
           });
           await queryRunner.manager.save(newBug);
+        }
+      }
+
+      if (configs && configs.length > 0) {
+        for (const c of configs) {
+          const newConfig = queryRunner.manager.create(SystemConfig, {
+            key: c.key,
+            value: c.value,
+            description: c.description,
+          });
+          await queryRunner.manager.save(newConfig);
+        }
+      }
+
+      if (logs && logs.length > 0) {
+        for (const l of logs) {
+          const user = l.user ? await queryRunner.manager.findOne(User, { where: { username: l.user.username } }) : null;
+          const newLog = queryRunner.manager.create(OperationLog, {
+            targetType: l.targetType,
+            targetId: l.targetId,
+            action: l.action,
+            oldStatus: l.oldStatus,
+            newStatus: l.newStatus,
+            oldAssignee: l.oldAssignee,
+            newAssignee: l.newAssignee,
+            oldPriority: l.oldPriority,
+            newPriority: l.newPriority,
+            oldSeverity: l.oldSeverity,
+            newSeverity: l.newSeverity,
+            oldDueDate: l.oldDueDate,
+            newDueDate: l.newDueDate,
+            remark: l.remark,
+            user: user ? { id: user.id } as any : null,
+          });
+          await queryRunner.manager.save(newLog);
         }
       }
 
@@ -178,16 +214,11 @@ export const backupController = {
     }
   },
 
-  // 清空数据库（删除所有数据但保留用户）
   async clearDatabase(req: Request, res: Response) {
     try {
-      // 先删除外键关联的子任务
       await AppDataSource.query(`UPDATE task SET "parentTaskId" = NULL`);
-      
-      // 删除ManyToMany关联表
       await AppDataSource.query(`DELETE FROM task_dependencies`);
-      
-      // 删除实体数据
+      await AppDataSource.query(`DELETE FROM operation_log`);
       await AppDataSource.query(`DELETE FROM bug`);
       await AppDataSource.query(`DELETE FROM task`);
       await AppDataSource.query(`DELETE FROM project`);
@@ -195,6 +226,24 @@ export const backupController = {
       res.json({ success: true, message: "数据库已清空（用户数据保留）" });
     } catch (error) {
       console.error("Error clearing database:", error);
+      res.status(500).json({ error: "清空失败: " + (error as Error).message });
+    }
+  },
+
+  async clearAllDatabase(req: Request, res: Response) {
+    try {
+      await AppDataSource.query(`UPDATE task SET "parentTaskId" = NULL`);
+      await AppDataSource.query(`DELETE FROM task_dependencies`);
+      await AppDataSource.query(`DELETE FROM operation_log`);
+      await AppDataSource.query(`DELETE FROM bug`);
+      await AppDataSource.query(`DELETE FROM task`);
+      await AppDataSource.query(`DELETE FROM project`);
+      await AppDataSource.query(`DELETE FROM user`);
+      await AppDataSource.query(`DELETE FROM system_config`);
+
+      res.json({ success: true, message: "所有数据已清空（包含用户）" });
+    } catch (error) {
+      console.error("Error clearing all database:", error);
       res.status(500).json({ error: "清空失败: " + (error as Error).message });
     }
   },

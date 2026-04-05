@@ -121,6 +121,29 @@
           </div>
           <div class="info-list">
             <div class="info-item">
+              <div class="info-label">项目负责人</div>
+              <div class="info-value">
+                <template v-if="!isChangingManager">
+                  {{ project?.manager?.realName || project?.manager?.username || '未设置' }}
+                  <el-button v-if="isAdmin" text size="small" @click="startChangeManager" class="edit-btn" style="margin-left: 4px">
+                    <el-icon><Edit /></el-icon>
+                  </el-button>
+                </template>
+                <template v-else>
+                  <el-select v-model="newManagerId" size="small" style="width: 150px" placeholder="选择负责人">
+                    <el-option
+                      v-for="u in users"
+                      :key="u.id"
+                      :label="`${u.realName} (${u.username})`"
+                      :value="u.id"
+                    />
+                  </el-select>
+                  <el-button size="small" @click="cancelChangeManager" style="margin-left: 4px">取消</el-button>
+                  <el-button size="small" type="primary" @click="saveChangeManager" :loading="saving">保存</el-button>
+                </template>
+              </div>
+            </div>
+            <div class="info-item">
               <div class="info-label">项目状态</div>
               <div class="info-value">
                 <el-tag :type="getStatusType(project?.status)" size="small">
@@ -143,7 +166,8 @@
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { getProject, updateProject } from '../api/project'
+import { getProject, updateProject, changeProjectManager } from '../api/project'
+import { getUsers } from '../api/user'
 import { useUserStore } from '../stores/user'
 import RichEditor from '../components/RichEditor.vue'
 
@@ -151,12 +175,15 @@ const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 const project = ref<any>(null)
+const users = ref<any[]>([])
 const isEditingName = ref(false)
 const editName = ref('')
 const isEditingDescription = ref(false)
 const editDescription = ref('')
 const saving = ref(false)
 const nameInputRef = ref()
+const isChangingManager = ref(false)
+const newManagerId = ref<number | null>(null)
 
 const currentUserId = computed(() => userStore.user?.id)
 const isCreator = computed(() => project.value?.createdBy === currentUserId.value)
@@ -269,11 +296,43 @@ const saveDescription = async () => {
   }
 }
 
+const startChangeManager = () => {
+  newManagerId.value = project.value?.manager?.id || null
+  isChangingManager.value = true
+}
+
+const cancelChangeManager = () => {
+  isChangingManager.value = false
+  newManagerId.value = null
+}
+
+const saveChangeManager = async () => {
+  if (!newManagerId.value) {
+    ElMessage.warning('请选择项目负责人')
+    return
+  }
+  saving.value = true
+  try {
+    const res = await changeProjectManager(project.value.id, newManagerId.value)
+    project.value = res.data
+    isChangingManager.value = false
+    ElMessage.success('项目负责人已更新')
+  } catch (error: any) {
+    ElMessage.error(error.response?.data?.error || '更新项目负责人失败')
+  } finally {
+    saving.value = false
+  }
+}
+
 onMounted(async () => {
   try {
     const id = parseInt(route.params.id as string)
     const res = await getProject(id)
     project.value = res.data
+    if (isAdmin.value) {
+      const usersRes = await getUsers()
+      users.value = usersRes.data
+    }
   } catch (error) {
     console.error('Failed to load project:', error)
   }

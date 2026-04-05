@@ -14,6 +14,8 @@ router.put("/:id", projectController.updateProject);
 
 router.patch("/:id/archive", projectController.archiveProject);
 
+router.patch("/:id/manager", projectController.changeManager);
+
 router.delete("/:id", projectPermissionMiddleware("delete"), projectController.deleteProject);
 
 export default router;

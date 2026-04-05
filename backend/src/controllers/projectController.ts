@@ -110,4 +110,36 @@ export const projectController = {
       res.status(500).json({ error: "Failed to delete project" });
     }
   },
+
+  // 更改项目负责人（仅管理员）
+  async changeManager(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { managerId } = req.body;
+      const user = (req as any).user;
+
+      if (user.role !== "admin") {
+        return res.status(403).json({ error: "只有管理员可以更改项目负责人" });
+      }
+
+      const project = await projectRepository.findOne({
+        where: { id: parseInt(id as string) },
+      });
+
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      await projectRepository.update(id, { manager: { id: managerId } });
+      const updatedProject = await projectRepository.findOne({
+        where: { id: parseInt(id as string) },
+        relations: ["manager", "tasks", "bugs"],
+      });
+
+      res.json(updatedProject);
+    } catch (error) {
+      console.error("Error changing project manager:", error);
+      res.status(500).json({ error: "Failed to change project manager" });
+    }
+  },
 };

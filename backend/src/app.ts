@@ -14,6 +14,9 @@ import excelRoutes from "./routes/excelRoutes";
 import uploadRoutes from "./routes/uploadRoutes";
 import backupRoutes from "./routes/backupRoutes";
 import permissionRoutes from "./routes/permissionRoutes";
+import customLinkRoutes from "./routes/customLinkRoutes";
+import sharedFolderRoutes from "./routes/sharedFolderRoutes";
+import markdownRoutes from "./routes/markdownRoutes";
 
 const app = express();
 
@@ -38,6 +41,9 @@ app.use("/api/excel", authMiddleware, excelRoutes);
 app.use("/api/upload", authMiddleware, uploadRoutes);
 app.use("/api/backup", authMiddleware, backupRoutes);
 app.use("/api/permissions", authMiddleware, permissionRoutes);
+app.use("/api/custom-links", authMiddleware, customLinkRoutes);
+app.use("/api/shared-folder", authMiddleware, sharedFolderRoutes);
+app.use("/api/markdown", authMiddleware, markdownRoutes);
 
 // 健康检查
 app.get("/health", (req, res) => {

@@ -97,10 +97,10 @@
           <div class="export-section">
             <div class="export-item">
               <div class="export-info">
-                <div class="export-title">导出全部数据</div>
-                <div class="export-desc">将所有数据导出为Excel文件（包含用户、项目、任务、缺陷多个工作表）</div>
+                <div class="export-title">导出全部数据（原始格式）</div>
+                <div class="export-desc">按数据表原结构导出，外键字段仅保存ID，适合数据备份和迁移</div>
               </div>
-              <el-button type="success" @click="exportAllData">
+              <el-button type="warning" @click="exportRawData">
                 <el-icon><Download /></el-icon>
                 导出
               </el-button>
@@ -108,32 +108,102 @@
             <el-divider />
             <div class="export-item">
               <div class="export-info">
-                <div class="export-title">导出任务</div>
-                <div class="export-desc">将所有任务导出为Excel文件</div>
+                <div class="export-title">导出全部数据（可读格式）</div>
+                <div class="export-desc">外键字段显示为对应的名称（如创建人显示为真实姓名），适合查看和汇报</div>
               </div>
-              <el-button @click="exportTasks">导出</el-button>
+              <el-button type="success" @click="exportAllData">
+                <el-icon><Download /></el-icon>
+                导出
+              </el-button>
             </div>
-            <div class="export-item">
-              <div class="export-info">
-                <div class="export-title">导出缺陷</div>
-                <div class="export-desc">将所有缺陷导出为Excel文件</div>
+          </div>
+        </div>
+      </el-tab-pane>
+
+      <el-tab-pane label="自定义链接" name="customLinks">
+        <div class="content-card">
+          <div class="custom-links-container">
+            <el-alert
+              title="自定义链接说明"
+              type="info"
+              :closable="false"
+              show-icon
+              style="margin-bottom: 20px"
+            >
+              <template #default>
+                <p>外链：点击后在新窗口打开指定URL</p>
+                <p>共享文件夹：点击后复制路径到剪贴板，提示用户 Win+R 打开</p>
+                <p>MD文档：点击后在应用内渲染显示 Markdown 文件内容</p>
+              </template>
+            </el-alert>
+
+            <div class="links-list">
+              <div v-for="(link, index) in customLinks" :key="index" class="link-item">
+                <div class="link-fields">
+                  <el-input
+                    v-model="link.name"
+                    placeholder="链接名称（如：代码规范）"
+                    style="width: 160px"
+                  />
+                  <el-select v-model="link.type" placeholder="类型" style="width: 120px">
+                    <el-option label="外链" value="url" />
+                    <el-option label="共享文件夹" value="folder" />
+                    <el-option label="MD文档" value="markdown" />
+                  </el-select>
+                  <div v-if="link.type === 'markdown'" class="markdown-input-area">
+                    <el-select
+                      v-model="link.url"
+                      placeholder="选择 Markdown 文件"
+                      style="width: 280px"
+                      filterable
+                    >
+                      <el-option
+                        v-for="file in markdownFiles"
+                        :key="file.path"
+                        :label="file.name"
+                        :value="file.path"
+                      />
+                    </el-select>
+                    <el-upload
+                      :show-file-list="false"
+                      :before-upload="(file: File) => handleMarkdownUpload(file, index)"
+                      accept=".md"
+                    >
+                      <el-button size="small" type="success" plain>
+                        <el-icon><Upload /></el-icon>
+                        上传
+                      </el-button>
+                    </el-upload>
+                  </div>
+                  <el-input
+                    v-else
+                    v-model="link.url"
+                    :placeholder="link.type === 'folder' ? '文件夹路径（如：\\\\192.168.1.100\\share）' : '链接地址（如：https://docs.example.com）'"
+                    style="width: 300px"
+                  />
+                  <el-select v-model="link.icon" placeholder="图标" style="width: 130px">
+                    <el-option label="📄 文档" value="Document" />
+                    <el-option label="🔗 链接" value="Link" />
+                    <el-option label="📚 书籍" value="Reading" />
+                    <el-option label="🌐 网站" value="Monitor" />
+                    <el-option label="📊 图表" value="DataAnalysis" />
+                    <el-option label="🛠️ 工具" value="Tools" />
+                    <el-option label="💬 消息" value="ChatDotRound" />
+                    <el-option label="📁 文件夹" value="FolderOpened" />
+                  </el-select>
+                  <el-button type="danger" :icon="Delete" @click="removeLink(index)" circle />
+                </div>
               </div>
-              <el-button @click="exportBugs">导出</el-button>
             </div>
-            <el-divider />
-            <div class="export-item">
-              <div class="export-info">
-                <div class="export-title">任务导入模板</div>
-                <div class="export-desc">下载任务导入Excel模板</div>
-              </div>
-              <el-button @click="downloadTaskTemplate">下载</el-button>
-            </div>
-            <div class="export-item">
-              <div class="export-info">
-                <div class="export-title">缺陷导入模板</div>
-                <div class="export-desc">下载缺陷导入Excel模板</div>
-              </div>
-              <el-button @click="downloadBugTemplate">下载</el-button>
+
+            <div class="links-actions">
+              <el-button type="primary" plain @click="addLink">
+                <el-icon><Plus /></el-icon>
+                添加链接
+              </el-button>
+              <el-button type="primary" @click="saveCustomLinks" :loading="savingCustomLinks">
+                保存配置
+              </el-button>
             </div>
           </div>
         </div>
@@ -145,7 +215,7 @@
             <div class="backup-item">
               <div class="backup-info">
                 <div class="backup-title">备份数据</div>
-                <div class="backup-desc">将所有数据（任务、缺陷、项目、用户）备份为JSON文件</div>
+                <div class="backup-desc">将所有数据（用户、项目、任务、缺陷、操作日志、系统配置）备份为JSON文件</div>
               </div>
               <el-button type="primary" @click="backupData" :loading="backupLoading">
                 <el-icon><Download /></el-icon>
@@ -178,6 +248,16 @@
                 清空
               </el-button>
             </div>
+            <div class="backup-item danger">
+              <div class="backup-info">
+                <div class="backup-title">清空所有数据</div>
+                <div class="backup-desc">清空所有数据（包含用户、配置等全部数据表）</div>
+              </div>
+              <el-button type="danger" @click="clearAllDatabase" :loading="clearAllLoading">
+                <el-icon><Delete /></el-icon>
+                清空全部
+              </el-button>
+            </div>
           </div>
         </div>
       </el-tab-pane>
@@ -188,14 +268,21 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { exportTasks as exportTasksApi, exportBugs as exportBugsApi, downloadTaskTemplate as downloadTaskTemplateApi, downloadBugTemplate as downloadBugTemplateApi, backupData as backupDataApi, restoreData as restoreDataApi, exportAll as exportAllApi, clearDatabase as clearDatabaseApi } from '../api/excel'
+import { Plus, Delete, Download, Upload } from '@element-plus/icons-vue'
+import { backupData as backupDataApi, restoreData as restoreDataApi, exportAll as exportAllApi, clearDatabase as clearDatabaseApi, clearAllDatabase as clearAllDatabaseApi } from '../api/excel'
 import { getPermissions, updatePermissions } from '../api/permission'
+import { getCustomLinks, updateCustomLinks, listMarkdownFiles } from '../api/customLink'
+import api from '../api'
 
 const activeTab = ref('permissions')
 const backupLoading = ref(false)
 const restoreLoading = ref(false)
 const clearLoading = ref(false)
+const clearAllLoading = ref(false)
 const savingPermissions = ref(false)
+const savingCustomLinks = ref(false)
+const customLinks = ref<Array<{ name: string; url: string; icon: string; type: string }>>([])
+const markdownFiles = ref<Array<{ name: string; path: string }>>([])
 
 const ROLE_LABELS: Record<string, string> = {
   admin: '管理员',
@@ -316,67 +403,84 @@ function resetPermissions() {
   ElMessage.success('已恢复为默认权限配置')
 }
 
-async function exportTasks() {
+function addLink() {
+  customLinks.value.push({ name: '', url: '', icon: 'Link', type: 'url' })
+}
+
+function removeLink(index: number) {
+  customLinks.value.splice(index, 1)
+}
+
+async function loadCustomLinks() {
   try {
-    const res = await exportTasksApi()
+    const res = await getCustomLinks()
+    if (res.data) {
+      customLinks.value = res.data
+    }
+  } catch {
+    customLinks.value = []
+  }
+}
+
+async function loadMarkdownFiles() {
+  try {
+    const res = await listMarkdownFiles()
+    if (res.data) {
+      markdownFiles.value = res.data
+    }
+  } catch {
+    markdownFiles.value = []
+  }
+}
+
+async function saveCustomLinks() {
+  const validLinks = customLinks.value
+    .filter(link => link.name && link.url)
+    .map(({ name, url, icon, type }) => ({ name, url, icon, type }))
+  if (validLinks.length === 0 && customLinks.value.length > 0) {
+    ElMessage.warning('请至少填写一个完整的链接')
+    return
+  }
+  savingCustomLinks.value = true
+  try {
+    await updateCustomLinks(validLinks)
+    ElMessage.success('自定义链接已保存，刷新页面后生效')
+  } catch {
+    ElMessage.error('保存失败')
+  } finally {
+    savingCustomLinks.value = false
+  }
+}
+
+async function handleMarkdownUpload(file: File, index: number) {
+  const formData = new FormData()
+  formData.append('file', file)
+  try {
+    const res = await api.post('/markdown/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    customLinks.value[index].url = res.data.path
+    ElMessage.success('上传成功')
+    await loadMarkdownFiles()
+  } catch (err: any) {
+    ElMessage.error(err?.response?.data?.error || '上传失败')
+  }
+  return false
+}
+
+async function exportRawData() {
+  try {
+    const res = await exportAllApi("raw")
     const blob = new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `tasks_${Date.now()}.xlsx`
+    link.download = `flyp_export_raw_${Date.now()}.xlsx`
     link.click()
     window.URL.revokeObjectURL(url)
     ElMessage.success('导出成功')
   } catch {
     ElMessage.error('导出失败')
-  }
-}
-
-async function exportBugs() {
-  try {
-    const res = await exportBugsApi()
-    const blob = new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-    const url = window.URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `bugs_${Date.now()}.xlsx`
-    link.click()
-    window.URL.revokeObjectURL(url)
-    ElMessage.success('导出成功')
-  } catch {
-    ElMessage.error('导出失败')
-  }
-}
-
-async function downloadTaskTemplate() {
-  try {
-    const res = await downloadTaskTemplateApi()
-    const blob = new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-    const url = window.URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = 'task_import_template.xlsx'
-    link.click()
-    window.URL.revokeObjectURL(url)
-    ElMessage.success('下载成功')
-  } catch {
-    ElMessage.error('下载失败')
-  }
-}
-
-async function downloadBugTemplate() {
-  try {
-    const res = await downloadBugTemplateApi()
-    const blob = new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-    const url = window.URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = 'bug_import_template.xlsx'
-    link.click()
-    window.URL.revokeObjectURL(url)
-    ElMessage.success('下载成功')
-  } catch {
-    ElMessage.error('下载失败')
   }
 }
 
@@ -387,7 +491,7 @@ async function exportAllData() {
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `full_export_${Date.now()}.xlsx`
+    link.download = `flyp_export_${Date.now()}.xlsx`
     link.click()
     window.URL.revokeObjectURL(url)
     ElMessage.success('导出成功')
@@ -475,8 +579,34 @@ async function clearDatabase() {
   }
 }
 
+async function clearAllDatabase() {
+  try {
+    await ElMessageBox.confirm(
+      '此操作将清空所有数据（包含用户、配置等全部数据表），此操作不可撤销！确定要继续吗？',
+      '严重警告',
+      {
+        confirmButtonText: '确定清空全部',
+        cancelButtonText: '取消',
+        type: 'error',
+      }
+    )
+
+    clearAllLoading.value = true
+    await clearAllDatabaseApi()
+    ElMessage.success('所有数据已清空')
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      ElMessage.error(error?.response?.data?.error || '清空失败')
+    }
+  } finally {
+    clearAllLoading.value = false
+  }
+}
+
 onMounted(() => {
   loadPermissions()
+  loadCustomLinks()
+  loadMarkdownFiles()
 })
 </script>
 
@@ -621,6 +751,52 @@ onMounted(() => {
 .backup-desc {
   font-size: 12px;
   color: #909399;
+}
+
+.custom-links-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.links-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.link-item {
+  padding: 12px;
+  background: #f5f7fa;
+  border-radius: 8px;
+}
+
+.link-fields {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.links-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid #ebeef5;
+}
+
+.markdown-upload-area,
+.markdown-input-area {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.uploaded-file-name {
+  font-size: 12px;
+  color: #67c23a;
+  white-space: nowrap;
 }
 
 :deep(.el-tabs__content) {

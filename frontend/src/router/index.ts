@@ -65,6 +65,12 @@ const routes: RouteRecordRaw[] = [
     name: 'Settings',
     component: () => import('../views/Settings.vue'),
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/markdown',
+    name: 'MarkdownViewer',
+    component: () => import('../views/MarkdownViewer.vue'),
+    meta: { requiresAuth: true }
   }
 ]
 
