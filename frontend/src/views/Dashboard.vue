@@ -1,186 +1,824 @@
 <template>
   <div class="dashboard">
-    <div class="welcome-banner">
-      <div class="welcome-left">
-        <div class="avatar-ring">
-          <el-avatar :size="52" class="user-avatar">
-            {{ userStore.user?.realName?.charAt(0) || 'U' }}
-          </el-avatar>
-        </div>
-        <div class="welcome-text">
-          <h2>欢迎回来，{{ userStore.user?.realName || '用户' }}</h2>
-          <p>{{ today }}</p>
-        </div>
+    <!-- Welcome Banner with Hero Image -->
+    <div class="banner" :class="`role-${userStore.user?.role}`">
+      <div class="banner-bg-pattern">
+        <svg class="floating-icon float-1" viewBox="0 0 64 64" fill="none">
+          <path d="M32 8L38 24H56L42 34L48 50L32 40L16 50L22 34L8 24H26L32 8Z" fill="rgba(255,255,255,0.12)"/>
+        </svg>
+        <svg class="floating-icon float-2" viewBox="0 0 64 64" fill="none">
+          <circle cx="32" cy="32" r="24" stroke="rgba(255,255,255,0.1)" stroke-width="3" fill="none"/>
+          <path d="M24 32L30 38L42 26" stroke="rgba(255,255,255,0.15)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <svg class="floating-icon float-3" viewBox="0 0 64 64" fill="none">
+          <path d="M32 12V52M12 32H52" stroke="rgba(255,255,255,0.1)" stroke-width="4" stroke-linecap="round"/>
+          <rect x="16" y="16" width="32" height="32" rx="6" stroke="rgba(255,255,255,0.08)" stroke-width="3" fill="none"/>
+        </svg>
+        <svg class="floating-icon float-4" viewBox="0 0 64 64" fill="none">
+          <path d="M20 44L32 16L44 44H20Z" stroke="rgba(255,255,255,0.1)" stroke-width="3" fill="none" stroke-linejoin="round"/>
+          <circle cx="32" cy="36" r="4" fill="rgba(255,255,255,0.1)"/>
+        </svg>
       </div>
-      <div class="welcome-right">
-        <el-tag :type="getRoleTagType(userStore.user?.role)" size="large" effect="dark" class="role-badge">
-          <el-icon size="14"><Medal /></el-icon>
-          {{ getRoleText(userStore.user?.role) }}
-        </el-tag>
+      <div class="banner-content">
+        <div class="banner-left">
+          <div class="avatar">
+            <span>{{ userStore.user?.realName?.charAt(0) || 'U' }}</span>
+          </div>
+          <div class="welcome-text">
+            <h2>{{ greeting }}，{{ userStore.user?.realName || '用户' }}</h2>
+            <div class="date">{{ today }}</div>
+          </div>
+        </div>
+        <div class="banner-right">
+          <div class="hero-image">
+            <img src="../assets/hero.png" alt="Hero" />
+          </div>
+          <div class="role-badge">
+            <svg class="badge-star" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M10 1l2.39 4.84 5.34.78-3.87 3.77.91 5.32L10 13.27l-4.77 2.51.91-5.32L2.27 6.69l5.34-.78L10 1z"/>
+            </svg>
+            {{ getRoleText(userStore.user?.role) }}
+          </div>
+        </div>
       </div>
     </div>
 
-    <el-row :gutter="16" class="stats-row">
-      <el-col :xs="12" :sm="6" v-for="stat in visibleStats" :key="stat.key">
-        <div class="stat-card" @click="stat.click">
-          <div class="stat-icon" :class="stat.color">
-            <el-icon :size="22"><component :is="stat.icon" /></el-icon>
-          </div>
-          <div class="stat-content">
-            <div class="stat-value">{{ stat.value }}</div>
-            <div class="stat-label">{{ stat.label }}</div>
+    <!-- Quick Quest Panel -->
+    <div class="quick-quests">
+      <div class="quest-card" @click="$router.push('/tasks')">
+        <div class="quest-icon">
+          <svg viewBox="0 0 48 48" fill="none">
+            <rect x="8" y="6" width="32" height="36" rx="4" stroke="#667eea" stroke-width="2.5" fill="none"/>
+            <path d="M16 18H32M16 26H28M16 34H24" stroke="#667eea" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="36" cy="36" r="10" fill="#667eea"/>
+            <path d="M32 36L35 39L40 33" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="quest-info">
+          <div class="quest-title">每日任务</div>
+          <div class="quest-desc">{{ myPendingTasks.length }} 个待办任务</div>
+        </div>
+        <div class="quest-arrow">→</div>
+      </div>
+      <div class="quest-card" @click="$router.push('/bugs')">
+        <div class="quest-icon">
+          <svg viewBox="0 0 48 48" fill="none">
+            <path d="M24 8L12 16V32L24 40L36 32V16L24 8Z" stroke="#f5576c" stroke-width="2.5" fill="none"/>
+            <path d="M20 24L23 27L28 21" stroke="#f5576c" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="quest-info">
+          <div class="quest-title">缺陷追踪</div>
+          <div class="quest-desc">{{ bugsToVerify.length }} 个待验证</div>
+        </div>
+        <div class="quest-arrow">→</div>
+      </div>
+      <div class="quest-card" @click="$router.push('/projects')">
+        <div class="quest-icon">
+          <svg viewBox="0 0 48 48" fill="none">
+            <path d="M8 14L24 6L40 14V34L24 42L8 34V14Z" stroke="#43e97b" stroke-width="2.5" fill="none"/>
+            <path d="M24 6V42M8 14L40 34M40 14L8 34" stroke="#43e97b" stroke-width="1.5" opacity="0.5"/>
+          </svg>
+        </div>
+        <div class="quest-info">
+          <div class="quest-title">项目总览</div>
+          <div class="quest-desc">{{ recentProjects.length }} 个活跃项目</div>
+        </div>
+        <div class="quest-arrow">→</div>
+      </div>
+    </div>
+
+    <!-- Admin View -->
+    <template v-if="userStore.user?.role === 'admin'">
+      <div class="section">
+        <div class="section-title">
+          <svg class="section-icon" viewBox="0 0 24 24" fill="none">
+            <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" fill="#f59e0b"/>
+          </svg>
+          全局统计
+        </div>
+        <div class="stats-grid">
+          <div v-for="stat in adminStats" :key="stat.key" class="stat-card" :class="stat.color" @click="stat.click">
+            <div class="stat-accent"></div>
+            <div class="stat-inner">
+              <div class="stat-icon-box">
+                <el-icon :size="22"><component :is="stat.icon" /></el-icon>
+              </div>
+              <div class="stat-content">
+                <div class="stat-value">{{ stat.value }}</div>
+                <div class="stat-label">{{ stat.label }}</div>
+              </div>
+            </div>
           </div>
         </div>
-      </el-col>
-    </el-row>
+      </div>
 
-    <el-row :gutter="16" class="content-row">
-      <el-col :xs="24" :lg="12">
-        <div class="content-card">
-          <div class="card-header">
-            <div class="card-title">
+      <div class="row">
+        <div class="col main">
+          <div class="card">
+            <div class="card-header">
+              <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none">
+                <path d="M3 7V17C3 18.1 3.9 19 5 19H19C20.1 19 21 18.1 21 17V9C21 7.9 20.1 7 19 7H13L11 5H5C3.9 5 3 5.9 3 7Z" fill="#667eea" opacity="0.15"/>
+                <path d="M3 7V17C3 18.1 3.9 19 5 19H19C20.1 19 21 18.1 21 17V9C21 7.9 20.1 7 19 7H13L11 5H5C3.9 5 3 5.9 3 7Z" stroke="#667eea" stroke-width="1.5" fill="none"/>
+              </svg>
+              <span>项目进度</span>
+              <el-button class="btn-link" @click="$router.push('/projects')">查看全部 →</el-button>
+            </div>
+            <div class="list">
+              <div v-for="project in recentProjects" :key="project.id" class="list-item" @click="$router.push(`/projects/${project.id}`)">
+                <div class="item-icon">📁</div>
+                <div class="item-content">
+                  <div class="item-title">{{ project.name }}</div>
+                  <div class="item-meta">
+                    <span class="tag" :class="project.status === 'active' ? 'tag-success' : 'tag-default'">
+                      {{ project.status === 'active' ? '进行中' : '已完成' }}
+                    </span>
+                    <span>👤 {{ project.manager?.realName || '-' }}</span>
+                  </div>
+                  <div class="progress">
+                    <div class="progress-bar">
+                      <div class="progress-fill" :style="{ width: getProjectProgress(project) + '%' }"></div>
+                    </div>
+                    <span class="progress-text">{{ getProjectProgress(project) }}%</span>
+                  </div>
+                </div>
+              </div>
+              <div v-if="recentProjects.length === 0" class="empty">
+                <svg class="empty-icon" viewBox="0 0 80 80" fill="none">
+                  <rect x="16" y="12" width="48" height="56" rx="6" stroke="#d1d5db" stroke-width="2" stroke-dasharray="4 4"/>
+                  <path d="M32 36H48M32 44H44M32 52H40" stroke="#d1d5db" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+                <div>暂无项目</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col side">
+          <div class="card">
+            <div class="card-header">
+              <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="7" r="4" stroke="#667eea" stroke-width="1.5" fill="none"/>
+                <path d="M5 21C5 17.13 8.13 14 12 14C15.87 14 19 17.13 19 21" stroke="#667eea" stroke-width="1.5" fill="none"/>
+              </svg>
+              <span>团队成员</span>
+            </div>
+            <div class="team-list">
+              <div v-for="user in teamMembers" :key="user.id" class="team-member">
+                <div class="member-avatar">{{ user.realName?.charAt(0) }}</div>
+                <div class="member-info">
+                  <div class="member-name">{{ user.realName }}</div>
+                  <div class="member-role">{{ getRoleText(user.role) }}</div>
+                </div>
+                <div class="member-badge">
+                  <span class="badge-num">{{ getUserTaskCount(user.id) }}</span>
+                  <span class="badge-label">待办</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col half">
+          <div class="card card-danger">
+            <div class="card-header">
+              <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none">
+                <path d="M12 4L4 20H20L12 4Z" stroke="#e74c3c" stroke-width="1.5" fill="none"/>
+                <path d="M12 10V14M12 16V16.5" stroke="#e74c3c" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+              <span>待处理缺陷 TOP5</span>
+              <el-button class="btn-link" @click="$router.push('/bugs')">查看全部 →</el-button>
+            </div>
+            <div class="list">
+              <div v-for="bug in urgentBugs" :key="bug.id" class="list-item" @click="$router.push(`/bugs/${bug.id}`)">
+                <div class="item-rank" :class="getSeverityClass(bug.severity)">{{ getSeverityShort(bug.severity) }}</div>
+                <div class="item-content">
+                  <div class="item-title">{{ bug.title }}</div>
+                  <div class="item-meta">
+                    <span>📁 {{ bug.project?.name }}</span>
+                    <span>👤 {{ bug.assignee?.realName || '未分配' }}</span>
+                  </div>
+                </div>
+                <span class="tag" :class="getStatusTagClass(bug.status)">{{ getBugStatusText(bug.status) }}</span>
+              </div>
+              <div v-if="urgentBugs.length === 0" class="empty">暂无待处理缺陷</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col half">
+          <div class="card card-warning">
+            <div class="card-header">
+              <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="9" stroke="#f39c12" stroke-width="1.5" fill="none"/>
+                <path d="M12 7V12L15 15" stroke="#f39c12" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+              <span>即将到期 TOP5</span>
+              <el-button class="btn-link" @click="$router.push('/tasks')">查看全部 →</el-button>
+            </div>
+            <div class="list">
+              <div v-for="task in dueSoonTasks" :key="task.id" class="list-item" @click="$router.push(`/tasks/${task.id}`)">
+                <div class="item-rank" :class="getDueClass(task.dueDate)">{{ getDueDays(task.dueDate) }}</div>
+                <div class="item-content">
+                  <div class="item-title">{{ task.title }}</div>
+                  <div class="item-meta">
+                    <span>📁 {{ task.project?.name }}</span>
+                    <span>👤 {{ task.assignee?.realName || '未分配' }}</span>
+                  </div>
+                </div>
+                <span class="tag" :class="getPriorityTagClass(task.priority)">{{ getPriorityText(task.priority) }}</span>
+              </div>
+              <div v-if="dueSoonTasks.length === 0" class="empty">暂无即将到期任务</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <!-- Project Manager View -->
+    <template v-else-if="userStore.user?.role === 'project_manager'">
+      <div class="section">
+        <div class="section-title">
+          <svg class="section-icon" viewBox="0 0 24 24" fill="none">
+            <path d="M3 7V17C3 18.1 3.9 19 5 19H19C20.1 19 21 18.1 21 17V9C21 7.9 20.1 7 19 7H13L11 5H5C3.9 5 3 5.9 3 7Z" fill="#f59e0b"/>
+          </svg>
+          项目管理面板
+        </div>
+        <div class="stats-grid">
+          <div v-for="stat in pmStats" :key="stat.key" class="stat-card" :class="stat.color" @click="stat.click">
+            <div class="stat-accent"></div>
+            <div class="stat-inner">
+              <div class="stat-icon-box">
+                <el-icon :size="22"><component :is="stat.icon" /></el-icon>
+              </div>
+              <div class="stat-content">
+                <div class="stat-value">{{ stat.value }}</div>
+                <div class="stat-label">{{ stat.label }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col main">
+          <div class="card">
+            <div class="card-header">
+              <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none">
+                <path d="M3 7V17C3 18.1 3.9 19 5 19H19C20.1 19 21 18.1 21 17V9C21 7.9 20.1 7 19 7H13L11 5H5C3.9 5 3 5.9 3 7Z" stroke="#667eea" stroke-width="1.5" fill="none"/>
+              </svg>
+              <span>我管理的项目</span>
+            </div>
+            <div class="list">
+              <div v-for="project in myProjects" :key="project.id" class="list-item project-item" @click="$router.push(`/projects/${project.id}`)">
+                <div class="item-icon">📁</div>
+                <div class="item-content">
+                  <div class="item-title">{{ project.name }}</div>
+                  <div class="item-meta">
+                    <span class="tag" :class="project.status === 'active' ? 'tag-success' : 'tag-default'">
+                      {{ project.status === 'active' ? '进行中' : '已完成' }}
+                    </span>
+                  </div>
+                  <div class="project-stats-row">
+                    <div class="mini-stat">
+                      <span class="mini-num">{{ getProjectTaskCount(project.id) }}</span>
+                      <span>任务</span>
+                    </div>
+                    <div class="mini-stat">
+                      <span class="mini-num">{{ getProjectBugCount(project.id) }}</span>
+                      <span>缺陷</span>
+                    </div>
+                    <div class="mini-stat">
+                      <span class="mini-num">{{ getProjectProgress(project) }}%</span>
+                      <span>进度</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div v-if="myProjects.length === 0" class="empty">暂无管理的项目</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col side">
+          <div class="card">
+            <div class="card-header">
+              <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none">
+                <path d="M12 20V4M12 4L8 8M12 4L16 8" stroke="#667eea" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span>成员负载</span>
+            </div>
+            <div class="team-list">
+              <div v-for="member in teamWorkload" :key="member.id" class="team-member">
+                <div class="member-avatar">{{ member.name.charAt(0) }}</div>
+                <div class="member-info">
+                  <div class="member-name">{{ member.name }}</div>
+                  <div class="progress">
+                    <div class="progress-bar">
+                      <div class="progress-fill" :class="member.load > 80 ? 'fill-danger' : member.load > 50 ? 'fill-warning' : 'fill-success'" :style="{ width: member.load + '%' }"></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="member-badge">
+                  <span class="badge-num">{{ member.taskCount }}</span>
+                  <span class="badge-label">项</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <!-- Developer View -->
+    <template v-else-if="userStore.user?.role === 'developer'">
+      <div class="section">
+        <div class="section-title">
+          <svg class="section-icon" viewBox="0 0 24 24" fill="none">
+            <path d="M8 6L2 12L8 18M16 6L22 12L16 18" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          任务面板
+        </div>
+        <div class="stats-grid">
+          <div v-for="stat in devStats" :key="stat.key" class="stat-card" :class="stat.color" @click="stat.click">
+            <div class="stat-accent"></div>
+            <div class="stat-inner">
+              <div class="stat-icon-box">
+                <el-icon :size="22"><component :is="stat.icon" /></el-icon>
+              </div>
+              <div class="stat-content">
+                <div class="stat-value">{{ stat.value }}</div>
+                <div class="stat-label">{{ stat.label }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col half">
+          <div class="card">
+            <div class="card-header">
+              <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none">
+                <rect x="4" y="4" width="16" height="16" rx="2" stroke="#667eea" stroke-width="1.5" fill="none"/>
+                <path d="M8 10H16M8 14H12" stroke="#667eea" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+              <span>待办任务</span>
+              <el-button class="btn-link" @click="$router.push('/tasks')">查看全部 →</el-button>
+            </div>
+            <div class="list">
+              <div v-for="task in myPendingTasks" :key="task.id" class="list-item" @click="$router.push(`/tasks/${task.id}`)">
+                <div class="item-priority" :class="getPriorityClass(task.priority)"></div>
+                <div class="item-content">
+                  <div class="item-title">{{ task.title }}</div>
+                  <div class="item-meta">
+                    <span>📁 {{ task.project?.name }}</span>
+                    <span v-if="task.dueDate" :class="{ 'text-danger': isOverdue(task.dueDate) }">
+                      {{ getRemainingTime(task.dueDate) }}
+                    </span>
+                  </div>
+                </div>
+                <span class="tag" :class="getPriorityTagClass(task.priority)">{{ getPriorityText(task.priority) }}</span>
+              </div>
+              <div v-if="myPendingTasks.length === 0" class="empty">暂无待办任务</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col half">
+          <div class="card">
+            <div class="card-header">
+              <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none">
+                <path d="M12 4L6 10V20H18V10L12 4Z" stroke="#e74c3c" stroke-width="1.5" fill="none"/>
+                <path d="M10 14L11 15L14 12" stroke="#e74c3c" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span>待修复缺陷</span>
+              <el-button class="btn-link" @click="$router.push('/bugs')">查看全部 →</el-button>
+            </div>
+            <div class="list">
+              <div v-for="bug in myPendingBugs" :key="bug.id" class="list-item" @click="$router.push(`/bugs/${bug.id}`)">
+                <div class="item-priority" :class="getSeverityClass(bug.severity)"></div>
+                <div class="item-content">
+                  <div class="item-title">{{ bug.title }}</div>
+                  <div class="item-meta">
+                    <span>📁 {{ bug.project?.name }}</span>
+                    <span v-if="bug.dueDate" :class="{ 'text-danger': isOverdue(bug.dueDate) }">
+                      {{ getRemainingTime(bug.dueDate) }}
+                    </span>
+                  </div>
+                </div>
+                <span class="tag" :class="getSeverityTagClass(bug.severity)">{{ getSeverityText(bug.severity) }}</span>
+              </div>
+              <div v-if="myPendingBugs.length === 0" class="empty">暂无待修复缺陷</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col half">
+          <div class="card">
+            <div class="card-header">
+              <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="9" stroke="#667eea" stroke-width="1.5" fill="none"/>
+                <path d="M12 8V12L15 15" stroke="#667eea" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+              <span>本周进度</span>
+            </div>
+            <div class="donut-card">
+              <div class="donut-container">
+                <svg class="donut-svg" viewBox="0 0 36 36">
+                  <circle class="donut-bg" cx="18" cy="18" r="15.5" fill="none" stroke="#f0f0f0" stroke-width="3" />
+                  <circle class="donut-ring" cx="18" cy="18" r="15.5" fill="none" stroke="#67c23a" stroke-width="3" stroke-dasharray="97.4" :stroke-dashoffset="97.4 - (97.4 * taskCompletionRate / 100)" stroke-linecap="round" />
+                </svg>
+                <div class="donut-center">
+                  <span class="donut-value">{{ completedTasksThisWeek }}</span>
+                  <span class="donut-label">完成</span>
+                </div>
+              </div>
+              <div class="donut-stats">
+                <div class="mini-stat">
+                  <span class="mini-num">{{ totalTasksThisWeek }}</span>
+                  <span>总任务</span>
+                </div>
+                <div class="mini-stat">
+                  <span class="mini-num">{{ taskCompletionRate }}%</span>
+                  <span>完成率</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col half">
+          <div class="card card-warning">
+            <div class="card-header">
+              <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="9" stroke="#f39c12" stroke-width="1.5" fill="none"/>
+                <path d="M12 7V12L15 15" stroke="#f39c12" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+              <span>即将到期</span>
+            </div>
+            <div class="list">
+              <div v-for="item in dueSoonItems" :key="item.id" class="list-item" @click="$router.push(`/${item.type}s/${item.id}`)">
+                <div class="item-rank" :class="getDueClass(item.dueDate)">{{ getDueDays(item.dueDate) }}</div>
+                <div class="item-content">
+                  <div class="item-title">{{ item.title }}</div>
+                  <div class="item-meta">
+                    <span class="tag" :class="item.type === 'task' ? 'tag-primary' : 'tag-danger'">{{ item.type === 'task' ? '任务' : '缺陷' }}</span>
+                    <span>📁 {{ item.project?.name }}</span>
+                  </div>
+                </div>
+              </div>
+              <div v-if="dueSoonItems.length === 0" class="empty">暂无即将到期项</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <!-- Artist View -->
+    <template v-else-if="userStore.user?.role === 'artist'">
+      <div class="section">
+        <div class="section-title">
+          <svg class="section-icon" viewBox="0 0 24 24" fill="none">
+            <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12" stroke="#f59e0b" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="12" cy="12" r="3" fill="#f59e0b"/>
+          </svg>
+          美术工作台
+        </div>
+        <div class="stats-grid">
+          <div v-for="stat in artistStats" :key="stat.key" class="stat-card" :class="stat.color" @click="stat.click">
+            <div class="stat-accent"></div>
+            <div class="stat-inner">
+              <div class="stat-icon-box">
+                <el-icon :size="22"><component :is="stat.icon" /></el-icon>
+              </div>
+              <div class="stat-content">
+                <div class="stat-value">{{ stat.value }}</div>
+                <div class="stat-label">{{ stat.label }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col main">
+          <div class="card">
+            <div class="card-header">
+              <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none">
+                <path d="M12 4L8 8H4V16H8L12 20L16 16H20V8H16L12 4Z" stroke="#667eea" stroke-width="1.5" fill="none"/>
+              </svg>
+              <span>我的美术任务</span>
+              <el-button class="btn-link" @click="$router.push('/tasks')">查看全部 →</el-button>
+            </div>
+            <div class="list">
+              <div v-for="task in myPendingTasks" :key="task.id" class="list-item" @click="$router.push(`/tasks/${task.id}`)">
+                <div class="item-priority" :class="getPriorityClass(task.priority)"></div>
+                <div class="item-content">
+                  <div class="item-title">{{ task.title }}</div>
+                  <div class="item-meta">
+                    <span>📁 {{ task.project?.name }}</span>
+                    <span v-if="task.dueDate" :class="{ 'text-danger': isOverdue(task.dueDate) }">
+                      {{ getRemainingTime(task.dueDate) }}
+                    </span>
+                  </div>
+                </div>
+                <span class="tag" :class="getPriorityTagClass(task.priority)">{{ getPriorityText(task.priority) }}</span>
+              </div>
+              <div v-if="myPendingTasks.length === 0" class="empty">暂无任务</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col side">
+          <div class="card">
+            <div class="card-header">
+              <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="9" stroke="#667eea" stroke-width="1.5" fill="none"/>
+                <path d="M8 12L11 15L16 9" stroke="#667eea" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span>完成统计</span>
+            </div>
+            <div class="donut-card">
+              <div class="donut-container">
+                <svg class="donut-svg" viewBox="0 0 36 36">
+                  <circle class="donut-bg" cx="18" cy="18" r="15.5" fill="none" stroke="#f0f0f0" stroke-width="3" />
+                  <circle class="donut-ring" cx="18" cy="18" r="15.5" fill="none" stroke="#ee0979" stroke-width="3" stroke-dasharray="97.4" :stroke-dashoffset="97.4 - (97.4 * artistCompletionRate / 100)" stroke-linecap="round" />
+                </svg>
+                <div class="donut-center">
+                  <span class="donut-value">{{ myCompletedTasks }}</span>
+                  <span class="donut-label">已完成</span>
+                </div>
+              </div>
+              <div class="donut-stats">
+                <div class="mini-stat">
+                  <span class="mini-num">{{ myTotalTasks }}</span>
+                  <span>总任务</span>
+                </div>
+                <div class="mini-stat">
+                  <span class="mini-num">{{ artistCompletionRate }}%</span>
+                  <span>完成率</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <!-- Designer View -->
+    <template v-else-if="userStore.user?.role === 'designer'">
+      <div class="section">
+        <div class="section-title">
+          <svg class="section-icon" viewBox="0 0 24 24" fill="none">
+            <path d="M4 4H20V8H4V4ZM4 10H20V14H4V10ZM4 16H14V20H4V16Z" stroke="#f59e0b" stroke-width="1.5" fill="none"/>
+          </svg>
+          策划工作台
+        </div>
+        <div class="stats-grid">
+          <div v-for="stat in designerStats" :key="stat.key" class="stat-card" :class="stat.color" @click="stat.click">
+            <div class="stat-accent"></div>
+            <div class="stat-inner">
+              <div class="stat-icon-box">
+                <el-icon :size="22"><component :is="stat.icon" /></el-icon>
+              </div>
+              <div class="stat-content">
+                <div class="stat-value">{{ stat.value }}</div>
+                <div class="stat-label">{{ stat.label }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col half">
+          <div class="card">
+            <div class="card-header">
+              <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none">
+                <path d="M8 4H16L20 8V20H4V4H8Z" stroke="#667eea" stroke-width="1.5" fill="none"/>
+                <path d="M8 4V8H12" stroke="#667eea" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+              <span>我创建的策划任务</span>
+              <el-button class="btn-link" @click="$router.push('/tasks')">查看全部 →</el-button>
+            </div>
+            <div class="list">
+              <div v-for="task in myCreatedTasks" :key="task.id" class="list-item" @click="$router.push(`/tasks/${task.id}`)">
+                <div class="item-priority" :class="getPriorityClass(task.priority)"></div>
+                <div class="item-content">
+                  <div class="item-title">{{ task.title }}</div>
+                  <div class="item-meta">
+                    <span>📁 {{ task.project?.name }}</span>
+                    <span>👤 {{ task.assignee?.realName || '未分配' }}</span>
+                  </div>
+                </div>
+                <span class="tag" :class="getStatusTagClass(task.status)">{{ getStatusText(task.status) }}</span>
+              </div>
+              <div v-if="myCreatedTasks.length === 0" class="empty">暂无任务</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col half">
+          <div class="card">
+            <div class="card-header">
+              <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none">
+                <path d="M12 4L6 10V20H18V10L12 4Z" stroke="#e74c3c" stroke-width="1.5" fill="none"/>
+                <path d="M10 14L11 15L14 12" stroke="#e74c3c" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span>我报告的缺陷</span>
+              <el-button class="btn-link" @click="$router.push('/bugs')">查看全部 →</el-button>
+            </div>
+            <div class="list">
+              <div v-for="bug in myReportedBugs" :key="bug.id" class="list-item" @click="$router.push(`/bugs/${bug.id}`)">
+                <div class="item-priority" :class="getSeverityClass(bug.severity)"></div>
+                <div class="item-content">
+                  <div class="item-title">{{ bug.title }}</div>
+                  <div class="item-meta">
+                    <span>📁 {{ bug.project?.name }}</span>
+                    <span>👤 {{ bug.assignee?.realName || '未分配' }}</span>
+                  </div>
+                </div>
+                <span class="tag" :class="getBugStatusTagClass(bug.status)">{{ getBugStatusText(bug.status) }}</span>
+              </div>
+              <div v-if="myReportedBugs.length === 0" class="empty">暂无缺陷</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <!-- Tester View -->
+    <template v-else-if="userStore.user?.role === 'tester'">
+      <div class="section">
+        <div class="section-title">
+          <svg class="section-icon" viewBox="0 0 24 24" fill="none">
+            <circle cx="11" cy="11" r="7" stroke="#f59e0b" stroke-width="1.5" fill="none"/>
+            <path d="M16 16L21 21" stroke="#f59e0b" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          测试工作台
+        </div>
+        <div class="stats-grid">
+          <div v-for="stat in testerStats" :key="stat.key" class="stat-card" :class="stat.color" @click="stat.click">
+            <div class="stat-accent"></div>
+            <div class="stat-inner">
+              <div class="stat-icon-box">
+                <el-icon :size="22"><component :is="stat.icon" /></el-icon>
+              </div>
+              <div class="stat-content">
+                <div class="stat-value">{{ stat.value }}</div>
+                <div class="stat-label">{{ stat.label }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col half">
+          <div class="card">
+            <div class="card-header">
+              <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none">
+                <path d="M12 4L6 10V20H18V10L12 4Z" stroke="#e74c3c" stroke-width="1.5" fill="none"/>
+                <path d="M10 14L11 15L14 12" stroke="#e74c3c" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span>我报告的缺陷</span>
+              <el-button class="btn-link" @click="$router.push('/bugs')">查看全部 →</el-button>
+            </div>
+            <div class="list">
+              <div v-for="bug in myReportedBugs" :key="bug.id" class="list-item" @click="$router.push(`/bugs/${bug.id}`)">
+                <div class="item-priority" :class="getSeverityClass(bug.severity)"></div>
+                <div class="item-content">
+                  <div class="item-title">{{ bug.title }}</div>
+                  <div class="item-meta">
+                    <span>📁 {{ bug.project?.name }}</span>
+                    <span>👤 {{ bug.assignee?.realName || '未分配' }}</span>
+                  </div>
+                </div>
+                <span class="tag" :class="getBugStatusTagClass(bug.status)">{{ getBugStatusText(bug.status) }}</span>
+              </div>
+              <div v-if="myReportedBugs.length === 0" class="empty">暂无缺陷</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col half">
+          <div class="card card-success">
+            <div class="card-header">
+              <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="9" stroke="#27ae60" stroke-width="1.5" fill="none"/>
+                <path d="M8 12L11 15L16 9" stroke="#27ae60" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span>待验证缺陷</span>
+            </div>
+            <div class="list">
+              <div v-for="bug in bugsToVerify" :key="bug.id" class="list-item" @click="$router.push(`/bugs/${bug.id}`)">
+                <div class="item-priority" :class="getSeverityClass(bug.severity)"></div>
+                <div class="item-content">
+                  <div class="item-title">{{ bug.title }}</div>
+                  <div class="item-meta">
+                    <span>📁 {{ bug.project?.name }}</span>
+                    <span>已修复</span>
+                  </div>
+                </div>
+                <span class="tag tag-success">待验证</span>
+              </div>
+              <div v-if="bugsToVerify.length === 0" class="empty">暂无待验证缺陷</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <!-- Default View -->
+    <template v-else>
+      <div class="section">
+        <div class="section-title">
+          <svg class="section-icon" viewBox="0 0 24 24" fill="none">
+            <path d="M3 12L12 3L21 12M5 10V20H19V10" stroke="#f59e0b" stroke-width="1.5" fill="none" stroke-linejoin="round"/>
+          </svg>
+          我的工作台
+        </div>
+        <div class="stats-grid">
+          <div v-for="stat in defaultStats" :key="stat.key" class="stat-card" :class="stat.color" @click="stat.click">
+            <div class="stat-accent"></div>
+            <div class="stat-inner">
+              <div class="stat-icon-box">
+                <el-icon :size="22"><component :is="stat.icon" /></el-icon>
+              </div>
+              <div class="stat-content">
+                <div class="stat-value">{{ stat.value }}</div>
+                <div class="stat-label">{{ stat.label }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col half">
+          <div class="card">
+            <div class="card-header">
+              <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none">
+                <rect x="4" y="4" width="16" height="16" rx="2" stroke="#667eea" stroke-width="1.5" fill="none"/>
+                <path d="M8 10H16M8 14H12" stroke="#667eea" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
               <span>我的任务</span>
-              <el-badge :value="myTasks.length" :max="99" class="title-badge" />
+              <el-button class="btn-link" @click="$router.push('/tasks')">查看全部 →</el-button>
             </div>
-            <el-button text type="primary" @click="$router.push('/tasks')">查看全部</el-button>
-          </div>
-          <div class="task-list">
-            <div
-              v-for="task in myTasks"
-              :key="task.id"
-              class="list-item"
-              @click="$router.push(`/tasks/${task.id}`)"
-            >
-              <div class="item-rank" :class="getPriorityRank(task.priority)">
-                {{ getPriorityRankNum(task.priority) }}
-              </div>
-              <div class="item-main">
-                <div class="item-title">{{ task.title }}</div>
-                <div class="item-tags">
-                  <el-tag :type="getPriorityType(task.priority)" size="small" effect="dark">
-                    {{ getPriorityText(task.priority) }}
-                  </el-tag>
-                  <el-tag :type="getStatusType(task.status)" size="small" effect="plain">
-                    {{ getStatusText(task.status) }}
-                  </el-tag>
-                  <span v-if="task.project" class="item-project">{{ task.project.name }}</span>
+            <div class="list">
+              <div v-for="task in myPendingTasks" :key="task.id" class="list-item" @click="$router.push(`/tasks/${task.id}`)">
+                <div class="item-priority" :class="getPriorityClass(task.priority)"></div>
+                <div class="item-content">
+                  <div class="item-title">{{ task.title }}</div>
+                  <div class="item-meta">
+                    <span>📁 {{ task.project?.name }}</span>
+                    <span v-if="task.dueDate" :class="{ 'text-danger': isOverdue(task.dueDate) }">
+                      {{ getRemainingTime(task.dueDate) }}
+                    </span>
+                  </div>
                 </div>
+                <span class="tag" :class="getPriorityTagClass(task.priority)">{{ getPriorityText(task.priority) }}</span>
               </div>
-              <div class="item-arrow"><el-icon><ArrowRight /></el-icon></div>
+              <div v-if="myPendingTasks.length === 0" class="empty">暂无任务</div>
             </div>
-            <el-empty v-if="myTasks.length === 0" description="暂无任务" :image-size="80" />
           </div>
         </div>
-      </el-col>
 
-      <el-col :xs="24" :lg="12">
-        <div class="content-card">
-          <div class="card-header">
-            <div class="card-title">
+        <div class="col half">
+          <div class="card">
+            <div class="card-header">
+              <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none">
+                <path d="M12 4L6 10V20H18V10L12 4Z" stroke="#e74c3c" stroke-width="1.5" fill="none"/>
+                <path d="M10 14L11 15L14 12" stroke="#e74c3c" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
               <span>我的缺陷</span>
-              <el-badge :value="myBugs.length" :max="99" class="title-badge" />
+              <el-button class="btn-link" @click="$router.push('/bugs')">查看全部 →</el-button>
             </div>
-            <el-button text type="primary" @click="$router.push('/bugs')">查看全部</el-button>
-          </div>
-          <div class="bug-list">
-            <div
-              v-for="bug in myBugs"
-              :key="bug.id"
-              class="list-item"
-              @click="$router.push(`/bugs/${bug.id}`)"
-            >
-              <div class="item-rank" :class="getSeverityRank(bug.severity)">
-                {{ getSeverityRankNum(bug.severity) }}
-              </div>
-              <div class="item-main">
-                <div class="item-title">{{ bug.title }}</div>
-                <div class="item-tags">
-                  <el-tag :type="getSeverityType(bug.severity)" size="small" effect="dark">
-                    {{ getSeverityText(bug.severity) }}
-                  </el-tag>
-                  <el-tag :type="getBugStatusType(bug.status)" size="small" effect="plain">
-                    {{ getBugStatusText(bug.status) }}
-                  </el-tag>
-                  <span v-if="bug.project" class="item-project">{{ bug.project.name }}</span>
-                </div>
-              </div>
-              <div class="item-arrow"><el-icon><ArrowRight /></el-icon></div>
-            </div>
-            <el-empty v-if="myBugs.length === 0" description="暂无缺陷" :image-size="80" />
-          </div>
-        </div>
-      </el-col>
-    </el-row>
-
-    <el-row :gutter="16" class="content-row" v-if="userStore.isAdmin || userStore.user?.role === 'project_manager'">
-      <el-col :span="24">
-        <div class="content-card">
-          <div class="card-header">
-            <div class="card-title">
-              <span>项目概览</span>
-            </div>
-          </div>
-          <el-row :gutter="12">
-            <el-col :xs="12" :sm="8" :md="6" :lg="4" v-for="project in recentProjects" :key="project.id">
-              <div class="project-card" @click="$router.push(`/projects/${project.id}`)">
-                <div class="project-icon">📁</div>
-                <div class="project-name">{{ project.name }}</div>
-                <el-tag :type="project.status === 'active' ? 'success' : 'info'" size="small" effect="plain">
-                  {{ project.status === 'active' ? '进行中' : '已完成' }}
-                </el-tag>
-              </div>
-            </el-col>
-          </el-row>
-          <el-empty v-if="recentProjects.length === 0" description="暂无项目" :image-size="80" />
-        </div>
-      </el-col>
-    </el-row>
-
-    <el-row :gutter="16" class="content-row">
-      <el-col :xs="24" :lg="12">
-        <div class="content-card">
-          <div class="card-header">
-            <div class="card-title">
-              <span>任务统计</span>
-            </div>
-          </div>
-          <div class="chart-container">
-            <div class="bar-chart">
-              <div class="bar-group" v-for="bar in taskBars" :key="bar.label">
-                <div class="bar-wrapper">
-                  <div class="bar" :class="bar.color" :style="{ height: bar.height + '%' }">
-                    <span class="bar-value">{{ bar.value }}</span>
+            <div class="list">
+              <div v-for="bug in myPendingBugs" :key="bug.id" class="list-item" @click="$router.push(`/bugs/${bug.id}`)">
+                <div class="item-priority" :class="getSeverityClass(bug.severity)"></div>
+                <div class="item-content">
+                  <div class="item-title">{{ bug.title }}</div>
+                  <div class="item-meta">
+                    <span>📁 {{ bug.project?.name }}</span>
+                    <span v-if="bug.dueDate" :class="{ 'text-danger': isOverdue(bug.dueDate) }">
+                      {{ getRemainingTime(bug.dueDate) }}
+                    </span>
                   </div>
                 </div>
-                <div class="bar-label">{{ bar.label }}</div>
+                <span class="tag" :class="getSeverityTagClass(bug.severity)">{{ getSeverityText(bug.severity) }}</span>
               </div>
+              <div v-if="myPendingBugs.length === 0" class="empty">暂无缺陷</div>
             </div>
           </div>
         </div>
-      </el-col>
-
-      <el-col :xs="24" :lg="12">
-        <div class="content-card">
-          <div class="card-header">
-            <div class="card-title">
-              <span>缺陷统计</span>
-            </div>
-          </div>
-          <div class="chart-container">
-            <div class="bar-chart">
-              <div class="bar-group" v-for="bar in bugBars" :key="bar.label">
-                <div class="bar-wrapper">
-                  <div class="bar" :class="bar.color" :style="{ height: bar.height + '%' }">
-                    <span class="bar-value">{{ bar.value }}</span>
-                  </div>
-                </div>
-                <div class="bar-label">{{ bar.label }}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </el-col>
-    </el-row>
+      </div>
+    </template>
   </div>
 </template>
 
@@ -196,71 +834,169 @@ import { useRouter } from 'vue-router'
 const userStore = useUserStore()
 const router = useRouter()
 
-const stats = ref({
-  projects: 0, myTasks: 0, myBugs: 0, users: 0,
-  pendingTasks: 0, pendingBugs: 0, completedTasks: 0, fixedBugs: 0
-})
-
-const myTasks = ref<any[]>([])
-const myBugs = ref<any[]>([])
-const recentProjects = ref<any[]>([])
-const taskStats = ref({ pending: 0, inProgress: 0, completed: 0, closed: 0 })
-const bugStats = ref({ pending: 0, fixing: 0, fixed: 0, closed: 0 })
+const allTasks = ref<any[]>([])
+const allBugs = ref<any[]>([])
+const allProjects = ref<any[]>([])
+const allUsers = ref<any[]>([])
 
 const today = computed(() => {
   const date = new Date()
   return date.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })
 })
 
-const visibleStats = computed(() => {
-  const role = userStore.user?.role
-  const all = [
-    { key: 'projects', label: '进行中项目', value: stats.value.projects, icon: 'Folder', color: 'stat-blue', click: () => router.push('/projects') },
-    { key: 'myTasks', label: '我的任务', value: stats.value.myTasks, icon: 'List', color: 'stat-green', click: () => router.push('/tasks') },
-    { key: 'myBugs', label: '我的缺陷', value: stats.value.myBugs, icon: 'Warning', color: 'stat-orange', click: () => router.push('/bugs') },
-    { key: 'pendingTasks', label: '待处理任务', value: stats.value.pendingTasks, icon: 'Clock', color: 'stat-cyan', click: () => router.push('/tasks') },
-    { key: 'pendingBugs', label: '待处理缺陷', value: stats.value.pendingBugs, icon: 'Bell', color: 'stat-red', click: () => router.push('/bugs') },
-    { key: 'completedTasks', label: '已完成任务', value: stats.value.completedTasks, icon: 'CircleCheck', color: 'stat-purple', click: () => router.push('/tasks') },
-    { key: 'fixedBugs', label: '已修复缺陷', value: stats.value.fixedBugs, icon: 'Select', color: 'stat-pink', click: () => router.push('/bugs') },
-    { key: 'users', label: '团队成员', value: stats.value.users, icon: 'User', color: 'stat-gray', click: () => router.push('/users') },
-  ]
-  if (role === 'admin' || role === 'project_manager') return all
-  return all.filter(s => ['myTasks', 'myBugs', 'pendingTasks', 'pendingBugs', 'completedTasks', 'fixedBugs'].includes(s.key))
+const greeting = computed(() => {
+  const hour = new Date().getHours()
+  if (hour < 6) return '夜深了'
+  if (hour < 9) return '早上好'
+  if (hour < 12) return '上午好'
+  if (hour < 14) return '中午好'
+  if (hour < 18) return '下午好'
+  if (hour < 22) return '晚上好'
+  return '夜深了'
 })
 
-const taskBars = computed(() => {
-  const max = Math.max(taskStats.value.pending, taskStats.value.inProgress, taskStats.value.completed, taskStats.value.closed, 1)
-  return [
-    { label: '待处理', value: taskStats.value.pending, height: (taskStats.value.pending / max) * 100, color: 'bar-info' },
-    { label: '进行中', value: taskStats.value.inProgress, height: (taskStats.value.inProgress / max) * 100, color: 'bar-warning' },
-    { label: '已完成', value: taskStats.value.completed, height: (taskStats.value.completed / max) * 100, color: 'bar-success' },
-    { label: '已关闭', value: taskStats.value.closed, height: (taskStats.value.closed / max) * 100, color: 'bar-gray' },
-  ]
+const userId = computed(() => userStore.user?.id)
+
+const myTasks = computed(() => allTasks.value.filter((t: any) => t.assignee?.id === userId.value || t.creator?.id === userId.value))
+const myBugs = computed(() => allBugs.value.filter((b: any) => b.assignee?.id === userId.value || b.reporter?.id === userId.value))
+const myPendingTasks = computed(() => myTasks.value.filter((t: any) => t.status !== 'completed' && t.status !== 'closed').sort((a: any, b: any) => {
+  const order: Record<string, number> = { urgent: 0, high: 1, medium: 2, low: 3 }
+  return (order[a.priority] || 2) - (order[b.priority] || 2)
+}).slice(0, 8))
+const myPendingBugs = computed(() => myBugs.value.filter((b: any) => b.status !== 'closed' && b.status !== 'verified' && b.status !== 'fixed').sort((a: any, b: any) => {
+  const order: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 }
+  return (order[a.severity] || 2) - (order[b.severity] || 2)
+}).slice(0, 8))
+const myCreatedTasks = computed(() => allTasks.value.filter((t: any) => t.creator?.id === userId.value).slice(0, 8))
+const myReportedBugs = computed(() => allBugs.value.filter((b: any) => b.reporter?.id === userId.value).slice(0, 8))
+const bugsToVerify = computed(() => allBugs.value.filter((b: any) => b.status === 'fixed').slice(0, 8))
+
+const recentProjects = computed(() => allProjects.value.filter((p: any) => p.status === 'active').slice(0, 8))
+const myProjects = computed(() => allProjects.value.filter((p: any) => p.manager?.id === userId.value))
+
+const urgentBugs = computed(() => allBugs.value.filter((b: any) => b.status === 'pending' || b.status === 'assigned').sort((a: any, b: any) => {
+  const order: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 }
+  return (order[a.severity] || 2) - (order[b.severity] || 2)
+}).slice(0, 5))
+
+const dueSoonTasks = computed(() => {
+  const now = new Date()
+  const threeDays = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000)
+  return allTasks.value
+    .filter((t: any) => t.dueDate && new Date(t.dueDate) <= threeDays && t.status !== 'completed' && t.status !== 'closed')
+    .sort((a: any, b: any) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
+    .slice(0, 5)
 })
 
-const bugBars = computed(() => {
-  const max = Math.max(bugStats.value.pending, bugStats.value.fixing, bugStats.value.fixed, bugStats.value.closed, 1)
-  return [
-    { label: '待处理', value: bugStats.value.pending, height: (bugStats.value.pending / max) * 100, color: 'bar-info' },
-    { label: '修复中', value: bugStats.value.fixing, height: (bugStats.value.fixing / max) * 100, color: 'bar-warning' },
-    { label: '已修复', value: bugStats.value.fixed, height: (bugStats.value.fixed / max) * 100, color: 'bar-success' },
-    { label: '已关闭', value: bugStats.value.closed, height: (bugStats.value.closed / max) * 100, color: 'bar-gray' },
-  ]
+const dueSoonItems = computed(() => {
+  const now = new Date()
+  const threeDays = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000)
+  const items: any[] = []
+  allTasks.value.forEach((t: any) => {
+    if (t.dueDate && new Date(t.dueDate) <= threeDays && t.status !== 'completed' && t.status !== 'closed') {
+      items.push({ ...t, type: 'task' })
+    }
+  })
+  allBugs.value.forEach((b: any) => {
+    if (b.dueDate && new Date(b.dueDate) <= threeDays && b.status !== 'closed' && b.status !== 'verified') {
+      items.push({ ...b, type: 'bug' })
+    }
+  })
+  return items.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()).slice(0, 5)
 })
 
-const getRoleTagType = (role: string) => {
-  const map: Record<string, string> = { admin: 'danger', project_manager: 'warning', developer: 'primary', artist: '', designer: 'success', tester: 'info' }
-  return map[role] || 'info'
+const teamMembers = computed(() => allUsers.value.filter((u: any) => u.role !== 'admin'))
+
+const completedTasksThisWeek = computed(() => {
+  const now = new Date()
+  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+  return myTasks.value.filter((t: any) => t.status === 'completed' && new Date(t.updatedAt) >= weekAgo).length
+})
+
+const totalTasksThisWeek = computed(() => myTasks.value.length)
+
+const taskCompletionRate = computed(() => {
+  if (myTasks.value.length === 0) return 0
+  return Math.round((myTasks.value.filter((t: any) => t.status === 'completed' || t.status === 'closed').length / myTasks.value.length) * 100)
+})
+
+const myCompletedTasks = computed(() => myTasks.value.filter((t: any) => t.status === 'completed' || t.status === 'closed').length)
+const myTotalTasks = computed(() => myTasks.value.length)
+const artistCompletionRate = computed(() => {
+  if (myTotalTasks.value === 0) return 0
+  return Math.round((myCompletedTasks.value / myTotalTasks.value) * 100)
+})
+
+const teamWorkload = computed(() => {
+  const members = allUsers.value.filter((u: any) => u.role !== 'admin')
+  return members.map((m: any) => {
+    const taskCount = allTasks.value.filter((t: any) => t.assignee?.id === m.id && t.status !== 'completed' && t.status !== 'closed').length
+    const maxTasks = Math.max(...members.map((u: any) => allTasks.value.filter((t: any) => t.assignee?.id === u.id && t.status !== 'completed' && t.status !== 'closed').length), 1)
+    return { id: m.id, name: m.realName, taskCount, load: Math.round((taskCount / maxTasks) * 100) }
+  }).sort((a, b) => b.taskCount - a.taskCount).slice(0, 6)
+})
+
+const getProjectProgress = (project: any) => {
+  const projectTasks = allTasks.value.filter((t: any) => t.project?.id === project.id)
+  if (projectTasks.length === 0) return 0
+  const completed = projectTasks.filter((t: any) => t.status === 'completed' || t.status === 'closed').length
+  return Math.round((completed / projectTasks.length) * 100)
 }
+
+const getProjectTaskCount = (projectId: number) => allTasks.value.filter((t: any) => t.project?.id === projectId).length
+const getProjectBugCount = (projectId: number) => allBugs.value.filter((b: any) => b.project?.id === projectId).length
+const getUserTaskCount = (userId: number) => allTasks.value.filter((t: any) => t.assignee?.id === userId && t.status !== 'completed' && t.status !== 'closed').length
+
+const adminStats = computed(() => [
+  { key: 'projects', label: '活跃项目', value: allProjects.value.filter((p: any) => p.status === 'active').length, icon: 'Folder', color: 'stat-blue', click: () => router.push('/projects') },
+  { key: 'tasks', label: '总任务', value: allTasks.value.length, icon: 'List', color: 'stat-green', click: () => router.push('/tasks') },
+  { key: 'bugs', label: '总缺陷', value: allBugs.value.length, icon: 'Warning', color: 'stat-orange', click: () => router.push('/bugs') },
+  { key: 'users', label: '团队成员', value: allUsers.value.filter((u: any) => u.role !== 'admin').length, icon: 'User', color: 'stat-cyan', click: () => router.push('/users') },
+  { key: 'pending', label: '待处理', value: allTasks.value.filter((t: any) => t.status === 'pending').length + allBugs.value.filter((b: any) => b.status === 'pending').length, icon: 'Clock', color: 'stat-red', click: () => router.push('/tasks') },
+  { key: 'completed', label: '本周完成', value: completedTasksThisWeek.value, icon: 'CircleCheck', color: 'stat-purple', click: () => router.push('/tasks') },
+])
+
+const pmStats = computed(() => [
+  { key: 'myProjects', label: '我的项目', value: myProjects.value.length, icon: 'Folder', color: 'stat-blue', click: () => router.push('/projects') },
+  { key: 'tasks', label: '项目任务', value: myProjects.value.reduce((sum: number, p: any) => sum + getProjectTaskCount(p.id), 0), icon: 'List', color: 'stat-green', click: () => router.push('/tasks') },
+  { key: 'bugs', label: '项目缺陷', value: myProjects.value.reduce((sum: number, p: any) => sum + getProjectBugCount(p.id), 0), icon: 'Warning', color: 'stat-orange', click: () => router.push('/bugs') },
+  { key: 'pending', label: '待处理', value: allTasks.value.filter((t: any) => myProjects.value.some((p: any) => p.id === t.project?.id) && t.status === 'pending').length, icon: 'Clock', color: 'stat-red', click: () => router.push('/tasks') },
+])
+
+const devStats = computed(() => [
+  { key: 'myTasks', label: '我的任务', value: myTasks.value.filter((t: any) => t.status !== 'completed' && t.status !== 'closed').length, icon: 'List', color: 'stat-blue', click: () => router.push('/tasks') },
+  { key: 'myBugs', label: '我的缺陷', value: myBugs.value.filter((b: any) => b.status !== 'closed' && b.status !== 'verified').length, icon: 'Warning', color: 'stat-orange', click: () => router.push('/bugs') },
+  { key: 'completed', label: '本周完成', value: completedTasksThisWeek.value, icon: 'CircleCheck', color: 'stat-green', click: () => router.push('/tasks') },
+  { key: 'rate', label: '完成率', value: taskCompletionRate.value + '%', icon: 'TrendCharts', color: 'stat-purple', click: () => router.push('/tasks') },
+])
+
+const artistStats = computed(() => [
+  { key: 'myTasks', label: '我的任务', value: myTasks.value.filter((t: any) => t.status !== 'completed' && t.status !== 'closed').length, icon: 'List', color: 'stat-blue', click: () => router.push('/tasks') },
+  { key: 'completed', label: '已完成', value: myCompletedTasks.value, icon: 'CircleCheck', color: 'stat-green', click: () => router.push('/tasks') },
+  { key: 'rate', label: '完成率', value: artistCompletionRate.value + '%', icon: 'TrendCharts', color: 'stat-purple', click: () => router.push('/tasks') },
+])
+
+const designerStats = computed(() => [
+  { key: 'created', label: '我创建的', value: myCreatedTasks.value.length, icon: 'List', color: 'stat-blue', click: () => router.push('/tasks') },
+  { key: 'reported', label: '我报告的', value: myReportedBugs.value.length, icon: 'Warning', color: 'stat-orange', click: () => router.push('/bugs') },
+  { key: 'pending', label: '待处理', value: allTasks.value.filter((t: any) => t.creator?.id === userId.value && t.status === 'pending').length, icon: 'Clock', color: 'stat-red', click: () => router.push('/tasks') },
+])
+
+const testerStats = computed(() => [
+  { key: 'reported', label: '我报告的', value: myReportedBugs.value.length, icon: 'Warning', color: 'stat-orange', click: () => router.push('/bugs') },
+  { key: 'toVerify', label: '待验证', value: bugsToVerify.value.length, icon: 'Select', color: 'stat-green', click: () => router.push('/bugs') },
+  { key: 'myTasks', label: '我的任务', value: myPendingTasks.value.length, icon: 'List', color: 'stat-blue', click: () => router.push('/tasks') },
+])
+
+const defaultStats = computed(() => [
+  { key: 'myTasks', label: '我的任务', value: myTasks.value.filter((t: any) => t.status !== 'completed' && t.status !== 'closed').length, icon: 'List', color: 'stat-blue', click: () => router.push('/tasks') },
+  { key: 'myBugs', label: '我的缺陷', value: myBugs.value.filter((b: any) => b.status !== 'closed' && b.status !== 'verified').length, icon: 'Warning', color: 'stat-orange', click: () => router.push('/bugs') },
+  { key: 'completed', label: '已完成', value: myTasks.value.filter((t: any) => t.status === 'completed' || t.status === 'closed').length, icon: 'CircleCheck', color: 'stat-green', click: () => router.push('/tasks') },
+])
 
 const getRoleText = (role: string) => {
   const map: Record<string, string> = { admin: '管理员', project_manager: '项目经理', developer: '程序', artist: '美术', designer: '策划', tester: '测试' }
   return map[role] || role
-}
-
-const getPriorityType = (p: string) => {
-  const map: Record<string, string> = { low: 'info', medium: 'warning', high: 'danger', urgent: 'danger' }
-  return map[p] || 'info'
 }
 
 const getPriorityText = (p: string) => {
@@ -268,19 +1004,9 @@ const getPriorityText = (p: string) => {
   return map[p] || p
 }
 
-const getStatusType = (s: string) => {
-  const map: Record<string, string> = { pending: 'info', in_progress: 'warning', completed: 'success', closed: 'info' }
-  return map[s] || 'info'
-}
-
 const getStatusText = (s: string) => {
   const map: Record<string, string> = { pending: '待处理', in_progress: '进行中', completed: '已完成', closed: '已关闭' }
   return map[s] || s
-}
-
-const getBugStatusType = (s: string) => {
-  const map: Record<string, string> = { pending: 'info', assigned: 'warning', fixing: 'warning', fixed: 'success', verified: 'success', closed: 'info' }
-  return map[s] || 'info'
 }
 
 const getBugStatusText = (s: string) => {
@@ -288,34 +1014,79 @@ const getBugStatusText = (s: string) => {
   return map[s] || s
 }
 
-const getSeverityType = (s: string) => {
-  const map: Record<string, string> = { low: 'info', medium: 'warning', high: 'danger', critical: 'danger' }
-  return map[s] || 'info'
-}
-
 const getSeverityText = (s: string) => {
   const map: Record<string, string> = { low: '低', medium: '中', high: '高', critical: '严重' }
   return map[s] || s
 }
 
-const getPriorityRank = (p: string) => {
-  const map: Record<string, string> = { urgent: 'rank-ss', high: 'rank-s', medium: 'rank-a', low: 'rank-b' }
-  return map[p] || 'rank-b'
+const getPriorityClass = (p: string) => {
+  const map: Record<string, string> = { urgent: 'priority-urgent', high: 'priority-high', medium: 'priority-medium', low: 'priority-low' }
+  return map[p] || 'priority-low'
 }
 
-const getPriorityRankNum = (p: string) => {
-  const map: Record<string, string> = { urgent: 'SS', high: 'S', medium: 'A', low: 'B' }
-  return map[p] || 'B'
+const getSeverityClass = (s: string) => {
+  const map: Record<string, string> = { critical: 'severity-critical', high: 'severity-high', medium: 'severity-medium', low: 'severity-low' }
+  return map[s] || 'severity-low'
 }
 
-const getSeverityRank = (s: string) => {
-  const map: Record<string, string> = { critical: 'rank-ss', high: 'rank-s', medium: 'rank-a', low: 'rank-b' }
-  return map[s] || 'rank-b'
-}
-
-const getSeverityRankNum = (s: string) => {
+const getSeverityShort = (s: string) => {
   const map: Record<string, string> = { critical: 'SS', high: 'S', medium: 'A', low: 'B' }
   return map[s] || 'B'
+}
+
+const getPriorityTagClass = (p: string) => {
+  const map: Record<string, string> = { urgent: 'tag-danger', high: 'tag-warning', medium: 'tag-primary', low: 'tag-default' }
+  return map[p] || 'tag-default'
+}
+
+const getSeverityTagClass = (s: string) => {
+  const map: Record<string, string> = { critical: 'tag-danger', high: 'tag-warning', medium: 'tag-primary', low: 'tag-default' }
+  return map[s] || 'tag-default'
+}
+
+const getStatusTagClass = (s: string) => {
+  const map: Record<string, string> = { pending: 'tag-default', in_progress: 'tag-warning', completed: 'tag-success', closed: 'tag-default' }
+  return map[s] || 'tag-default'
+}
+
+const getBugStatusTagClass = (s: string) => {
+  const map: Record<string, string> = { pending: 'tag-default', assigned: 'tag-warning', fixing: 'tag-warning', fixed: 'tag-success', verified: 'tag-success', closed: 'tag-default' }
+  return map[s] || 'tag-default'
+}
+
+const isOverdue = (dueDate: Date | string) => new Date(dueDate).getTime() < new Date().getTime()
+
+const getRemainingTime = (dueDate: Date | string) => {
+  const now = new Date()
+  const due = new Date(dueDate)
+  const diffMs = due.getTime() - now.getTime()
+  if (diffMs <= 0) {
+    const days = Math.floor(Math.abs(diffMs) / (1000 * 60 * 60 * 24))
+    const hours = Math.floor((Math.abs(diffMs) % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+    return `超时${days}天${hours}时`
+  }
+  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+  const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+  return `剩余${days}天${hours}时`
+}
+
+const getDueClass = (dueDate: Date | string) => {
+  const now = new Date()
+  const due = new Date(dueDate)
+  const diff = due.getTime() - now.getTime()
+  if (diff < 0) return 'due-overdue'
+  if (diff < 24 * 60 * 60 * 1000) return 'due-today'
+  if (diff < 3 * 24 * 60 * 60 * 1000) return 'due-soon'
+  return 'due-normal'
+}
+
+const getDueDays = (dueDate: Date | string) => {
+  const now = new Date()
+  const due = new Date(dueDate)
+  const diff = due.getTime() - now.getTime()
+  if (diff < 0) return `${Math.ceil(Math.abs(diff) / (1000 * 60 * 60 * 24))}天`
+  if (diff < 24 * 60 * 60 * 1000) return '今天'
+  return `${Math.ceil(diff / (1000 * 60 * 60 * 24))}天`
 }
 
 onMounted(async () => {
@@ -323,53 +1094,10 @@ onMounted(async () => {
     const [projectsRes, tasksRes, bugsRes, usersRes] = await Promise.all([
       getProjects(), getTasks(), getBugs(), getUsers()
     ])
-
-    const userId = userStore.user?.id
-    const allTasks = tasksRes.data || []
-    const allBugs = bugsRes.data || []
-    const allProjects = projectsRes.data || []
-
-    const myTaskList = allTasks.filter((t: any) => t.assignee?.id === userId || t.creator?.id === userId)
-    const myBugList = allBugs.filter((b: any) => b.assignee?.id === userId || b.reporter?.id === userId || b.creator?.id === userId)
-
-    stats.value = {
-      projects: allProjects.filter((p: any) => p.status === 'active').length,
-      myTasks: myTaskList.filter((t: any) => t.status !== 'completed' && t.status !== 'closed').length,
-      myBugs: myBugList.filter((b: any) => b.status !== 'closed' && b.status !== 'verified').length,
-      users: usersRes.data?.length || 0,
-      pendingTasks: allTasks.filter((t: any) => t.status === 'pending').length,
-      pendingBugs: allBugs.filter((b: any) => b.status === 'pending' || b.status === 'assigned').length,
-      completedTasks: allTasks.filter((t: any) => t.status === 'completed').length,
-      fixedBugs: allBugs.filter((b: any) => b.status === 'fixed').length
-    }
-
-    taskStats.value = {
-      pending: allTasks.filter((t: any) => t.status === 'pending').length,
-      inProgress: allTasks.filter((t: any) => t.status === 'in_progress').length,
-      completed: allTasks.filter((t: any) => t.status === 'completed').length,
-      closed: allTasks.filter((t: any) => t.status === 'closed').length
-    }
-
-    bugStats.value = {
-      pending: allBugs.filter((b: any) => b.status === 'pending' || b.status === 'assigned').length,
-      fixing: allBugs.filter((b: any) => b.status === 'fixing').length,
-      fixed: allBugs.filter((b: any) => b.status === 'fixed').length,
-      closed: allBugs.filter((b: any) => b.status === 'closed' || b.status === 'verified').length
-    }
-
-    const priorityOrder: Record<string, number> = { urgent: 0, high: 1, medium: 2, low: 3 }
-    myTasks.value = myTaskList
-      .filter((t: any) => t.status !== 'completed' && t.status !== 'closed')
-      .sort((a: any, b: any) => (priorityOrder[a.priority] || 2) - (priorityOrder[b.priority] || 2))
-      .slice(0, 8)
-
-    const severityOrder: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 }
-    myBugs.value = myBugList
-      .filter((b: any) => b.status !== 'closed' && b.status !== 'verified')
-      .sort((a: any, b: any) => (severityOrder[a.severity] || 2) - (severityOrder[b.severity] || 2))
-      .slice(0, 8)
-
-    recentProjects.value = allProjects.filter((p: any) => p.status === 'active').slice(0, 8)
+    allProjects.value = projectsRes.data || []
+    allTasks.value = tasksRes.data || []
+    allBugs.value = bugsRes.data || []
+    allUsers.value = usersRes.data || []
   } catch (error) {
     console.error('Failed to load dashboard data:', error)
   }
@@ -379,125 +1107,279 @@ onMounted(async () => {
 <style scoped>
 .dashboard {
   padding: 0;
+  background: transparent;
+  min-height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif;
 }
 
-.welcome-banner {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  padding: 20px 24px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 16px;
-  color: white;
+/* Banner */
+.banner {
   position: relative;
+  margin-bottom: 24px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.banner.role-admin { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+.banner.role-project_manager { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+.banner.role-developer { background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); }
+.banner.role-artist { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+.banner.role-designer { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+.banner.role-tester { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+
+.banner-bg-pattern {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
   overflow: hidden;
 }
 
-.welcome-banner::before {
-  content: '';
+.floating-icon {
   position: absolute;
-  top: -50%;
-  right: -20%;
-  width: 300px;
-  height: 300px;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.12) 0%, transparent 70%);
-  border-radius: 50%;
+  opacity: 0.6;
+  animation: float 6s ease-in-out infinite;
 }
 
-.welcome-left {
+.float-1 { top: 10%; left: 5%; width: 48px; height: 48px; animation-delay: 0s; }
+.float-2 { top: 60%; left: 15%; width: 36px; height: 36px; animation-delay: 1.5s; }
+.float-3 { top: 20%; right: 25%; width: 40px; height: 40px; animation-delay: 3s; }
+.float-4 { top: 65%; right: 10%; width: 32px; height: 32px; animation-delay: 4.5s; }
+
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-12px) rotate(5deg); }
+}
+
+.banner-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 28px 32px;
+}
+
+.banner-left {
   display: flex;
   align-items: center;
   gap: 16px;
-  position: relative;
-  z-index: 1;
 }
 
-.avatar-ring {
-  width: 60px;
-  height: 60px;
+.avatar {
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
-  padding: 3px;
-  background: rgba(255, 255, 255, 0.3);
-}
-
-.user-avatar {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 600;
   color: white;
-  font-weight: 700;
-  font-size: 20px;
-  width: 100%;
-  height: 100%;
+  border: 2px solid rgba(255, 255, 255, 0.4);
 }
 
 .welcome-text h2 {
   font-size: 20px;
-  font-weight: 700;
-  margin: 0 0 4px 0;
+  font-weight: 600;
+  margin: 0 0 6px 0;
+  letter-spacing: 0.3px;
 }
 
-.welcome-text p {
+.date {
   font-size: 13px;
-  margin: 0;
-  opacity: 0.8;
+  opacity: 0.85;
 }
 
-.welcome-right {
-  position: relative;
-  z-index: 1;
+.banner-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.hero-image {
+  width: 80px;
+  height: 80px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.hero-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .role-badge {
-  border: none;
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
-  font-size: 13px;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+  padding: 6px 16px;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(8px);
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
-.stats-row {
+.badge-star {
+  width: 14px;
+  height: 14px;
+  fill: #ffd700;
+}
+
+/* Quick Quests */
+.quick-quests {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.quest-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 20px;
+  background: white;
+  border-radius: 14px;
+  border: 1px solid #f0f0f0;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.quest-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.12);
+  border-color: #e8ecff;
+}
+
+.quest-icon {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+}
+
+.quest-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.quest-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.quest-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1a2e;
+  margin-bottom: 2px;
+}
+
+.quest-desc {
+  font-size: 12px;
+  color: #8c8c9a;
+}
+
+.quest-arrow {
+  font-size: 18px;
+  color: #c0c0c0;
+  transition: all 0.2s;
+}
+
+.quest-card:hover .quest-arrow {
+  color: #667eea;
+  transform: translateX(4px);
+}
+
+/* Section */
+.section {
+  margin-bottom: 24px;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a2e;
   margin-bottom: 16px;
+  padding-left: 2px;
+}
+
+.section-icon {
+  width: 22px;
+  height: 22px;
+}
+
+/* Stats Grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
 }
 
 .stat-card {
+  position: relative;
   background: white;
   border-radius: 12px;
-  padding: 16px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
+  overflow: hidden;
   cursor: pointer;
-  transition: all 0.3s;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: all 0.25s ease;
   border: 1px solid #f0f0f0;
 }
 
 .stat-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
 }
 
-.stat-icon {
-  width: 42px;
-  height: 42px;
-  border-radius: 10px;
+.stat-accent {
+  height: 3px;
+  width: 100%;
+}
+
+.stat-blue .stat-accent { background: linear-gradient(90deg, #4facfe, #00f2fe); }
+.stat-green .stat-accent { background: linear-gradient(90deg, #43e97b, #38f9d7); }
+.stat-orange .stat-accent { background: linear-gradient(90deg, #fa709a, #fee140); }
+.stat-purple .stat-accent { background: linear-gradient(90deg, #a18cd1, #fbc2eb); }
+.stat-cyan .stat-accent { background: linear-gradient(90deg, #89f7fe, #66a6ff); }
+.stat-red .stat-accent { background: linear-gradient(90deg, #ff6b6b, #ee5a24); }
+
+.stat-inner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 20px;
+}
+
+.stat-icon-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
-  flex-shrink: 0;
 }
 
-.stat-blue { background: linear-gradient(135deg, #409eff, #66b1ff); }
-.stat-green { background: linear-gradient(135deg, #67c23a, #85ce61); }
-.stat-orange { background: linear-gradient(135deg, #e6a23c, #ebb563); }
-.stat-purple { background: linear-gradient(135deg, #7c4dff, #9c7cff); }
-.stat-cyan { background: linear-gradient(135deg, #00bcd4, #4dd0e1); }
-.stat-red { background: linear-gradient(135deg, #f56c6c, #f78989); }
-.stat-pink { background: linear-gradient(135deg, #e91e63, #f06292); }
-.stat-gray { background: linear-gradient(135deg, #909399, #b1b3b8); }
+.stat-blue .stat-icon-box { background: linear-gradient(135deg, #4facfe, #00f2fe); }
+.stat-green .stat-icon-box { background: linear-gradient(135deg, #43e97b, #38f9d7); }
+.stat-orange .stat-icon-box { background: linear-gradient(135deg, #fa709a, #fee140); }
+.stat-purple .stat-icon-box { background: linear-gradient(135deg, #a18cd1, #fbc2eb); }
+.stat-cyan .stat-icon-box { background: linear-gradient(135deg, #89f7fe, #66a6ff); }
+.stat-red .stat-icon-box { background: linear-gradient(135deg, #ff6b6b, #ee5a24); }
 
 .stat-content {
   flex: 1;
@@ -505,218 +1387,449 @@ onMounted(async () => {
 
 .stat-value {
   font-size: 22px;
-  font-weight: 800;
-  color: #303133;
-  line-height: 1.2;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin-bottom: 2px;
 }
 
 .stat-label {
   font-size: 12px;
-  color: #909399;
-  margin-top: 2px;
+  color: #8c8c9a;
 }
 
-.content-row {
-  margin-top: 16px;
+/* Row Layout */
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 20px;
 }
 
-.content-card {
+.row:has(.col.main) {
+  grid-template-columns: 2fr 1fr;
+}
+
+.col.half {
+  grid-column: span 1;
+}
+
+/* Card */
+.card {
   background: white;
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  border-radius: 14px;
   border: 1px solid #f0f0f0;
+  overflow: hidden;
+  transition: box-shadow 0.25s ease;
+}
+
+.card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
 }
 
 .card-header {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.card-title {
-  display: flex;
   align-items: center;
   gap: 8px;
+  padding: 16px 20px;
+  border-bottom: 1px solid #f5f5f5;
   font-size: 15px;
-  font-weight: 700;
-  color: #303133;
+  font-weight: 600;
+  color: #1a1a2e;
 }
 
-.title-badge :deep(.el-badge__content) {
-  top: 0;
+.card-icon-svg {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
 }
 
-.task-list,
-.bug-list {
-  max-height: 360px;
-  overflow-y: auto;
+.card-header .btn-link {
+  margin-left: auto;
+}
+
+.card-danger .card-header {
+  color: #e74c3c;
+}
+
+.card-warning .card-header {
+  color: #f39c12;
+}
+
+.card-success .card-header {
+  color: #27ae60;
+}
+
+/* Button Link */
+.btn-link {
+  padding: 4px 12px;
+  font-size: 12px;
+  color: #667eea;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-radius: 6px;
+}
+
+.btn-link:hover {
+  background: #f0f2ff;
+  color: #5a6fd6;
+}
+
+/* List */
+.list {
+  padding: 12px;
 }
 
 .list-item {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px;
-  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 6px;
+  background: #fafbfc;
+  border-radius: 10px;
   cursor: pointer;
-  transition: all 0.2s;
-  margin-bottom: 4px;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
 }
 
 .list-item:hover {
-  background: #f5f7fa;
+  background: #f0f4ff;
+  border-color: #e8ecff;
+  transform: translateX(4px);
 }
 
-.item-rank {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+.list-item:last-child {
+  margin-bottom: 0;
+}
+
+.item-icon {
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 800;
-  font-size: 11px;
-  flex-shrink: 0;
+  background: white;
+  border-radius: 10px;
+  font-size: 18px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
-.rank-ss { background: linear-gradient(135deg, #ff6b6b, #ee5a24); color: white; box-shadow: 0 2px 8px rgba(238, 90, 36, 0.3); }
-.rank-s { background: linear-gradient(135deg, #ffa502, #e67e22); color: white; box-shadow: 0 2px 8px rgba(230, 126, 34, 0.2); }
-.rank-a { background: linear-gradient(135deg, #409eff, #66b1ff); color: white; }
-.rank-b { background: linear-gradient(135deg, #dcdfe6, #e4e7ed); color: #606266; }
+.item-rank {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: white;
+  border-radius: 10px;
+}
 
-.item-main {
+.due-overdue { background: linear-gradient(135deg, #ff6b6b, #ee5a24); }
+.due-today { background: linear-gradient(135deg, #f39c12, #fdcb6e); }
+.due-soon { background: linear-gradient(135deg, #4facfe, #00f2fe); }
+.due-normal { background: linear-gradient(135deg, #b2bec3, #dfe6e9); }
+
+.severity-critical { background: linear-gradient(135deg, #ff6b6b, #ee5a24); }
+.severity-high { background: linear-gradient(135deg, #f39c12, #fdcb6e); }
+.severity-medium { background: linear-gradient(135deg, #4facfe, #00f2fe); }
+.severity-low { background: linear-gradient(135deg, #b2bec3, #dfe6e9); }
+
+.item-priority {
+  width: 4px;
+  height: 44px;
+  border-radius: 2px;
+}
+
+.priority-urgent { background: #ff6b6b; }
+.priority-high { background: #f39c12; }
+.priority-medium { background: #4facfe; }
+.priority-low { background: #b2bec3; }
+
+.item-content {
   flex: 1;
   min-width: 0;
 }
 
 .item-title {
   font-size: 14px;
-  color: #303133;
-  margin-bottom: 6px;
+  font-weight: 500;
+  color: #2d3436;
+  margin-bottom: 4px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-weight: 500;
 }
 
-.item-tags {
+.item-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  color: #8c8c9a;
+}
+
+.text-danger {
+  color: #e74c3c;
+}
+
+/* Tag */
+.tag {
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 12px;
+  white-space: nowrap;
+}
+
+.tag-primary { background: #e8f4fd; color: #2980b9; }
+.tag-success { background: #e8f8f0; color: #27ae60; }
+.tag-warning { background: #fef5e7; color: #f39c12; }
+.tag-danger { background: #fde8e8; color: #e74c3c; }
+.tag-default { background: #f0f0f0; color: #636e72; }
+
+/* Progress */
+.progress {
   display: flex;
   align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
 }
 
-.item-project {
-  font-size: 11px;
-  color: #909399;
-}
-
-.item-arrow {
-  color: #c0c4cc;
-  flex-shrink: 0;
-  opacity: 0;
-  transition: all 0.2s;
-}
-
-.list-item:hover .item-arrow {
-  opacity: 1;
-  color: #409eff;
-}
-
-.project-card {
-  background: #f5f7fa;
-  border-radius: 10px;
-  padding: 16px 12px;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.2s;
-  margin-bottom: 12px;
-}
-
-.project-card:hover {
-  background: #ecf5ff;
-  transform: translateY(-2px);
-}
-
-.project-icon {
-  font-size: 28px;
-  margin-bottom: 8px;
-}
-
-.project-name {
-  font-size: 13px;
-  color: #303133;
-  font-weight: 500;
-  margin-bottom: 6px;
-  white-space: nowrap;
+.progress-bar {
+  flex: 1;
+  height: 6px;
+  background: #f0f0f0;
+  border-radius: 3px;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-.chart-container {
-  padding: 10px 0;
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4facfe, #00f2fe);
+  border-radius: 3px;
+  transition: width 0.4s ease;
 }
 
-.bar-chart {
+.progress-fill.fill-danger {
+  background: linear-gradient(90deg, #ff6b6b, #ee5a24);
+}
+
+.progress-fill.fill-warning {
+  background: linear-gradient(90deg, #f39c12, #fdcb6e);
+}
+
+.progress-fill.fill-success {
+  background: linear-gradient(90deg, #43e97b, #38f9d7);
+}
+
+.progress-text {
+  font-size: 12px;
+  color: #636e72;
+  min-width: 36px;
+  text-align: right;
+  font-weight: 500;
+}
+
+/* Project Stats Row */
+.project-stats-row {
   display: flex;
-  align-items: flex-end;
-  justify-content: space-around;
-  height: 180px;
-  padding: 0 10px;
+  gap: 20px;
+  margin-top: 8px;
 }
 
-.bar-group {
+.mini-stat {
   display: flex;
   flex-direction: column;
   align-items: center;
-  flex: 1;
-  height: 100%;
-  justify-content: flex-end;
 }
 
-.bar-wrapper {
-  width: 100%;
-  max-width: 60px;
-  height: 150px;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-}
-
-.bar {
-  width: 100%;
-  border-radius: 6px 6px 0 0;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding-top: 8px;
-  transition: height 0.6s ease;
-  min-height: 4px;
-}
-
-.bar-value {
-  font-size: 14px;
+.mini-num {
+  font-size: 16px;
+  color: #4facfe;
   font-weight: 700;
+}
+
+.mini-stat span:last-child {
+  font-size: 11px;
+  color: #8c8c9a;
+}
+
+/* Team List */
+.team-list {
+  padding: 12px;
+}
+
+.team-member {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  margin-bottom: 6px;
+  background: #fafbfc;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.team-member:hover {
+  background: #f0f4ff;
+  border-color: #e8ecff;
+}
+
+.team-member:last-child {
+  margin-bottom: 0;
+}
+
+.member-avatar {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  border-radius: 50%;
+  font-size: 14px;
   color: white;
+  font-weight: 600;
 }
 
-.bar-info { background: linear-gradient(180deg, #909399, #606266); }
-.bar-warning { background: linear-gradient(180deg, #e6a23c, #cf9236); }
-.bar-success { background: linear-gradient(180deg, #67c23a, #5daf34); }
-.bar-gray { background: linear-gradient(180deg, #dcdfe6, #c0c4cc); }
+.member-info {
+  flex: 1;
+}
 
-.bar-label {
-  font-size: 12px;
-  color: #909399;
-  margin-top: 8px;
+.member-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: #2d3436;
+  margin-bottom: 2px;
+}
+
+.member-role {
+  font-size: 11px;
+  color: #8c8c9a;
+}
+
+.member-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.badge-num {
+  font-size: 16px;
+  color: #f39c12;
+  font-weight: 700;
+}
+
+.badge-label {
+  font-size: 10px;
+  color: #8c8c9a;
+}
+
+/* Donut Chart */
+.donut-card {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.donut-container {
+  position: relative;
+  width: 120px;
+  height: 120px;
+}
+
+.donut-svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.donut-bg {
+  stroke: #f0f0f0;
+}
+
+.donut-ring {
+  transition: stroke-dashoffset 0.5s ease;
+}
+
+.donut-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.donut-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1a1a2e;
+}
+
+.donut-label {
+  font-size: 11px;
+  color: #8c8c9a;
+}
+
+.donut-stats {
+  display: flex;
+  gap: 32px;
+  margin-top: 20px;
+}
+
+/* Empty State */
+.empty {
   text-align: center;
+  padding: 32px;
+  font-size: 13px;
+  color: #b2bec3;
+  background: #fafbfc;
+  border-radius: 10px;
+  border: 1px dashed #e0e0e0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
 }
 
-:deep(.el-empty) {
-  padding: 20px 0;
+.empty-icon {
+  width: 64px;
+  height: 64px;
+  opacity: 0.6;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .row {
+    grid-template-columns: 1fr;
+  }
+  
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .quick-quests {
+    grid-template-columns: 1fr;
+  }
+  
+  .welcome-text h2 {
+    font-size: 16px;
+  }
+  
+  .banner-content {
+    padding: 20px;
+  }
+
+  .hero-image {
+    width: 60px;
+    height: 60px;
+  }
 }
 </style>
