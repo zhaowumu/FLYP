@@ -18,18 +18,79 @@ export const backupController = {
       const configRepository = AppDataSource.getRepository(SystemConfig);
 
       const users = await userRepository.find();
-      const projects = await projectRepository.find({ relations: ["manager"] });
-      const tasks = await taskRepository.find({
+      const projectsRaw = await projectRepository.find({ relations: ["manager"] });
+      const tasksRaw = await taskRepository.find({
         relations: ["project", "assignee", "creator", "parentTask"],
       });
-      const bugs = await bugRepository.find({
+      const bugsRaw = await bugRepository.find({
         relations: ["project", "assignee", "reporter"],
       });
-      const logs = await logRepository.find({ relations: ["user"] });
+      const logsRaw = await logRepository.find({ relations: ["user"] });
       const configs = await configRepository.find();
 
+      const projects = projectsRaw.map((p) => ({
+        id: p.id,
+        name: p.name,
+        description: p.description,
+        status: p.status,
+        createdBy: p.createdBy,
+        managerId: p.manager?.id ?? null,
+        createdAt: p.createdAt,
+        updatedAt: p.updatedAt,
+      }));
+
+      const tasks = tasksRaw.map((t) => ({
+        id: t.id,
+        title: t.title,
+        description: t.description,
+        priority: t.priority,
+        status: t.status,
+        dueDate: t.dueDate,
+        projectId: t.project?.id ?? null,
+        assigneeId: t.assignee?.id ?? null,
+        creatorId: t.creator?.id ?? null,
+        parentTaskId: t.parentTask?.id ?? null,
+        createdAt: t.createdAt,
+        updatedAt: t.updatedAt,
+      }));
+
+      const bugs = bugsRaw.map((b) => ({
+        id: b.id,
+        title: b.title,
+        description: b.description,
+        severity: b.severity,
+        status: b.status,
+        reproduceSteps: b.reproduceSteps,
+        dueDate: b.dueDate,
+        projectId: b.project?.id ?? null,
+        assigneeId: b.assignee?.id ?? null,
+        reporterId: b.reporter?.id ?? null,
+        createdAt: b.createdAt,
+        updatedAt: b.updatedAt,
+      }));
+
+      const logs = logsRaw.map((l) => ({
+        id: l.id,
+        targetType: l.targetType,
+        targetId: l.targetId,
+        userId: l.user?.id ?? null,
+        action: l.action,
+        oldStatus: l.oldStatus,
+        newStatus: l.newStatus,
+        oldAssignee: l.oldAssignee,
+        newAssignee: l.newAssignee,
+        oldPriority: l.oldPriority,
+        newPriority: l.newPriority,
+        oldSeverity: l.oldSeverity,
+        newSeverity: l.newSeverity,
+        oldDueDate: l.oldDueDate,
+        newDueDate: l.newDueDate,
+        remark: l.remark,
+        createdAt: l.createdAt,
+      }));
+
       const backupData = {
-        version: "2.0",
+        version: "1.0",
         timestamp: new Date().toISOString(),
         data: {
           users,
@@ -85,63 +146,46 @@ export const backupController = {
 
       if (projects && projects.length > 0) {
         for (const p of projects) {
-          let managerId: number | null = null;
-          if (p.manager) {
-            const manager = await queryRunner.manager.findOne(User, { where: { username: p.manager.username } });
-            if (manager) managerId = manager.id;
-          }
-          if (!managerId && p.createdBy) {
-            managerId = p.createdBy;
-          }
           const newProject = queryRunner.manager.create(Project, {
             name: p.name,
             description: p.description,
             status: p.status,
-            createdBy: managerId || 1,
-            manager: managerId ? { id: managerId } as any : null,
+            createdBy: p.managerId || 1,
+            manager: p.managerId ? { id: p.managerId } as any : null,
           });
           await queryRunner.manager.save(newProject);
         }
       }
 
       if (tasks && tasks.length > 0) {
-        const rootTasks = tasks.filter((t: any) => !t.parentTask);
-        const subtasks = tasks.filter((t: any) => t.parentTask);
+        const rootTasks = tasks.filter((t: any) => !t.parentTaskId);
+        const subtasks = tasks.filter((t: any) => t.parentTaskId);
 
         for (const t of rootTasks) {
-          const project = t.project ? await queryRunner.manager.findOne(Project, { where: { name: t.project.name } }) : null;
-          const assignee = t.assignee ? await queryRunner.manager.findOne(User, { where: { username: t.assignee.username } }) : null;
-          const creator = t.creator ? await queryRunner.manager.findOne(User, { where: { username: t.creator.username } }) : null;
-
           const newTask = queryRunner.manager.create(Task, {
             title: t.title,
             description: t.description,
             priority: t.priority,
             status: t.status,
             dueDate: t.dueDate,
-            project: project ? { id: project.id } as any : null,
-            assignee: assignee ? { id: assignee.id } as any : null,
-            creator: creator ? { id: creator.id } as any : null,
+            project: t.projectId ? { id: t.projectId } as any : null,
+            assignee: t.assigneeId ? { id: t.assigneeId } as any : null,
+            creator: t.creatorId ? { id: t.creatorId } as any : null,
           });
           await queryRunner.manager.save(newTask);
         }
 
         for (const t of subtasks) {
-          const project = t.project ? await queryRunner.manager.findOne(Project, { where: { name: t.project.name } }) : null;
-          const assignee = t.assignee ? await queryRunner.manager.findOne(User, { where: { username: t.assignee.username } }) : null;
-          const creator = t.creator ? await queryRunner.manager.findOne(User, { where: { username: t.creator.username } }) : null;
-          const parentTask = t.parentTask ? await queryRunner.manager.findOne(Task, { where: { title: t.parentTask.title } }) : null;
-
           const newTask = queryRunner.manager.create(Task, {
             title: t.title,
             description: t.description,
             priority: t.priority,
             status: t.status,
             dueDate: t.dueDate,
-            project: project ? { id: project.id } as any : null,
-            assignee: assignee ? { id: assignee.id } as any : null,
-            creator: creator ? { id: creator.id } as any : null,
-            parentTask: parentTask ? { id: parentTask.id } as any : null,
+            project: t.projectId ? { id: t.projectId } as any : null,
+            assignee: t.assigneeId ? { id: t.assigneeId } as any : null,
+            creator: t.creatorId ? { id: t.creatorId } as any : null,
+            parentTask: t.parentTaskId ? { id: t.parentTaskId } as any : null,
           });
           await queryRunner.manager.save(newTask);
         }
@@ -149,10 +193,6 @@ export const backupController = {
 
       if (bugs && bugs.length > 0) {
         for (const b of bugs) {
-          const project = b.project ? await queryRunner.manager.findOne(Project, { where: { name: b.project.name } }) : null;
-          const assignee = b.assignee ? await queryRunner.manager.findOne(User, { where: { username: b.assignee.username } }) : null;
-          const reporter = b.reporter ? await queryRunner.manager.findOne(User, { where: { username: b.reporter.username } }) : null;
-
           const newBug = queryRunner.manager.create(Bug, {
             title: b.title,
             description: b.description,
@@ -160,9 +200,9 @@ export const backupController = {
             status: b.status,
             reproduceSteps: b.reproduceSteps,
             dueDate: b.dueDate,
-            project: project ? { id: project.id } as any : null,
-            assignee: assignee ? { id: assignee.id } as any : null,
-            reporter: reporter ? { id: reporter.id } as any : null,
+            project: b.projectId ? { id: b.projectId } as any : null,
+            assignee: b.assigneeId ? { id: b.assigneeId } as any : null,
+            reporter: b.reporterId ? { id: b.reporterId } as any : null,
           });
           await queryRunner.manager.save(newBug);
         }
@@ -181,7 +221,6 @@ export const backupController = {
 
       if (logs && logs.length > 0) {
         for (const l of logs) {
-          const user = l.user ? await queryRunner.manager.findOne(User, { where: { username: l.user.username } }) : null;
           const newLog = queryRunner.manager.create(OperationLog, {
             targetType: l.targetType,
             targetId: l.targetId,
@@ -197,7 +236,7 @@ export const backupController = {
             oldDueDate: l.oldDueDate,
             newDueDate: l.newDueDate,
             remark: l.remark,
-            user: user ? { id: user.id } as any : null,
+            user: l.userId ? { id: l.userId } as any : null,
           });
           await queryRunner.manager.save(newLog);
         }
