@@ -261,6 +261,116 @@
           </div>
         </div>
       </el-tab-pane>
+
+      <el-tab-pane label="钉钉通知" name="dingtalk">
+        <div class="content-card">
+          <el-alert
+            title="钉钉机器人配置说明"
+            type="info"
+            :closable="false"
+            show-icon
+            style="margin-bottom: 20px"
+          >
+            <template #default>
+              <p><strong>配置步骤：</strong></p>
+              <p>1. 打开钉钉电脑版，进入需要接收通知的群聊</p>
+              <p>2. 点击右上角「群设置」→「智能群助手」→「添加机器人」</p>
+              <p>3. 选择「自定义」机器人，设置机器人名称</p>
+              <p>4. 勾选「加签」或「关键字」安全设置（建议勾选关键字：任务、BUG、通知）</p>
+              <p>5. 复制机器人Webhook地址，粘贴到下方输入框</p>
+              <p>6. <strong>Webhook地址格式：</strong> https://oapi.dingtalk.com/robot/send?access_token=xxxxx</p>
+            </template>
+          </el-alert>
+
+          <el-divider content-position="left">基础配置</el-divider>
+
+          <el-form label-width="120px" style="margin-bottom: 24px">
+            <el-form-item label="Webhook地址">
+              <el-input
+                v-model="dingtalkWebhook"
+                placeholder="https://oapi.dingtalk.com/robot/send?access_token=xxxxx"
+                style="width: 500px"
+                clearable
+              />
+            </el-form-item>
+            <el-form-item label="加签密钥">
+              <el-input
+                v-model="dingtalkSecret"
+                placeholder="SECxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                style="width: 500px"
+                clearable
+              />
+              <span style="margin-left: 12px; color: #909399; font-size: 12px;">勾选"加签"时填写</span>
+            </el-form-item>
+            <el-form-item label="关键字">
+              <el-input
+                v-model="dingtalkKeyword"
+                placeholder="任务"
+                style="width: 200px"
+                clearable
+              />
+              <span style="margin-left: 12px; color: #909399; font-size: 12px;">勾选"关键字"时填写</span>
+            </el-form-item>
+            <el-form-item label="系统地址">
+              <el-input
+                v-model="dingtalkBaseUrl"
+                placeholder="http://192.168.1.100:3000"
+                style="width: 500px"
+                clearable
+              />
+              <span style="margin-left: 12px; color: #909399; font-size: 12px;">用于生成通知中的详情链接</span>
+            </el-form-item>
+          </el-form>
+
+          <el-divider content-position="left">通知模板配置</el-divider>
+
+          <el-alert
+            title="模板变量说明"
+            type="warning"
+            :closable="false"
+            show-icon
+            style="margin-bottom: 20px"
+          >
+            <template #default>
+              <p><strong>通用变量：</strong> {type}（任务/BUG）、{title}、{time}</p>
+              <p><strong>创建通知：</strong> {type}、{title}、{priority}、{creator}、{time}</p>
+              <p><strong>状态变更：</strong> {type}、{title}、{oldStatus}、{newStatus}、{operator}、{time}</p>
+              <p><strong>负责人变更：</strong> {type}、{title}、{oldAssignee}、{newAssignee}、{operator}、{time}</p>
+              <p><strong>优先级变更：</strong> {type}、{title}、{oldPriority}、{newPriority}、{operator}、{time}</p>
+              <p style="margin-top: 8px;">留空则使用默认模板，支持Markdown格式</p>
+            </template>
+          </el-alert>
+
+          <div class="notify-config-list">
+            <div v-for="(item, key) in notifyConfigs" :key="key" class="notify-config-item">
+              <div class="notify-header">
+                <el-switch
+                  v-model="item.enabled"
+                  :active-text="item.label"
+                  style="--el-switch-on-color: #13ce66"
+                />
+              </div>
+              <el-input
+                v-if="item.enabled"
+                v-model="item.template"
+                type="textarea"
+                :rows="3"
+                :placeholder="'默认模板：' + item.defaultTemplate"
+                style="margin-top: 8px"
+              />
+            </div>
+          </div>
+
+          <div class="dingtalk-actions">
+            <el-button type="primary" @click="saveDingTalkConfig" :loading="savingDingtalk">
+              保存配置
+            </el-button>
+            <el-button @click="testDingTalk" :loading="testingDingtalk" :disabled="!dingtalkWebhook">
+              测试通知
+            </el-button>
+          </div>
+        </div>
+      </el-tab-pane>
     </el-tabs>
   </div>
 </template>
@@ -272,6 +382,7 @@ import { Plus, Delete, Download, Upload } from '@element-plus/icons-vue'
 import { backupData as backupDataApi, restoreData as restoreDataApi, exportAll as exportAllApi, clearDatabase as clearDatabaseApi, clearAllDatabase as clearAllDatabaseApi } from '../api/excel'
 import { getPermissions, updatePermissions } from '../api/permission'
 import { getCustomLinks, updateCustomLinks, listMarkdownFiles } from '../api/customLink'
+import { getDingTalkConfig, updateDingTalkConfig } from '../api/systemConfig'
 import api from '../api'
 
 const activeTab = ref('permissions')
@@ -281,8 +392,30 @@ const clearLoading = ref(false)
 const clearAllLoading = ref(false)
 const savingPermissions = ref(false)
 const savingCustomLinks = ref(false)
+const savingDingtalk = ref(false)
+const testingDingtalk = ref(false)
 const customLinks = ref<Array<{ name: string; url: string; icon: string; type: string }>>([])
 const markdownFiles = ref<Array<{ name: string; path: string }>>([])
+const dingtalkWebhook = ref('')
+const dingtalkSecret = ref('')
+const dingtalkKeyword = ref('')
+const dingtalkBaseUrl = ref('')
+
+const defaultTemplates = {
+  create: '### 新建{type}通知\n\n**标题:** {title}\n**优先级:** {priority}\n**创建人:** {creator}\n**时间:** {time}\n\n[查看详情]({baseUrl}/{type === "任务" ? "tasks" : "bugs"}/{id})',
+  status_change: '### {type}状态变更通知\n\n**标题:** {title}\n**原状态:** {oldStatus}\n**新状态:** {newStatus}\n**操作人:** {operator}\n**时间:** {time}\n\n[查看详情]({baseUrl}/{type === "任务" ? "tasks" : "bugs"}/{id})',
+  assignee_change: '### {type}负责人变更通知\n\n**标题:** {title}\n**原负责人:** {oldAssignee}\n**新负责人:** {newAssignee}\n**操作人:** {operator}\n**时间:** {time}\n\n[查看详情]({baseUrl}/{type === "任务" ? "tasks" : "bugs"}/{id})',
+  priority_change: '### {type}优先级变更通知\n\n**标题:** {title}\n**原优先级:** {oldPriority}\n**新优先级:** {newPriority}\n**操作人:** {operator}\n**时间:** {time}\n\n[查看详情]({baseUrl}/{type === "任务" ? "tasks" : "bugs"}/{id})'
+}
+
+const notifyConfigLabels = {
+  create: '创建任务/BUG',
+  status_change: '状态变更',
+  assignee_change: '负责人变更',
+  priority_change: '优先级变更'
+}
+
+const notifyConfigs = ref<Record<string, { enabled: boolean; template: string; label: string; defaultTemplate: string }>>({})
 
 const ROLE_LABELS: Record<string, string> = {
   admin: '管理员',
@@ -430,6 +563,78 @@ async function loadMarkdownFiles() {
     }
   } catch {
     markdownFiles.value = []
+  }
+}
+
+async function loadDingTalkConfig() {
+  try {
+    const res = await getDingTalkConfig()
+    if (res.data) {
+      dingtalkWebhook.value = res.data.webhook || ''
+      dingtalkSecret.value = res.data.secret || ''
+      dingtalkKeyword.value = res.data.keyword || ''
+      dingtalkBaseUrl.value = res.data.baseUrl || ''
+      
+      const notify = res.data.notify || {}
+      const configs: Record<string, any> = {}
+      for (const [key, label] of Object.entries(notifyConfigLabels)) {
+        const cfg = notify[key] || { enabled: true, template: '' }
+        configs[key] = {
+          enabled: cfg.enabled !== false,
+          template: cfg.template || '',
+          label,
+          defaultTemplate: defaultTemplates[key as keyof typeof defaultTemplates]
+        }
+      }
+      notifyConfigs.value = configs
+    }
+  } catch {
+    dingtalkWebhook.value = ''
+    dingtalkSecret.value = ''
+    dingtalkKeyword.value = ''
+    dingtalkBaseUrl.value = ''
+  }
+}
+
+async function saveDingTalkConfig() {
+  if (!dingtalkWebhook.value) {
+    ElMessage.warning('请输入Webhook地址')
+    return
+  }
+  savingDingtalk.value = true
+  try {
+    const notify: Record<string, { enabled: boolean; template: string }> = {}
+    for (const [key, cfg] of Object.entries(notifyConfigs.value)) {
+      notify[key] = { enabled: cfg.enabled, template: cfg.template }
+    }
+    await updateDingTalkConfig({
+      webhook: dingtalkWebhook.value,
+      secret: dingtalkSecret.value,
+      keyword: dingtalkKeyword.value,
+      baseUrl: dingtalkBaseUrl.value,
+      notify
+    })
+    ElMessage.success('钉钉配置已保存')
+  } catch {
+    ElMessage.error('保存失败')
+  } finally {
+    savingDingtalk.value = false
+  }
+}
+
+async function testDingTalk() {
+  testingDingtalk.value = true
+  try {
+    const res = await api.post('/system-config/dingtalk/test', {})
+    if (res.data.success) {
+      ElMessage.success('测试通知已发送，请检查钉钉')
+    } else {
+      ElMessage.error('发送失败：' + (res.data.error || '未知错误'))
+    }
+  } catch (err: any) {
+    ElMessage.error('发送失败：' + (err?.response?.data?.error || '网络错误'))
+  } finally {
+    testingDingtalk.value = false
   }
 }
 
@@ -607,6 +812,7 @@ onMounted(() => {
   loadPermissions()
   loadCustomLinks()
   loadMarkdownFiles()
+  loadDingTalkConfig()
 })
 </script>
 
@@ -797,6 +1003,34 @@ onMounted(() => {
   font-size: 12px;
   color: #67c23a;
   white-space: nowrap;
+}
+
+.dingtalk-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #ebeef5;
+}
+
+.notify-config-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.notify-config-item {
+  padding: 16px;
+  background: #f5f7fa;
+  border-radius: 8px;
+}
+
+.notify-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 :deep(.el-tabs__content) {

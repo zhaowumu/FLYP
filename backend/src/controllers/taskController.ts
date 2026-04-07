@@ -3,6 +3,9 @@ import { AppDataSource } from "../config/database";
 import { Task } from "../entities/Task";
 import { OperationLog } from "../entities/OperationLog";
 import { User } from "../entities/User";
+import { DingTalkService } from "../services/dingtalkService";
+
+const dingTalkService = new DingTalkService();
 
 const taskRepository = AppDataSource.getRepository(Task);
 const userRepository = AppDataSource.getRepository(User);
@@ -66,6 +69,15 @@ export const taskController = {
         creator?.realName || "未知用户",
         "create"
       );
+
+      dingTalkService.sendNotification("create", {
+        type: "任务",
+        id: String(task.id),
+        title: task.title,
+        priority: task.priority,
+        creator: creator?.realName || "未知用户",
+        time: new Date().toLocaleString("zh-CN")
+      });
 
       const savedTask = await taskRepository.findOne({
         where: { id: task.id },
@@ -161,6 +173,16 @@ export const taskController = {
             remark: updateData.log?.remark || "",
           }
         );
+
+        dingTalkService.sendNotification("assignee_change", {
+          type: "任务",
+          id: String(task.id),
+          title: task.title,
+          oldAssignee: oldAssignee?.realName || "未处理",
+          newAssignee: newAssignee?.realName || "未知",
+          operator: userName,
+          time: new Date().toLocaleString("zh-CN")
+        });
         
         task.assignee = newAssignee!;
         delete updateData.assigneeId;
@@ -178,6 +200,39 @@ export const taskController = {
             remark: updateData.log?.remark || "",
           }
         );
+
+        dingTalkService.sendNotification("status_change", {
+          type: "任务",
+          id: String(task.id),
+          title: task.title,
+          oldStatus: task.status,
+          newStatus: updateData.status,
+          operator: userName,
+          time: new Date().toLocaleString("zh-CN")
+        });
+      }
+
+      if (updateData.priority && updateData.priority !== task.priority) {
+        await createOperationLog(
+          task.id,
+          userId,
+          userName,
+          "priority_change",
+          {
+            oldPriority: task.priority,
+            newPriority: updateData.priority,
+          }
+        );
+
+        dingTalkService.sendNotification("priority_change", {
+          type: "任务",
+          id: String(task.id),
+          title: task.title,
+          oldPriority: task.priority,
+          newPriority: updateData.priority,
+          operator: userName,
+          time: new Date().toLocaleString("zh-CN")
+        });
       }
 
       Object.assign(task, updateData);
@@ -241,6 +296,16 @@ export const taskController = {
         extraFields
       );
 
+      dingTalkService.sendNotification("status_change", {
+        type: "任务",
+        id: String(task.id),
+        title: task.title,
+        oldStatus: task.status,
+        newStatus: status,
+        operator: userName,
+        time: new Date().toLocaleString("zh-CN")
+      });
+
       const updatedTask = await taskRepository.findOne({
         where: { id: parseInt(id as string) },
         relations: ["project", "project.manager", "assignee", "creator", "parentTask", "subtasks", "dependencies"],
@@ -280,18 +345,48 @@ export const taskController = {
         extraFields.oldAssignee = task.assignee?.realName || "未处理";
         extraFields.newAssignee = newAssignee?.realName || "未知";
         task.assignee = newAssignee!;
+
+        dingTalkService.sendNotification("assignee_change", {
+          type: "任务",
+          id: String(task.id),
+          title: task.title,
+          oldAssignee: task.assignee?.realName || "未处理",
+          newAssignee: newAssignee?.realName || "未知",
+          operator: userName,
+          time: new Date().toLocaleString("zh-CN")
+        });
       }
 
       if (log.action === "priority_change" && log.newPriority) {
         extraFields.oldPriority = task.priority;
         extraFields.newPriority = log.newPriority;
         task.priority = log.newPriority;
+
+        dingTalkService.sendNotification("priority_change", {
+          type: "任务",
+          id: String(task.id),
+          title: task.title,
+          oldPriority: extraFields.oldPriority,
+          newPriority: log.newPriority,
+          operator: userName,
+          time: new Date().toLocaleString("zh-CN")
+        });
       }
 
       if (log.newStatus && log.action !== "status_change") {
         extraFields.oldStatus = task.status;
         extraFields.newStatus = log.newStatus;
         task.status = log.newStatus;
+
+        dingTalkService.sendNotification("status_change", {
+          type: "任务",
+          id: String(task.id),
+          title: task.title,
+          oldStatus: extraFields.oldStatus,
+          newStatus: log.newStatus,
+          operator: userName,
+          time: new Date().toLocaleString("zh-CN")
+        });
       }
 
       await taskRepository.save(task);

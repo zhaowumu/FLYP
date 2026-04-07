@@ -1,5 +1,7 @@
 import axios from "axios";
-import { config } from "../config";
+import crypto from "crypto";
+import { AppDataSource } from "../config/database";
+import { SystemConfig } from "../entities/SystemConfig";
 
 export interface DingTalkMessage {
   msgtype: "text" | "markdown";
@@ -16,17 +18,129 @@ export interface DingTalkMessage {
   };
 }
 
-export class DingTalkService {
-  private webhookUrl: string;
+interface DingTalkConfig {
+  webhook: string;
+  secret: string;
+  keyword: string;
+  baseUrl: string;
+  notify: Record<string, { enabled: boolean; template: string }>;
+}
 
-  constructor() {
-    this.webhookUrl = config.dingtalk.webhook;
+export class DingTalkService {
+  private async getConfigRepository() {
+    return AppDataSource.getRepository(SystemConfig);
   }
 
-  // 发送文本消息
+  private async getDingTalkConfig(): Promise<DingTalkConfig> {
+    const configRepo = await this.getConfigRepository();
+    const webhookConfig = await configRepo.findOne({ where: { key: "dingtalk_webhook" } });
+    const secretConfig = await configRepo.findOne({ where: { key: "dingtalk_secret" } });
+    const keywordConfig = await configRepo.findOne({ where: { key: "dingtalk_keyword" } });
+    const baseUrlConfig = await configRepo.findOne({ where: { key: "dingtalk_base_url" } });
+    
+    const notifyTypes = ["create", "status_change", "assignee_change", "priority_change"];
+    const notify: Record<string, { enabled: boolean; template: string }> = {};
+    for (const type of notifyTypes) {
+      const cfg = await configRepo.findOne({ where: { key: `dingtalk_notify_${type}` } });
+      notify[type] = cfg ? JSON.parse(cfg.value) : { enabled: true, template: "" };
+    }
+    
+    return {
+      webhook: webhookConfig?.value || "",
+      secret: secretConfig?.value || "",
+      keyword: keywordConfig?.value || "",
+      baseUrl: baseUrlConfig?.value || "",
+      notify
+    };
+  }
+
+  private generateSignature(timestamp: number, secret: string): string {
+    const stringToSign = `${timestamp}\n${secret}`;
+    const hmac = crypto.createHmac("sha256", secret);
+    hmac.update(stringToSign);
+    return encodeURIComponent(hmac.digest("base64"));
+  }
+
+  private async buildUrlWithSignature(webhookUrl: string, secret: string): Promise<string> {
+    if (!secret) return webhookUrl;
+    
+    const timestamp = Date.now();
+    const sign = this.generateSignature(timestamp, secret);
+    
+    const separator = webhookUrl.includes("?") ? "&" : "?";
+    return `${webhookUrl}${separator}timestamp=${timestamp}&sign=${sign}`;
+  }
+
+  private addKeyword(text: string, keyword: string): string {
+    if (!keyword) return text;
+    return `${keyword}\n${text}`;
+  }
+
+  private renderTemplate(template: string, variables: Record<string, string>): string {
+    if (!template) return "";
+    let result = template;
+    for (const [key, value] of Object.entries(variables)) {
+      result = result.replace(new RegExp(`\\{${key}\\}`, "g"), value);
+    }
+    return result;
+  }
+
+  private getDefaultTemplate(type: string, variables: Record<string, string>): string {
+    const { baseUrl, id } = variables;
+    const link = baseUrl && id ? `\n\n[查看详情](${baseUrl}/${variables.type === "任务" ? "tasks" : "bugs"}/${id})` : "";
+    
+    const defaults: Record<string, string> = {
+      create: `### 新建{type}通知\n\n**标题:** {title}\n**优先级:** {priority}\n**创建人:** {creator}\n**时间:** {time}${link}`,
+      status_change: `### {type}状态变更通知\n\n**标题:** {title}\n**原状态:** {oldStatus}\n**新状态:** {newStatus}\n**操作人:** {operator}\n**时间:** {time}${link}`,
+      assignee_change: `### {type}负责人变更通知\n\n**标题:** {title}\n**原负责人:** {oldAssignee}\n**新负责人:** {newAssignee}\n**操作人:** {operator}\n**时间:** {time}${link}`,
+      priority_change: `### {type}优先级变更通知\n\n**标题:** {title}\n**原优先级:** {oldPriority}\n**新优先级:** {newPriority}\n**操作人:** {operator}\n**时间:** {time}${link}`
+    };
+    return this.renderTemplate(defaults[type] || "", variables);
+  }
+
+  async sendNotification(type: string, variables: Record<string, string>): Promise<boolean> {
+    try {
+      const config = await this.getDingTalkConfig();
+      if (!config.webhook) return false;
+
+      if (!variables.baseUrl && config.baseUrl) {
+        variables.baseUrl = config.baseUrl;
+      }
+
+      const notifyConfig = config.notify[type];
+      if (!notifyConfig?.enabled) return false;
+
+      const text = notifyConfig.template
+        ? this.renderTemplate(notifyConfig.template, variables)
+        : this.getDefaultTemplate(type, variables);
+
+      if (!text) return false;
+
+      const message: DingTalkMessage = {
+        msgtype: "markdown",
+        markdown: {
+          title: config.keyword ? `${config.keyword} ${variables.title || "通知"}` : (variables.title || "通知"),
+          text: this.addKeyword(text, config.keyword),
+        },
+      };
+
+      const url = await this.buildUrlWithSignature(config.webhook, config.secret);
+      const response = await axios.post(url, message, {
+        headers: { "Content-Type": "application/json" },
+      });
+
+      return response.data.errcode === 0;
+    } catch (error) {
+      console.error("Error sending DingTalk notification:", error);
+      return false;
+    }
+  }
+
+  // 兼容旧方法
   async sendTextMessage(content: string, atMobiles?: string[], isAtAll?: boolean): Promise<boolean> {
     try {
-      if (!this.webhookUrl) {
+      const config = await this.getDingTalkConfig();
+      if (!config.webhook) {
         console.warn("DingTalk webhook URL is not configured");
         return false;
       }
@@ -34,7 +148,7 @@ export class DingTalkService {
       const message: DingTalkMessage = {
         msgtype: "text",
         text: {
-          content,
+          content: this.addKeyword(content, config.keyword),
         },
         at: {
           atMobiles,
@@ -42,7 +156,8 @@ export class DingTalkService {
         },
       };
 
-      const response = await axios.post(this.webhookUrl, message, {
+      const url = await this.buildUrlWithSignature(config.webhook, config.secret);
+      const response = await axios.post(url, message, {
         headers: { "Content-Type": "application/json" },
       });
 
@@ -53,10 +168,10 @@ export class DingTalkService {
     }
   }
 
-  // 发送Markdown消息
   async sendMarkdownMessage(title: string, text: string, atMobiles?: string[], isAtAll?: boolean): Promise<boolean> {
     try {
-      if (!this.webhookUrl) {
+      const config = await this.getDingTalkConfig();
+      if (!config.webhook) {
         console.warn("DingTalk webhook URL is not configured");
         return false;
       }
@@ -65,7 +180,7 @@ export class DingTalkService {
         msgtype: "markdown",
         markdown: {
           title,
-          text,
+          text: this.addKeyword(text, config.keyword),
         },
         at: {
           atMobiles,
@@ -73,7 +188,8 @@ export class DingTalkService {
         },
       };
 
-      const response = await axios.post(this.webhookUrl, message, {
+      const url = await this.buildUrlWithSignature(config.webhook, config.secret);
+      const response = await axios.post(url, message, {
         headers: { "Content-Type": "application/json" },
       });
 
@@ -82,35 +198,5 @@ export class DingTalkService {
       console.error("Error sending DingTalk markdown message:", error);
       return false;
     }
-  }
-
-  // 发送任务状态变更通知
-  async sendTaskStatusChangeNotification(taskTitle: string, oldStatus: string, newStatus: string, userName: string): Promise<boolean> {
-    const text = `### 任务状态变更通知\n\n**任务标题:** ${taskTitle}\n**原状态:** ${oldStatus}\n**新状态:** ${newStatus}\n**操作人:** ${userName}\n**时间:** ${new Date().toLocaleString()}`;
-    return this.sendMarkdownMessage("任务状态变更通知", text);
-  }
-
-  // 发送BUG提交通知
-  async sendBugCreatedNotification(bugTitle: string, severity: string, reporterName: string): Promise<boolean> {
-    const text = `### 新BUG提交通知\n\n**BUG标题:** ${bugTitle}\n**严重程度:** ${severity}\n**提交人:** ${reporterName}\n**时间:** ${new Date().toLocaleString()}`;
-    return this.sendMarkdownMessage("新BUG提交通知", text);
-  }
-
-  // 发送BUG分配通知
-  async sendBugAssignedNotification(bugTitle: string, assigneeName: string, assignerName: string): Promise<boolean> {
-    const text = `### BUG分配通知\n\n**BUG标题:** ${bugTitle}\n**分配给:** ${assigneeName}\n**分配人:** ${assignerName}\n**时间:** ${new Date().toLocaleString()}`;
-    return this.sendMarkdownMessage("BUG分配通知", text);
-  }
-
-  // 发送每日报告通知
-  async sendDailyReportNotification(reportDate: string, stats: any): Promise<boolean> {
-    const text = `### 每日工作报告 - ${reportDate}\n\n**新增任务:** ${stats.newTasks}\n**完成任务:** ${stats.completedTasks}\n**新增BUG:** ${stats.newBugs}\n**修复BUG:** ${stats.fixedBugs}\n**待处理BUG:** ${stats.pendingBugs}`;
-    return this.sendMarkdownMessage(`每日工作报告 - ${reportDate}`, text);
-  }
-
-  // 发送每周报告通知
-  async sendWeeklyReportNotification(weekRange: string, stats: any): Promise<boolean> {
-    const text = `### 每周工作报告 - ${weekRange}\n\n**总任务数:** ${stats.totalTasks}\n**完成任务:** ${stats.completedTasks}\n**总BUG数:** ${stats.totalBugs}\n**修复BUG:** ${stats.fixedBugs}\n**项目进度:** ${stats.projectProgress}%`;
-    return this.sendMarkdownMessage(`每周工作报告 - ${weekRange}`, text);
   }
 }

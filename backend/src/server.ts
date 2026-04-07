@@ -54,7 +54,7 @@ const startServer = async () => {
     }
 
     // 启动服务器
-    app.listen(config.server.port, () => {
+    app.listen(config.server.port, "0.0.0.0", () => {
       console.log(`Server is running on port ${config.server.port}`);
     });
   } catch (error) {

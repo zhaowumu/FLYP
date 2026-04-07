@@ -17,6 +17,7 @@ import permissionRoutes from "./routes/permissionRoutes";
 import customLinkRoutes from "./routes/customLinkRoutes";
 import sharedFolderRoutes from "./routes/sharedFolderRoutes";
 import markdownRoutes from "./routes/markdownRoutes";
+import systemConfigRoutes from "./routes/systemConfigRoutes";
 
 const app = express();
 
@@ -44,6 +45,7 @@ app.use("/api/permissions", authMiddleware, permissionRoutes);
 app.use("/api/custom-links", authMiddleware, customLinkRoutes);
 app.use("/api/shared-folder", authMiddleware, sharedFolderRoutes);
 app.use("/api/markdown", authMiddleware, markdownRoutes);
+app.use("/api/system-config", authMiddleware, systemConfigRoutes);
 
 // 健康检查
 app.get("/health", (req, res) => {

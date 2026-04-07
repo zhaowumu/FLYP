@@ -3,6 +3,9 @@ import { AppDataSource } from "../config/database";
 import { Bug } from "../entities/Bug";
 import { OperationLog } from "../entities/OperationLog";
 import { User } from "../entities/User";
+import { DingTalkService } from "../services/dingtalkService";
+
+const dingTalkService = new DingTalkService();
 
 const bugRepository = AppDataSource.getRepository(Bug);
 const userRepository = AppDataSource.getRepository(User);
@@ -60,6 +63,15 @@ export const bugController = {
         reporter?.realName || "未知用户",
         "create"
       );
+
+      dingTalkService.sendNotification("create", {
+        type: "BUG",
+        id: String(bug.id),
+        title: bug.title,
+        priority: bug.severity,
+        creator: reporter?.realName || "未知用户",
+        time: new Date().toLocaleString("zh-CN")
+      });
 
       const savedBug = await bugRepository.findOne({
         where: { id: bug.id },
@@ -155,6 +167,16 @@ export const bugController = {
             remark: updateData.log?.remark || "",
           }
         );
+
+        dingTalkService.sendNotification("assignee_change", {
+          type: "BUG",
+          id: String(bug.id),
+          title: bug.title,
+          oldAssignee: oldAssignee?.realName || "未处理",
+          newAssignee: newAssignee?.realName || "未知",
+          operator: userName,
+          time: new Date().toLocaleString("zh-CN")
+        });
         
         bug.assignee = newAssignee!;
         delete updateData.assigneeId;
@@ -172,6 +194,16 @@ export const bugController = {
             remark: updateData.log?.remark || "",
           }
         );
+
+        dingTalkService.sendNotification("status_change", {
+          type: "BUG",
+          id: String(bug.id),
+          title: bug.title,
+          oldStatus: bug.status,
+          newStatus: updateData.status,
+          operator: userName,
+          time: new Date().toLocaleString("zh-CN")
+        });
       }
 
       if (updateData.severity && updateData.severity !== bug.severity) {
@@ -242,6 +274,16 @@ export const bugController = {
         extraFields
       );
 
+      dingTalkService.sendNotification("status_change", {
+        type: "BUG",
+        id: String(bug.id),
+        title: bug.title,
+        oldStatus: bug.status,
+        newStatus: status,
+        operator: userName,
+        time: new Date().toLocaleString("zh-CN")
+      });
+
       const updatedBug = await bugRepository.findOne({
         where: { id: parseInt(id as string) },
         relations: ["project", "project.manager", "assignee", "reporter"],
@@ -282,6 +324,16 @@ export const bugController = {
         extraFields.newAssignee = newAssignee?.realName || "未知";
         bug.assignee = newAssignee!;
         bug.status = "assigned";
+
+        dingTalkService.sendNotification("assignee_change", {
+          type: "BUG",
+          id: String(bug.id),
+          title: bug.title,
+          oldAssignee: bug.assignee?.realName || "未处理",
+          newAssignee: newAssignee?.realName || "未知",
+          operator: userName,
+          time: new Date().toLocaleString("zh-CN")
+        });
       }
 
       if (log.action === "severity_change" && log.newSeverity) {
@@ -294,6 +346,16 @@ export const bugController = {
         extraFields.oldStatus = bug.status;
         extraFields.newStatus = log.newStatus;
         bug.status = log.newStatus;
+
+        dingTalkService.sendNotification("status_change", {
+          type: "BUG",
+          id: String(bug.id),
+          title: bug.title,
+          oldStatus: extraFields.oldStatus,
+          newStatus: log.newStatus,
+          operator: userName,
+          time: new Date().toLocaleString("zh-CN")
+        });
       }
 
       await bugRepository.save(bug);
@@ -352,6 +414,16 @@ export const bugController = {
           remark: `分配给 ${assignee.realName}`,
         }
       );
+
+      dingTalkService.sendNotification("assignee_change", {
+        type: "BUG",
+        id: String(bug.id),
+        title: bug.title,
+        oldAssignee: "未分配",
+        newAssignee: assignee.realName,
+        operator: user?.realName || "未知用户",
+        time: new Date().toLocaleString("zh-CN")
+      });
 
       const savedBug = await bugRepository.findOne({
         where: { id: bug.id },
