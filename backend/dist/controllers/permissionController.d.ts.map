@@ -1,0 +1,1 @@
+{"version":3,"file":"permissionController.d.ts","sourceRoot":"","sources":["../../src/controllers/permissionController.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,OAAO,EAAE,QAAQ,EAAE,MAAM,SAAS,CAAC;AAO5C,eAAO,MAAM,oBAAoB;yBACJ,OAAO,OAAO,QAAQ;2BAcpB,OAAO,OAAO,QAAQ;CAuBpD,CAAC"}

@@ -64,6 +64,13 @@
             </el-breadcrumb>
           </div>
           <div class="header-right">
+            <div class="search-trigger" @click="searchVisible = true">
+              <el-icon><Search /></el-icon>
+              <span>搜索...</span>
+              <div class="search-shortcut">
+                <kbd>⌘</kbd><kbd>K</kbd>
+              </div>
+            </div>
             <el-dropdown trigger="click">
               <div class="user-dropdown">
                 <el-avatar :size="32" class="user-avatar">
@@ -92,14 +99,16 @@
   <div v-else class="login-wrapper">
     <router-view />
   </div>
+  <GlobalSearch v-model="searchVisible" />
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, markRaw } from 'vue'
+import { ref, computed, onMounted, watch, markRaw, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from './stores/user'
 import { getCustomLinks } from './api/customLink'
 import { ElMessage } from 'element-plus'
+import GlobalSearch from './components/GlobalSearch.vue'
 import {
   Link,
   Document,
@@ -109,6 +118,7 @@ import {
   Tools,
   ChatDotRound,
   FolderOpened,
+  Search,
 } from '@element-plus/icons-vue'
 
 const iconMap: Record<string, any> = {
@@ -127,6 +137,7 @@ const router = useRouter()
 const userStore = useUserStore()
 const isCollapse = ref(false)
 const customLinks = ref<Array<{ name: string; url: string; icon: string; type: string }>>([])
+const searchVisible = ref(false)
 
 const activeMenu = computed(() => route.path)
 
@@ -195,6 +206,24 @@ watch(() => userStore.isLoggedIn, (val) => {
   if (val) {
     loadCustomLinks()
   }
+})
+
+function handleGlobalKeydown(e: KeyboardEvent) {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+    e.preventDefault()
+    searchVisible.value = true
+  }
+}
+
+onMounted(() => {
+  if (userStore.isLoggedIn) {
+    loadCustomLinks()
+  }
+  document.addEventListener('keydown', handleGlobalKeydown)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('keydown', handleGlobalKeydown)
 })
 </script>
 
@@ -317,6 +346,46 @@ body {
 .header-right {
   display: flex;
   align-items: center;
+  gap: 16px;
+}
+
+.search-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: #f5f7fa;
+  border: 1px solid #e4e7ed;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #909399;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.search-trigger:hover {
+  background: #ecf5ff;
+  border-color: #409eff;
+  color: #409eff;
+}
+
+.search-trigger .el-icon {
+  font-size: 16px;
+}
+
+.search-shortcut {
+  display: flex;
+  gap: 2px;
+  margin-left: 8px;
+}
+
+.search-shortcut kbd {
+  font-size: 11px;
+  background: white;
+  border: 1px solid #dcdfe6;
+  border-radius: 3px;
+  padding: 1px 5px;
+  color: #909399;
 }
 
 .user-dropdown {
