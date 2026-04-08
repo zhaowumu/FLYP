@@ -12,7 +12,6 @@ export declare class Task {
     creator: User;
     parentTask: Task;
     subtasks: Task[];
-    dependencies: Task[];
     createdAt: Date;
     updatedAt: Date;
 }

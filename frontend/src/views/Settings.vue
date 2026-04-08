@@ -214,8 +214,8 @@
           <div class="backup-section">
             <div class="backup-item">
               <div class="backup-info">
-                <div class="backup-title">备份数据</div>
-                <div class="backup-desc">将所有数据（用户、项目、任务、缺陷、操作日志、系统配置）备份为JSON文件</div>
+                <div class="backup-title">备份数据库</div>
+                <div class="backup-desc">直接下载数据库文件（flyp.db），100% 完整备份，恢复最快最可靠</div>
               </div>
               <el-button type="primary" @click="backupData" :loading="backupLoading">
                 <el-icon><Download /></el-icon>
@@ -224,13 +224,13 @@
             </div>
             <div class="backup-item">
               <div class="backup-info">
-                <div class="backup-title">恢复数据</div>
-                <div class="backup-desc">从备份文件恢复数据（会覆盖现有数据，请谨慎操作）</div>
+                <div class="backup-title">恢复数据库</div>
+                <div class="backup-desc">从备份的数据库文件恢复（会覆盖现有数据，请谨慎操作）</div>
               </div>
               <el-upload
                 :show-file-list="false"
                 :before-upload="restoreData"
-                accept=".json"
+                accept=".db"
               >
                 <el-button type="warning" :loading="restoreLoading">
                   <el-icon><Upload /></el-icon>
@@ -709,11 +709,12 @@ async function backupData() {
   backupLoading.value = true
   try {
     const res = await backupDataApi()
-    const blob = new Blob([res.data], { type: 'application/json' })
+    const blob = new Blob([res.data], { type: 'application/octet-stream' })
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `backup_${Date.now()}.json`
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
+    link.download = `flyp_backup_${timestamp}.db`
     link.click()
     window.URL.revokeObjectURL(url)
     ElMessage.success('备份成功')
@@ -737,24 +738,13 @@ async function restoreData(file: File) {
     )
 
     restoreLoading.value = true
-    const reader = new FileReader()
-    reader.onload = async (e) => {
-      try {
-        const data = JSON.parse(e.target?.result as string)
-        await restoreDataApi(data)
-        ElMessage.success('数据恢复成功')
-      } catch {
-        ElMessage.error('恢复失败，请检查备份文件格式')
-      } finally {
-        restoreLoading.value = false
-      }
+    await restoreDataApi(file)
+    ElMessage.success('数据恢复成功，请刷新页面')
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      ElMessage.error(error?.response?.data?.error || '恢复失败，请检查备份文件')
     }
-    reader.onerror = () => {
-      ElMessage.error('读取文件失败')
-      restoreLoading.value = false
-    }
-    reader.readAsText(file)
-  } catch {
+  } finally {
     restoreLoading.value = false
   }
   return false

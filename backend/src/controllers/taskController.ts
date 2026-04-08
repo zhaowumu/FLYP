@@ -39,7 +39,7 @@ async function getTaskLogs(taskId: number): Promise<OperationLog[]> {
 export const taskController = {
   async createTask(req: Request, res: Response) {
     try {
-      const { title, description, priority, dueDate, projectId, assigneeId, parentTaskId, dependencyIds } = req.body;
+      const { title, description, priority, dueDate, projectId, assigneeId, parentTaskId } = req.body;
       const createdBy = (req as any).user.id;
 
       const creator = await userRepository.findOne({ where: { id: createdBy } });
@@ -55,11 +55,6 @@ export const taskController = {
         creator: { id: createdBy },
         parentTask: parentTaskId ? { id: parentTaskId } : undefined,
       });
-
-      if (dependencyIds && dependencyIds.length > 0) {
-        const dependencies = await taskRepository.findByIds(dependencyIds);
-        task.dependencies = dependencies;
-      }
 
       await taskRepository.save(task);
 
@@ -81,7 +76,7 @@ export const taskController = {
 
       const savedTask = await taskRepository.findOne({
         where: { id: task.id },
-        relations: ["project", "project.manager", "assignee", "creator", "parentTask", "subtasks", "dependencies"],
+        relations: ["project", "project.manager", "assignee", "creator", "parentTask", "subtasks"],
       });
 
       res.status(201).json(savedTask);
@@ -108,7 +103,7 @@ export const taskController = {
 
       const tasks = await taskRepository.find({
         where,
-        relations: ["project", "project.manager", "assignee", "creator", "parentTask", "subtasks", "dependencies"],
+        relations: ["project", "project.manager", "assignee", "creator", "parentTask", "subtasks"],
         order: { [sortField]: order },
       });
 
@@ -124,7 +119,7 @@ export const taskController = {
       const { id } = req.params;
       const task = await taskRepository.findOne({
         where: { id: parseInt(id as string) },
-        relations: ["project", "project.manager", "assignee", "creator", "parentTask", "subtasks", "dependencies"],
+        relations: ["project", "project.manager", "assignee", "creator", "parentTask", "subtasks"],
       });
 
       if (!task) {
@@ -240,7 +235,7 @@ export const taskController = {
 
       const updatedTask = await taskRepository.findOne({
         where: { id: parseInt(id as string) },
-        relations: ["project", "project.manager", "assignee", "creator", "parentTask", "subtasks", "dependencies"],
+        relations: ["project", "project.manager", "assignee", "creator", "parentTask", "subtasks"],
       });
 
       res.json(updatedTask);
@@ -308,7 +303,7 @@ export const taskController = {
 
       const updatedTask = await taskRepository.findOne({
         where: { id: parseInt(id as string) },
-        relations: ["project", "project.manager", "assignee", "creator", "parentTask", "subtasks", "dependencies"],
+        relations: ["project", "project.manager", "assignee", "creator", "parentTask", "subtasks"],
       });
 
       res.json(updatedTask);
@@ -401,7 +396,7 @@ export const taskController = {
 
       const updatedTask = await taskRepository.findOne({
         where: { id: parseInt(id as string) },
-        relations: ["project", "project.manager", "assignee", "creator", "parentTask", "subtasks", "dependencies"],
+        relations: ["project", "project.manager", "assignee", "creator", "parentTask", "subtasks"],
       });
 
       res.json(updatedTask);
@@ -451,25 +446,6 @@ export const taskController = {
     }
   },
 
-  async getTaskDependencies(req: Request, res: Response) {
-    try {
-      const { id } = req.params;
-      const task = await taskRepository.findOne({
-        where: { id: parseInt(id as string) },
-        relations: ["dependencies"],
-      });
-
-      if (!task) {
-        return res.status(404).json({ error: "Task not found" });
-      }
-
-      res.json(task.dependencies);
-    } catch (error) {
-      console.error("Error getting task dependencies:", error);
-      res.status(500).json({ error: "Failed to get task dependencies" });
-    }
-  },
-
   async extendDueDate(req: Request, res: Response) {
     try {
       const { id } = req.params;
@@ -507,7 +483,7 @@ export const taskController = {
 
       const updatedTask = await taskRepository.findOne({
         where: { id: parseInt(id as string) },
-        relations: ["project", "project.manager", "assignee", "creator", "parentTask", "subtasks", "dependencies"],
+        relations: ["project", "project.manager", "assignee", "creator", "parentTask", "subtasks"],
       });
 
       res.json(updatedTask);

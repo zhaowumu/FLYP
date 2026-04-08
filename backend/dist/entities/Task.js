@@ -61,15 +61,6 @@ __decorate([
     __metadata("design:type", Array)
 ], Task.prototype, "subtasks", void 0);
 __decorate([
-    (0, typeorm_1.ManyToMany)(() => Task, { nullable: true }),
-    (0, typeorm_1.JoinTable)({
-        name: "task_dependencies",
-        joinColumn: { name: "taskId", referencedColumnName: "id" },
-        inverseJoinColumn: { name: "dependsOnId", referencedColumnName: "id" }
-    }),
-    __metadata("design:type", Array)
-], Task.prototype, "dependencies", void 0);
-__decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)
 ], Task.prototype, "createdAt", void 0);

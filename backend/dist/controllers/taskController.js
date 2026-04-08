@@ -30,7 +30,7 @@ async function getTaskLogs(taskId) {
 exports.taskController = {
     async createTask(req, res) {
         try {
-            const { title, description, priority, dueDate, projectId, assigneeId, parentTaskId, dependencyIds } = req.body;
+            const { title, description, priority, dueDate, projectId, assigneeId, parentTaskId } = req.body;
             const createdBy = req.user.id;
             const creator = await userRepository.findOne({ where: { id: createdBy } });
             const task = taskRepository.create({
@@ -44,10 +44,6 @@ exports.taskController = {
                 creator: { id: createdBy },
                 parentTask: parentTaskId ? { id: parentTaskId } : undefined,
             });
-            if (dependencyIds && dependencyIds.length > 0) {
-                const dependencies = await taskRepository.findByIds(dependencyIds);
-                task.dependencies = dependencies;
-            }
             await taskRepository.save(task);
             await createOperationLog(task.id, createdBy, creator?.realName || "未知用户", "create");
             dingTalkService.sendNotification("create", {
@@ -60,7 +56,7 @@ exports.taskController = {
             });
             const savedTask = await taskRepository.findOne({
                 where: { id: task.id },
-                relations: ["project", "project.manager", "assignee", "creator", "parentTask", "subtasks", "dependencies"],
+                relations: ["project", "project.manager", "assignee", "creator", "parentTask", "subtasks"],
             });
             res.status(201).json(savedTask);
         }
@@ -88,7 +84,7 @@ exports.taskController = {
             const order = sortOrder === "ASC" ? "ASC" : "DESC";
             const tasks = await taskRepository.find({
                 where,
-                relations: ["project", "project.manager", "assignee", "creator", "parentTask", "subtasks", "dependencies"],
+                relations: ["project", "project.manager", "assignee", "creator", "parentTask", "subtasks"],
                 order: { [sortField]: order },
             });
             res.json(tasks);
@@ -103,7 +99,7 @@ exports.taskController = {
             const { id } = req.params;
             const task = await taskRepository.findOne({
                 where: { id: parseInt(id) },
-                relations: ["project", "project.manager", "assignee", "creator", "parentTask", "subtasks", "dependencies"],
+                relations: ["project", "project.manager", "assignee", "creator", "parentTask", "subtasks"],
             });
             if (!task) {
                 return res.status(404).json({ error: "Task not found" });
@@ -185,7 +181,7 @@ exports.taskController = {
             await taskRepository.save(task);
             const updatedTask = await taskRepository.findOne({
                 where: { id: parseInt(id) },
-                relations: ["project", "project.manager", "assignee", "creator", "parentTask", "subtasks", "dependencies"],
+                relations: ["project", "project.manager", "assignee", "creator", "parentTask", "subtasks"],
             });
             res.json(updatedTask);
         }
@@ -240,7 +236,7 @@ exports.taskController = {
             });
             const updatedTask = await taskRepository.findOne({
                 where: { id: parseInt(id) },
-                relations: ["project", "project.manager", "assignee", "creator", "parentTask", "subtasks", "dependencies"],
+                relations: ["project", "project.manager", "assignee", "creator", "parentTask", "subtasks"],
             });
             res.json(updatedTask);
         }
@@ -313,7 +309,7 @@ exports.taskController = {
             await createOperationLog(task.id, userId, userName, log.action || "comment", extraFields);
             const updatedTask = await taskRepository.findOne({
                 where: { id: parseInt(id) },
-                relations: ["project", "project.manager", "assignee", "creator", "parentTask", "subtasks", "dependencies"],
+                relations: ["project", "project.manager", "assignee", "creator", "parentTask", "subtasks"],
             });
             res.json(updatedTask);
         }
@@ -358,23 +354,6 @@ exports.taskController = {
             res.status(500).json({ error: "Failed to add subtask" });
         }
     },
-    async getTaskDependencies(req, res) {
-        try {
-            const { id } = req.params;
-            const task = await taskRepository.findOne({
-                where: { id: parseInt(id) },
-                relations: ["dependencies"],
-            });
-            if (!task) {
-                return res.status(404).json({ error: "Task not found" });
-            }
-            res.json(task.dependencies);
-        }
-        catch (error) {
-            console.error("Error getting task dependencies:", error);
-            res.status(500).json({ error: "Failed to get task dependencies" });
-        }
-    },
     async extendDueDate(req, res) {
         try {
             const { id } = req.params;
@@ -399,7 +378,7 @@ exports.taskController = {
             });
             const updatedTask = await taskRepository.findOne({
                 where: { id: parseInt(id) },
-                relations: ["project", "project.manager", "assignee", "creator", "parentTask", "subtasks", "dependencies"],
+                relations: ["project", "project.manager", "assignee", "creator", "parentTask", "subtasks"],
             });
             res.json(updatedTask);
         }

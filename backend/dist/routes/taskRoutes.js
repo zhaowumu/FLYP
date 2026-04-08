@@ -12,7 +12,6 @@ router.patch("/:id/status", taskController_1.taskController.updateTaskStatus);
 router.post("/:id/comments", taskController_1.taskController.addComment);
 router.delete("/:id", (0, authMiddleware_1.taskPermissionMiddleware)("delete"), taskController_1.taskController.deleteTask);
 router.post("/:id/subtasks", taskController_1.taskController.addSubtask);
-router.get("/:id/dependencies", taskController_1.taskController.getTaskDependencies);
 router.patch("/:id/extend", taskController_1.taskController.extendDueDate);
 exports.default = router;
 //# sourceMappingURL=taskRoutes.js.map

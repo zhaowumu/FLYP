@@ -8,7 +8,6 @@ export declare const taskController: {
     addComment(req: Request, res: Response): Promise<Response<any, Record<string, any>> | undefined>;
     deleteTask(req: Request, res: Response): Promise<void>;
     addSubtask(req: Request, res: Response): Promise<Response<any, Record<string, any>> | undefined>;
-    getTaskDependencies(req: Request, res: Response): Promise<Response<any, Record<string, any>> | undefined>;
     extendDueDate(req: Request, res: Response): Promise<Response<any, Record<string, any>> | undefined>;
 };
 //# sourceMappingURL=taskController.d.ts.map

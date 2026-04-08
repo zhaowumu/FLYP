@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, ManyToMany, JoinTable } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany } from "typeorm";
 import { Project } from "./Project";
 import { User } from "./User";
 import { OperationLog } from "./OperationLog";
@@ -37,14 +37,6 @@ export class Task {
 
   @OneToMany(() => Task, task => task.parentTask)
   subtasks: Task[];
-
-  @ManyToMany(() => Task, { nullable: true })
-  @JoinTable({
-    name: "task_dependencies",
-    joinColumn: { name: "taskId", referencedColumnName: "id" },
-    inverseJoinColumn: { name: "dependsOnId", referencedColumnName: "id" }
-  })
-  dependencies: Task[];
 
   @CreateDateColumn()
   createdAt: Date;

@@ -28,10 +28,6 @@ export const addSubtask = (parentId: number, taskData: any) => {
   return api.post(`/tasks/${parentId}/subtasks`, taskData)
 }
 
-export const getTaskDependencies = (id: number) => {
-  return api.get(`/tasks/${id}/dependencies`)
-}
-
 export const addComment = (id: number, log: any) => {
   return api.post(`/tasks/${id}/comments`, log)
 }
