@@ -208,7 +208,7 @@ export const excelController = {
 
       const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
 
-      const filename = useRawFormat ? `flyp_export_raw_${Date.now()}.xlsx` : `flyp_export_${Date.now()}.xlsx`;
+      const filename = useRawFormat ? `newbee_export_raw_${Date.now()}.xlsx` : `newbee_export_${Date.now()}.xlsx`;
       res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
       res.setHeader("Content-Disposition", `attachment; filename=${filename}`);
       res.send(buffer);

@@ -1,4 +1,4 @@
-# 游戏开发项目管理系统
+# 小蜜蜂 (NewBee) - 游戏开发项目管理系统
 
 基于策划文档开发的游戏开发项目管理系统，采用前后端分离架构。
 
@@ -65,7 +65,7 @@
 ### 1. 克隆项目
 ```bash
 git clone <repository-url>
-cd FLYP
+cd NewBee
 ```
 
 ### 2. 配置数据库
@@ -77,7 +77,7 @@ DB_HOST=localhost
 DB_PORT=5432
 DB_USERNAME=postgres
 DB_PASSWORD=your_password
-DB_DATABASE=flyp
+DB_DATABASE=newbee
 
 # 服务器配置
 PORT=3000
@@ -128,7 +128,7 @@ npm run dev
 ## 项目结构
 
 ```
-FLYP/
+NewBee/
 ├── backend/                # 后端项目
 │   ├── src/
 │   │   ├── config/        # 配置文件

@@ -4,7 +4,7 @@ import path from "path";
 import { AppDataSource } from "../config/database";
 
 // 数据库文件路径
-const DB_PATH = path.join(__dirname, "../../data/flyp.db");
+const DB_PATH = path.join(__dirname, "../../data/newbee.db");
 
 export const backupController = {
   // 备份数据库文件
@@ -19,7 +19,7 @@ export const backupController = {
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
 
       res.setHeader("Content-Type", "application/octet-stream");
-      res.setHeader("Content-Disposition", `attachment; filename=flyp_backup_${timestamp}.db`);
+      res.setHeader("Content-Disposition", `attachment; filename=newbee_backup_${timestamp}.db`);
       res.setHeader("Content-Length", stats.size);
       res.send(fileBuffer);
     } catch (error) {

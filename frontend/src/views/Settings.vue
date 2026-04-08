@@ -215,7 +215,7 @@
             <div class="backup-item">
               <div class="backup-info">
                 <div class="backup-title">备份数据库</div>
-                <div class="backup-desc">直接下载数据库文件（flyp.db），100% 完整备份，恢复最快最可靠</div>
+                <div class="backup-desc">直接下载数据库文件（newbee.db），100% 完整备份，恢复最快最可靠</div>
               </div>
               <el-button type="primary" @click="backupData" :loading="backupLoading">
                 <el-icon><Download /></el-icon>
@@ -680,7 +680,7 @@ async function exportRawData() {
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `flyp_export_raw_${Date.now()}.xlsx`
+    link.download = `newbee_export_raw_${Date.now()}.xlsx`
     link.click()
     window.URL.revokeObjectURL(url)
     ElMessage.success('导出成功')
@@ -696,7 +696,7 @@ async function exportAllData() {
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `flyp_export_${Date.now()}.xlsx`
+    link.download = `newbee_export_${Date.now()}.xlsx`
     link.click()
     window.URL.revokeObjectURL(url)
     ElMessage.success('导出成功')
@@ -714,7 +714,7 @@ async function backupData() {
     const link = document.createElement('a')
     link.href = url
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
-    link.download = `flyp_backup_${timestamp}.db`
+    link.download = `newbee_backup_${timestamp}.db`
     link.click()
     window.URL.revokeObjectURL(url)
     ElMessage.success('备份成功')

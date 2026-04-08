@@ -6,7 +6,7 @@
           <div class="logo-icon">
             <el-icon size="28"><Monitor /></el-icon>
           </div>
-          <span class="logo-text" v-show="!isCollapse">FLYP</span>
+          <span class="logo-text" v-show="!isCollapse">NewBee</span>
         </div>
         <el-menu
           :default-active="activeMenu"

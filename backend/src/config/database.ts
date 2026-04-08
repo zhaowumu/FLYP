@@ -9,7 +9,7 @@ import path from "path";
 
 export const AppDataSource = new DataSource({
   type: "better-sqlite3",
-  database: path.join(__dirname, "../../data/flyp.db"),
+  database: path.join(__dirname, "../../data/newbee.db"),
   synchronize: true,
   logging: false,
   entities: [User, Project, Task, Bug, SystemConfig, OperationLog],

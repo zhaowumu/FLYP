@@ -6,7 +6,7 @@
         <div class="logo">
           <el-icon size="40" color="#409eff"><Monitor /></el-icon>
         </div>
-        <h1>FLYP</h1>
+        <h1>小蜜蜂</h1>
         <p>游戏开发项目管理系统</p>
       </div>
       <el-form
