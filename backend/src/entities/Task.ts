@@ -20,6 +20,9 @@ export class Task {
   @Column({ default: "pending" })
   status: string;
 
+  @Column({ type: "varchar", nullable: true })
+  category: string;
+
   @Column({ nullable: true })
   dueDate: Date;
 

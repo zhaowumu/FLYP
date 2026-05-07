@@ -39,7 +39,7 @@ async function getBugLogs(bugId: number): Promise<OperationLog[]> {
 export const bugController = {
   async createBug(req: Request, res: Response) {
     try {
-      const { title, description, severity, reproduceSteps, projectId, assigneeId } = req.body;
+      const { title, description, severity, reproduceSteps, projectId, assigneeId, category } = req.body;
       const reportedBy = (req as any).user.id;
 
       const reporter = await userRepository.findOne({ where: { id: reportedBy } });
@@ -50,6 +50,7 @@ export const bugController = {
         severity: severity || "medium",
         status: "pending",
         reproduceSteps,
+        category: category || null,
         project: projectId ? { id: projectId } : undefined,
         assignee: assigneeId ? { id: assigneeId } : undefined,
         reporter: { id: reportedBy },
@@ -87,7 +88,7 @@ export const bugController = {
 
   async getAllBugs(req: Request, res: Response) {
     try {
-      const { projectId, status, severity, assigneeId, reporterId, sortBy, sortOrder } = req.query;
+      const { projectId, status, severity, assigneeId, reporterId, sortBy, sortOrder, category } = req.query;
       const where: any = {};
 
       if (projectId) where.project = { id: projectId };
@@ -95,6 +96,7 @@ export const bugController = {
       if (severity) where.severity = severity;
       if (assigneeId) where.assignee = { id: assigneeId };
       if (reporterId) where.reporter = { id: reporterId };
+      if (category) where.category = category;
 
       const validSortFields = ["createdAt", "updatedAt", "severity", "dueDate", "status", "title"];
       const sortField = sortBy && validSortFields.includes(sortBy as string) ? sortBy as string : "createdAt";
@@ -517,6 +519,21 @@ export const bugController = {
     } catch (error) {
       console.error("Error extending bug due date:", error);
       res.status(500).json({ error: "Failed to extend bug due date" });
+    }
+  },
+
+  async getCategories(req: Request, res: Response) {
+    try {
+      const result = await bugRepository
+        .createQueryBuilder("bug")
+        .select("DISTINCT bug.category", "category")
+        .where("bug.category IS NOT NULL AND bug.category != ''")
+        .getRawMany();
+      const categories = result.map((r: any) => r.category).filter(Boolean);
+      res.json(categories);
+    } catch (error) {
+      console.error("Error getting bug categories:", error);
+      res.status(500).json({ error: "Failed to get bug categories" });
     }
   },
 };

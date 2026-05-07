@@ -48,6 +48,14 @@
             :value="user.id"
           />
         </el-select>
+        <el-select v-model="filterCategory" placeholder="分类筛选" clearable style="width: 150px">
+          <el-option
+            v-for="cat in categories"
+            :key="cat"
+            :label="cat"
+            :value="cat"
+          />
+        </el-select>
       </div>
 
       <el-table :data="filteredBugs" style="width: 100%">
@@ -59,6 +67,12 @@
         <el-table-column label="所属项目" width="150">
           <template #default="{ row }">
             {{ row.project?.name || '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column label="分类" width="120">
+          <template #default="{ row }">
+            <el-tag v-if="row.category" type="info" size="small" effect="plain">{{ row.category }}</el-tag>
+            <span v-else class="text-muted">-</span>
           </template>
         </el-table-column>
         <el-table-column prop="severity" label="严重程度" width="100">
@@ -144,6 +158,23 @@
             :height="180"
           />
         </el-form-item>
+        <el-form-item label="分类" prop="category">
+          <el-select
+            v-model="bugForm.category"
+            placeholder="请选择或输入分类（可选）"
+            filterable
+            allow-create
+            clearable
+            style="width: 100%"
+          >
+            <el-option
+              v-for="cat in categories"
+              :key="cat"
+              :label="cat"
+              :value="cat"
+            />
+          </el-select>
+        </el-form-item>
         <el-row :gutter="20">
           <el-col :span="8">
             <el-form-item label="严重程度" prop="severity">
@@ -181,7 +212,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { getBugs, createBug } from '../api/bug'
+import { getBugs, createBug, getBugCategories } from '../api/bug'
 import { getProjects } from '../api/project'
 import { getUsers } from '../api/user'
 import { useUserStore } from '../stores/user'
@@ -192,12 +223,14 @@ const userStore = useUserStore()
 const bugs = ref<any[]>([])
 const projects = ref<any[]>([])
 const users = ref<any[]>([])
+const categories = ref<string[]>([])
 const dialogVisible = ref(false)
 const bugFormRef = ref()
 const submitting = ref(false)
 const filterStatus = ref('')
 const filterSeverity = ref('')
 const filterUser = ref<number | null>(null)
+const filterCategory = ref('')
 const activeTab = ref('my')
 
 const bugForm = reactive({
@@ -206,7 +239,8 @@ const bugForm = reactive({
   description: '',
   reproduceSteps: '',
   severity: 'medium',
-  assigneeId: null as number | null
+  assigneeId: null as number | null,
+  category: ''
 })
 
 const bugRules = {
@@ -228,6 +262,7 @@ const filteredBugs = computed(() => {
     if (filterStatus.value && bug.status !== filterStatus.value) return false
     if (filterSeverity.value && bug.severity !== filterSeverity.value) return false
     if (filterUser.value && bug.assignee?.id !== filterUser.value) return false
+    if (filterCategory.value && bug.category !== filterCategory.value) return false
     return true
   })
 })
@@ -304,6 +339,15 @@ const loadBugs = async () => {
   }
 }
 
+const loadCategories = async () => {
+  try {
+    const res = await getBugCategories()
+    categories.value = res.data
+  } catch (error) {
+    console.error('Failed to load bug categories:', error)
+  }
+}
+
 const loadProjects = async () => {
   try {
     const res = await getProjects()
@@ -329,7 +373,8 @@ const showCreateDialog = () => {
     description: '',
     reproduceSteps: '',
     severity: 'medium',
-    assigneeId: null
+    assigneeId: null,
+    category: ''
   })
   dialogVisible.value = true
 }
@@ -349,6 +394,7 @@ const submitBug = async () => {
         ElMessage.success('提交成功')
         dialogVisible.value = false
         loadBugs()
+        loadCategories()
       } catch (error) {
         ElMessage.error('提交失败')
       } finally {
@@ -362,6 +408,7 @@ onMounted(() => {
   loadBugs()
   loadProjects()
   loadUsers()
+  loadCategories()
 })
 </script>
 

@@ -8,6 +8,8 @@ router.post("/", taskPermissionMiddleware("create"), taskController.createTask);
 
 router.get("/", taskController.getAllTasks);
 
+router.get("/categories", taskController.getCategories);
+
 router.get("/:id", taskController.getTaskById);
 
 router.put("/:id", taskController.updateTask);

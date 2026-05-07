@@ -154,6 +154,11 @@
               <span class="value">{{ task.project?.name || '-' }}</span>
             </div>
             <div class="info-item">
+              <span class="label">分类</span>
+              <el-tag v-if="task.category" type="info" size="small" effect="plain">{{ task.category }}</el-tag>
+              <span v-else class="text-muted value">未设置</span>
+            </div>
+            <div class="info-item">
               <span class="label">截止日期</span>
               <span class="value">{{ task.dueDate ? new Date(task.dueDate).toLocaleDateString() : '未设置' }}</span>
             </div>

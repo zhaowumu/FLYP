@@ -8,6 +8,10 @@ router.post("/", bugPermissionMiddleware("create"), bugController.createBug);
 
 router.get("/", bugController.getAllBugs);
 
+router.get("/categories", bugController.getCategories);
+
+router.get("/stats", bugController.getBugStats);
+
 router.get("/:id", bugController.getBugById);
 
 router.put("/:id", bugController.updateBug);
@@ -19,8 +23,6 @@ router.post("/:id/comments", bugController.addComment);
 router.patch("/:id/assign", bugController.assignBug);
 
 router.delete("/:id", bugPermissionMiddleware("delete"), bugController.deleteBug);
-
-router.get("/stats", bugController.getBugStats);
 
 router.patch("/:id/extend", bugController.extendDueDate);
 

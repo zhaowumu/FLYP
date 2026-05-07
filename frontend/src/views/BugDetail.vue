@@ -146,6 +146,11 @@
               <span class="value">{{ bug.project?.name || '-' }}</span>
             </div>
             <div class="info-item">
+              <span class="label">分类</span>
+              <el-tag v-if="bug.category" type="info" size="small" effect="plain">{{ bug.category }}</el-tag>
+              <span v-else class="text-muted value">未设置</span>
+            </div>
+            <div class="info-item">
               <span class="label">创建时间</span>
               <span class="value">{{ formatTime(bug.createdAt) }}</span>
             </div>

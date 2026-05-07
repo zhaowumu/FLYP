@@ -39,7 +39,7 @@ async function getTaskLogs(taskId: number): Promise<OperationLog[]> {
 export const taskController = {
   async createTask(req: Request, res: Response) {
     try {
-      const { title, description, priority, dueDate, projectId, assigneeId, parentTaskId } = req.body;
+      const { title, description, priority, dueDate, projectId, assigneeId, parentTaskId, category } = req.body;
       const createdBy = (req as any).user.id;
 
       const creator = await userRepository.findOne({ where: { id: createdBy } });
@@ -50,6 +50,7 @@ export const taskController = {
         priority: priority || "medium",
         status: "pending",
         dueDate,
+        category: category || null,
         project: projectId ? { id: projectId } : undefined,
         assignee: assigneeId ? { id: assigneeId } : undefined,
         creator: { id: createdBy },
@@ -88,7 +89,7 @@ export const taskController = {
 
   async getAllTasks(req: Request, res: Response) {
     try {
-      const { projectId, status, assigneeId, creatorId, priority, sortBy, sortOrder } = req.query;
+      const { projectId, status, assigneeId, creatorId, priority, sortBy, sortOrder, category } = req.query;
       const where: any = {};
 
       if (projectId) where.project = { id: projectId };
@@ -96,6 +97,7 @@ export const taskController = {
       if (assigneeId) where.assignee = { id: assigneeId };
       if (creatorId) where.creator = { id: creatorId };
       if (priority) where.priority = priority;
+      if (category) where.category = category;
 
       const validSortFields = ["createdAt", "updatedAt", "priority", "dueDate", "status", "title"];
       const sortField = sortBy && validSortFields.includes(sortBy as string) ? sortBy as string : "createdAt";
@@ -490,6 +492,21 @@ export const taskController = {
     } catch (error) {
       console.error("Error extending task due date:", error);
       res.status(500).json({ error: "Failed to extend task due date" });
+    }
+  },
+
+  async getCategories(req: Request, res: Response) {
+    try {
+      const result = await taskRepository
+        .createQueryBuilder("task")
+        .select("DISTINCT task.category", "category")
+        .where("task.category IS NOT NULL AND task.category != ''")
+        .getRawMany();
+      const categories = result.map((r: any) => r.category).filter(Boolean);
+      res.json(categories);
+    } catch (error) {
+      console.error("Error getting task categories:", error);
+      res.status(500).json({ error: "Failed to get task categories" });
     }
   },
 };

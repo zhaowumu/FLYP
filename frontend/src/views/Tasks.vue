@@ -46,6 +46,14 @@
             :value="user.id"
           />
         </el-select>
+        <el-select v-model="filterCategory" placeholder="分类筛选" clearable style="width: 150px">
+          <el-option
+            v-for="cat in categories"
+            :key="cat"
+            :label="cat"
+            :value="cat"
+          />
+        </el-select>
       </div>
 
       <el-table 
@@ -95,6 +103,12 @@
         <el-table-column label="所属项目" width="150">
           <template #default="{ row }">
             {{ row.project?.name || '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column label="分类" width="120">
+          <template #default="{ row }">
+            <el-tag v-if="row.category" type="info" size="small" effect="plain">{{ row.category }}</el-tag>
+            <span v-else class="text-muted">-</span>
           </template>
         </el-table-column>
         <el-table-column prop="priority" label="优先级" width="100">
@@ -191,6 +205,23 @@
             placeholder="请输入任务描述... 支持粘贴图片 (Ctrl+V)"
             :height="250"
           />
+        </el-form-item>
+        <el-form-item label="分类" prop="category">
+          <el-select
+            v-model="taskForm.category"
+            placeholder="请选择或输入分类（可选）"
+            filterable
+            allow-create
+            clearable
+            style="width: 100%"
+          >
+            <el-option
+              v-for="cat in categories"
+              :key="cat"
+              :label="cat"
+              :value="cat"
+            />
+          </el-select>
         </el-form-item>
         <el-row :gutter="20">
           <el-col :span="8">
@@ -293,7 +324,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { getTasks, createTask, addSubtask } from '../api/task'
+import { getTasks, createTask, addSubtask, getTaskCategories } from '../api/task'
 import { getProjects } from '../api/project'
 import { getUsers } from '../api/user'
 import { useUserStore } from '../stores/user'
@@ -304,6 +335,7 @@ const userStore = useUserStore()
 const tasks = ref<any[]>([])
 const projects = ref<any[]>([])
 const users = ref<any[]>([])
+const categories = ref<string[]>([])
 const dialogVisible = ref(false)
 const subtaskDialogVisible = ref(false)
 const taskFormRef = ref()
@@ -312,6 +344,7 @@ const submitting = ref(false)
 const filterStatus = ref('')
 const filterPriority = ref('')
 const filterUser = ref<number | null>(null)
+const filterCategory = ref('')
 const parentTask = ref<any>(null)
 const activeTab = ref('my')
 
@@ -321,7 +354,8 @@ const taskForm = reactive({
   description: '',
   priority: 'medium',
   assigneeId: null as number | null,
-  dueDate: null as Date | null
+  dueDate: null as Date | null,
+  category: ''
 })
 
 const subtaskForm = reactive({
@@ -355,6 +389,7 @@ const filteredTasks = computed(() => {
     if (filterStatus.value && task.status !== filterStatus.value) return false
     if (filterPriority.value && task.priority !== filterPriority.value) return false
     if (filterUser.value && task.assignee?.id !== filterUser.value) return false
+    if (filterCategory.value && task.category !== filterCategory.value) return false
     return true
   })
 })
@@ -472,6 +507,15 @@ const loadTasks = async () => {
   }
 }
 
+const loadCategories = async () => {
+  try {
+    const res = await getTaskCategories()
+    categories.value = res.data
+  } catch (error) {
+    console.error('Failed to load task categories:', error)
+  }
+}
+
 const loadProjects = async () => {
   try {
     const res = await getProjects()
@@ -497,7 +541,8 @@ const showCreateDialog = () => {
     description: '',
     priority: 'medium',
     assigneeId: null,
-    dueDate: null
+    dueDate: null,
+    category: ''
   })
   dialogVisible.value = true
 }
@@ -560,6 +605,7 @@ const submitTask = async () => {
         ElMessage.success('创建成功')
         dialogVisible.value = false
         loadTasks()
+        loadCategories()
       } catch (error) {
         ElMessage.error('创建失败')
       } finally {
@@ -573,6 +619,7 @@ onMounted(() => {
   loadTasks()
   loadProjects()
   loadUsers()
+  loadCategories()
 })
 </script>
 

@@ -35,3 +35,7 @@ export const addComment = (id: number, log: any) => {
 export const extendDueDate = (id: number, data: { newDueDate: string; remark?: string }) => {
   return api.patch(`/tasks/${id}/extend`, data)
 }
+
+export const getTaskCategories = () => {
+  return api.get('/tasks/categories')
+}
