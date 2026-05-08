@@ -4,7 +4,7 @@
       <el-aside :width="isCollapse ? '64px' : '220px'" class="sidebar">
         <div class="logo-container">
           <div class="logo-icon">
-            <el-icon size="28"><Monitor /></el-icon>
+            <img src="/bee.png" alt="logo" class="logo-img" />
           </div>
           <span class="logo-text" v-show="!isCollapse">NewBee</span>
         </div>
@@ -280,12 +280,16 @@ body {
 .logo-icon {
   width: 32px;
   height: 32px;
-  background: linear-gradient(135deg, #409eff 0%, #67c23a 100%);
-  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+}
+
+.logo-img {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  object-fit: contain;
 }
 
 .logo-text {
