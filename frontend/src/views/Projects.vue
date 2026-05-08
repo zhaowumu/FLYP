@@ -58,7 +58,8 @@
     <el-dialog
       v-model="dialogVisible"
       :title="isEdit ? '编辑项目' : '新建项目'"
-      width="800px"
+      width="90%"
+      top="2vh"
       destroy-on-close
     >
       <el-form
@@ -66,15 +67,16 @@
         :model="projectForm"
         :rules="projectRules"
         label-width="100px"
+        class="fullscreen-form"
       >
         <el-form-item label="项目名称" prop="name">
           <el-input v-model="projectForm.name" placeholder="请输入项目名称" />
         </el-form-item>
-        <el-form-item label="项目描述" prop="description">
+        <el-form-item label="项目描述" prop="description" class="flex-grow-item">
           <RichEditor
             v-model="projectForm.description"
             placeholder="请输入项目描述... 支持粘贴图片 (Ctrl+V)"
-            :height="250"
+            :height="0"
           />
         </el-form-item>
         <el-form-item label="项目状态" prop="status">
@@ -341,5 +343,52 @@ onMounted(() => {
 .empty-state {
   grid-column: 1 / -1;
   padding: 40px 0;
+}
+
+/* 对话框样式 */
+:deep(.el-dialog) {
+  border-radius: 12px;
+  overflow: hidden;
+  max-height: 96vh;
+  display: flex;
+  flex-direction: column;
+}
+
+:deep(.el-dialog__body) {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+:deep(.el-dialog__header),
+:deep(.el-dialog__footer) {
+  flex-shrink: 0;
+}
+
+/* 全屏弹窗表单自适应布局 */
+.fullscreen-form {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.fullscreen-form :deep(.el-form-item) {
+  flex-shrink: 0;
+}
+
+.fullscreen-form .flex-grow-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.fullscreen-form .flex-grow-item :deep(.el-form-item__content) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 </style>

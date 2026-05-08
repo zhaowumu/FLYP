@@ -122,7 +122,8 @@
     <el-dialog
       v-model="dialogVisible"
       title="提交缺陷"
-      width="700px"
+      width="90%"
+      top="2vh"
       destroy-on-close
     >
       <el-form
@@ -130,6 +131,7 @@
         :model="bugForm"
         :rules="bugRules"
         label-width="80px"
+        class="fullscreen-form"
       >
         <el-form-item label="所属项目" prop="projectId">
           <el-select v-model="bugForm.projectId" placeholder="请选择项目" style="width: 100%">
@@ -143,20 +145,6 @@
         </el-form-item>
         <el-form-item label="缺陷标题" prop="title">
           <el-input v-model="bugForm.title" placeholder="请输入缺陷标题" />
-        </el-form-item>
-        <el-form-item label="缺陷描述" prop="description">
-          <RichEditor
-            v-model="bugForm.description"
-            placeholder="请描述缺陷现象... 支持粘贴图片 (Ctrl+V)"
-            :height="180"
-          />
-        </el-form-item>
-        <el-form-item label="重现步骤" prop="reproduceSteps">
-          <RichEditor
-            v-model="bugForm.reproduceSteps"
-            placeholder="请描述重现步骤... 支持粘贴图片 (Ctrl+V)"
-            :height="180"
-          />
         </el-form-item>
         <el-form-item label="分类" prop="category">
           <el-select
@@ -174,6 +162,20 @@
               :value="cat"
             />
           </el-select>
+        </el-form-item>
+        <el-form-item label="缺陷描述" prop="description" class="flex-grow-item">
+          <RichEditor
+            v-model="bugForm.description"
+            placeholder="请描述缺陷现象... 支持粘贴图片 (Ctrl+V)"
+            :height="0"
+          />
+        </el-form-item>
+        <el-form-item label="重现步骤" prop="reproduceSteps" class="flex-grow-item">
+          <RichEditor
+            v-model="bugForm.reproduceSteps"
+            placeholder="请描述重现步骤... 支持粘贴图片 (Ctrl+V)"
+            :height="0"
+          />
         </el-form-item>
         <el-row :gutter="20">
           <el-col :span="8">
@@ -523,5 +525,52 @@ onMounted(() => {
 .time-remaining.overdue {
   color: #f56c6c;
   font-weight: 500;
+}
+
+/* 对话框样式 */
+:deep(.el-dialog) {
+  border-radius: 12px;
+  overflow: hidden;
+  max-height: 96vh;
+  display: flex;
+  flex-direction: column;
+}
+
+:deep(.el-dialog__body) {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+:deep(.el-dialog__header),
+:deep(.el-dialog__footer) {
+  flex-shrink: 0;
+}
+
+/* 全屏弹窗表单自适应布局 */
+.fullscreen-form {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.fullscreen-form :deep(.el-form-item) {
+  flex-shrink: 0;
+}
+
+.fullscreen-form .flex-grow-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.fullscreen-form .flex-grow-item :deep(.el-form-item__content) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 </style>

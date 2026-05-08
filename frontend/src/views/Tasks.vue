@@ -177,7 +177,8 @@
     <el-dialog
       v-model="dialogVisible"
       title="新建任务"
-      width="800px"
+      width="90%"
+      top="2vh"
       destroy-on-close
     >
       <el-form
@@ -185,6 +186,7 @@
         :model="taskForm"
         :rules="taskRules"
         label-width="100px"
+        class="fullscreen-form"
       >
         <el-form-item label="所属项目" prop="projectId">
           <el-select v-model="taskForm.projectId" placeholder="请选择项目" style="width: 100%">
@@ -198,13 +200,6 @@
         </el-form-item>
         <el-form-item label="任务标题" prop="title">
           <el-input v-model="taskForm.title" placeholder="请输入任务标题" />
-        </el-form-item>
-        <el-form-item label="任务描述" prop="description">
-          <RichEditor
-            v-model="taskForm.description"
-            placeholder="请输入任务描述... 支持粘贴图片 (Ctrl+V)"
-            :height="250"
-          />
         </el-form-item>
         <el-form-item label="分类" prop="category">
           <el-select
@@ -222,6 +217,13 @@
               :value="cat"
             />
           </el-select>
+        </el-form-item>
+        <el-form-item label="任务描述" prop="description" class="flex-grow-item">
+          <RichEditor
+            v-model="taskForm.description"
+            placeholder="请输入任务描述... 支持粘贴图片 (Ctrl+V)"
+            :height="0"
+          />
         </el-form-item>
         <el-row :gutter="20">
           <el-col :span="8">
@@ -268,7 +270,8 @@
     <el-dialog
       v-model="subtaskDialogVisible"
       :title="`添加子任务 - ${parentTask?.title || ''}`"
-      width="800px"
+      width="90%"
+      top="2vh"
       destroy-on-close
     >
       <el-form
@@ -276,15 +279,16 @@
         :model="subtaskForm"
         :rules="subtaskRules"
         label-width="100px"
+        class="fullscreen-form"
       >
         <el-form-item label="任务标题" prop="title">
           <el-input v-model="subtaskForm.title" placeholder="请输入子任务标题" />
         </el-form-item>
-        <el-form-item label="任务描述" prop="description">
+        <el-form-item label="任务描述" prop="description" class="flex-grow-item">
           <RichEditor
             v-model="subtaskForm.description"
             placeholder="请输入子任务描述... 支持粘贴图片 (Ctrl+V)"
-            :height="250"
+            :height="0"
           />
         </el-form-item>
         <el-row :gutter="20">
@@ -967,12 +971,16 @@ onMounted(() => {
 :deep(.el-dialog) {
   border-radius: 12px;
   overflow: hidden;
+  max-height: 96vh;
+  display: flex;
+  flex-direction: column;
 }
 
 :deep(.el-dialog__header) {
   padding: 20px 24px;
   border-bottom: 1px solid #f0f0f0;
   background: #fafbfc;
+  flex-shrink: 0;
 }
 
 :deep(.el-dialog__title) {
@@ -983,12 +991,43 @@ onMounted(() => {
 
 :deep(.el-dialog__body) {
   padding: 24px;
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 :deep(.el-dialog__footer) {
   padding: 16px 24px;
+  flex-shrink: 0;
   border-top: 1px solid #f0f0f0;
   background: #fafbfc;
+}
+
+/* 全屏弹窗表单自适应布局 */
+.fullscreen-form {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.fullscreen-form :deep(.el-form-item) {
+  flex-shrink: 0;
+}
+
+.fullscreen-form .flex-grow-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.fullscreen-form .flex-grow-item :deep(.el-form-item__content) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 /* 表单样式 */
