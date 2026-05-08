@@ -1,7 +1,7 @@
 <template>
   <div class="dashboard">
-    <!-- Welcome Banner with Hero Image -->
-    <div class="banner" :class="`role-${userStore.user?.role}`">
+    <!-- Welcome Banner -->
+    <div class="banner" :class="bannerClass">
       <div class="banner-bg-pattern">
         <svg class="floating-icon float-1" viewBox="0 0 64 64" fill="none">
           <path d="M32 8L38 24H56L42 34L48 50L32 40L16 50L22 34L8 24H26L32 8Z" fill="rgba(255,255,255,0.12)"/>
@@ -27,6 +27,7 @@
           <div class="welcome-text">
             <h2>{{ greeting }}，{{ userStore.user?.realName || '用户' }}</h2>
             <div class="date">{{ today }}</div>
+            <div class="banner-subtitle">{{ bannerSubtitle }}</div>
           </div>
         </div>
         <div class="banner-right">
@@ -43,52 +44,19 @@
       </div>
     </div>
 
-    <!-- Quick Quest Panel -->
+    <!-- Quick Quest Panel (role-specific) -->
     <div class="quick-quests">
-      <div class="quest-card" @click="$router.push('/tasks')">
-        <div class="quest-icon">
-          <svg viewBox="0 0 48 48" fill="none">
-            <rect x="8" y="6" width="32" height="36" rx="4" stroke="#667eea" stroke-width="2.5" fill="none"/>
-            <path d="M16 18H32M16 26H28M16 34H24" stroke="#667eea" stroke-width="2" stroke-linecap="round"/>
-            <circle cx="36" cy="36" r="10" fill="#667eea"/>
-            <path d="M32 36L35 39L40 33" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </div>
+      <div v-for="quest in quickQuests" :key="quest.key" class="quest-card" @click="quest.click">
+        <div class="quest-icon" v-html="quest.svg"></div>
         <div class="quest-info">
-          <div class="quest-title">每日任务</div>
-          <div class="quest-desc">{{ myPendingTasks.length }} 个待办任务</div>
-        </div>
-        <div class="quest-arrow">→</div>
-      </div>
-      <div class="quest-card" @click="$router.push('/bugs')">
-        <div class="quest-icon">
-          <svg viewBox="0 0 48 48" fill="none">
-            <path d="M24 8L12 16V32L24 40L36 32V16L24 8Z" stroke="#f5576c" stroke-width="2.5" fill="none"/>
-            <path d="M20 24L23 27L28 21" stroke="#f5576c" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </div>
-        <div class="quest-info">
-          <div class="quest-title">缺陷追踪</div>
-          <div class="quest-desc">{{ bugsToVerify.length }} 个待验证</div>
-        </div>
-        <div class="quest-arrow">→</div>
-      </div>
-      <div class="quest-card" @click="$router.push('/projects')">
-        <div class="quest-icon">
-          <svg viewBox="0 0 48 48" fill="none">
-            <path d="M8 14L24 6L40 14V34L24 42L8 34V14Z" stroke="#43e97b" stroke-width="2.5" fill="none"/>
-            <path d="M24 6V42M8 14L40 34M40 14L8 34" stroke="#43e97b" stroke-width="1.5" opacity="0.5"/>
-          </svg>
-        </div>
-        <div class="quest-info">
-          <div class="quest-title">项目总览</div>
-          <div class="quest-desc">{{ recentProjects.length }} 个活跃项目</div>
+          <div class="quest-title">{{ quest.title }}</div>
+          <div class="quest-desc">{{ quest.desc }}</div>
         </div>
         <div class="quest-arrow">→</div>
       </div>
     </div>
 
-    <!-- Admin View -->
+    <!-- ==================== Admin View ==================== -->
     <template v-if="userStore.user?.role === 'admin'">
       <div class="section">
         <div class="section-title">
@@ -139,6 +107,7 @@
                     <div class="progress-bar">
                       <div class="progress-fill" :style="{ width: getProjectProgress(project) + '%' }"></div>
                     </div>
+                    <span class="health-dot" :class="getHealthColor(getProjectProgress(project))"></span>
                     <span class="progress-text">{{ getProjectProgress(project) }}%</span>
                   </div>
                 </div>
@@ -201,7 +170,7 @@
                     <span>👤 {{ bug.assignee?.realName || '未分配' }}</span>
                   </div>
                 </div>
-                <span class="tag" :class="getStatusTagClass(bug.status)">{{ getBugStatusText(bug.status) }}</span>
+                <span class="tag" :class="getBugStatusTagClass(bug.status)">{{ getBugStatusText(bug.status) }}</span>
               </div>
               <div v-if="urgentBugs.length === 0" class="empty">暂无待处理缺陷</div>
             </div>
@@ -237,7 +206,7 @@
       </div>
     </template>
 
-    <!-- Project Manager View -->
+    <!-- ==================== Project Manager View ==================== -->
     <template v-else-if="userStore.user?.role === 'project_manager'">
       <div class="section">
         <div class="section-title">
@@ -330,16 +299,65 @@
           </div>
         </div>
       </div>
+
+      <!-- Member Task Completion (NEW) -->
+      <div class="section">
+        <div class="section-title">
+          <svg class="section-icon" viewBox="0 0 24 24" fill="none">
+            <path d="M17 21V19C17 17.9 16.1 17 15 17H9C7.9 17 7 17.9 7 19V21M12 13C14.76 13 17 10.76 17 8C17 5.24 14.76 3 12 3C9.24 3 7 5.24 7 8C7 10.76 9.24 13 12 13Z" stroke="#f59e0b" stroke-width="1.5" fill="none"/>
+            <path d="M20 8V14M23 11H17" stroke="#43e97b" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          成员任务完成情况
+        </div>
+        <div class="member-completion-grid">
+          <div v-for="member in memberCompletionData" :key="member.id" class="member-completion-card">
+            <div class="mcc-left">
+              <div class="member-avatar">{{ member.name.charAt(0) }}</div>
+              <div class="mcc-info">
+                <div class="mcc-name">{{ member.name }}</div>
+                <div class="mcc-role">{{ getRoleText(member.role) }}</div>
+              </div>
+            </div>
+            <div class="mcc-stats">
+              <div class="mcc-stat">
+                <span class="mcc-stat-num text-warning">{{ member.pendingCount }}</span>
+                <span class="mcc-stat-label">待处理</span>
+              </div>
+              <div class="mcc-stat">
+                <span class="mcc-stat-num text-blue">{{ member.inProgressCount }}</span>
+                <span class="mcc-stat-label">进行中</span>
+              </div>
+              <div class="mcc-stat">
+                <span class="mcc-stat-num text-success">{{ member.completedCount }}</span>
+                <span class="mcc-stat-label">已完成</span>
+              </div>
+              <div class="mcc-stat">
+                <span class="mcc-stat-num text-danger">{{ member.openBugCount }}</span>
+                <span class="mcc-stat-label">待修缺陷</span>
+              </div>
+            </div>
+            <div class="mcc-rate">
+              <div class="mcc-rate-bar">
+                <div class="progress-bar">
+                  <div class="progress-fill fill-success" :style="{ width: member.completionRate + '%' }"></div>
+                </div>
+              </div>
+              <span class="mcc-rate-num" :class="member.completionRate >= 60 ? 'text-success' : member.completionRate >= 30 ? 'text-warning' : 'text-danger'">{{ member.completionRate }}%</span>
+            </div>
+          </div>
+          <div v-if="memberCompletionData.length === 0" class="empty">暂无团队成员数据</div>
+        </div>
+      </div>
     </template>
 
-    <!-- Developer View -->
-    <template v-else-if="userStore.user?.role === 'developer'">
+    <!-- ==================== Unified Dev View ==================== -->
+    <template v-else>
       <div class="section">
         <div class="section-title">
           <svg class="section-icon" viewBox="0 0 24 24" fill="none">
             <path d="M8 6L2 12L8 18M16 6L22 12L16 18" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
-          任务面板
+          个人工作台
         </div>
         <div class="stats-grid">
           <div v-for="stat in devStats" :key="stat.key" class="stat-card" :class="stat.color" @click="stat.click">
@@ -394,7 +412,7 @@
                 <path d="M12 4L6 10V20H18V10L12 4Z" stroke="#e74c3c" stroke-width="1.5" fill="none"/>
                 <path d="M10 14L11 15L14 12" stroke="#e74c3c" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
-              <span>待修复缺陷</span>
+              <span>待处理缺陷</span>
               <el-button class="btn-link" @click="$router.push('/bugs')">查看全部 →</el-button>
             </div>
             <div class="list">
@@ -411,7 +429,7 @@
                 </div>
                 <span class="tag" :class="getSeverityTagClass(bug.severity)">{{ getSeverityText(bug.severity) }}</span>
               </div>
-              <div v-if="myPendingBugs.length === 0" class="empty">暂无待修复缺陷</div>
+              <div v-if="myPendingBugs.length === 0" class="empty">暂无待处理缺陷</div>
             </div>
           </div>
         </div>
@@ -477,347 +495,35 @@
           </div>
         </div>
       </div>
-    </template>
 
-    <!-- Artist View -->
-    <template v-else-if="userStore.user?.role === 'artist'">
-      <div class="section">
-        <div class="section-title">
-          <svg class="section-icon" viewBox="0 0 24 24" fill="none">
-            <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12" stroke="#f59e0b" stroke-width="2" stroke-linecap="round"/>
-            <circle cx="12" cy="12" r="3" fill="#f59e0b"/>
-          </svg>
-          美术工作台
-        </div>
-        <div class="stats-grid">
-          <div v-for="stat in artistStats" :key="stat.key" class="stat-card" :class="stat.color" @click="stat.click">
-            <div class="stat-accent"></div>
-            <div class="stat-inner">
-              <div class="stat-icon-box">
-                <el-icon :size="22"><component :is="stat.icon" /></el-icon>
+      <!-- Role-specific extra sections -->
+      <template v-for="section in roleExtraSections" :key="section.key">
+        <div class="row role-extra-row">
+          <div class="col full">
+            <div class="card" :class="section.cardClass">
+              <div class="card-header">
+                <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none" v-html="section.headerSvg"></svg>
+                <span>{{ section.title }}</span>
+                <el-button class="btn-link" @click="section.click">查看全部 →</el-button>
               </div>
-              <div class="stat-content">
-                <div class="stat-value">{{ stat.value }}</div>
-                <div class="stat-label">{{ stat.label }}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="row">
-        <div class="col main">
-          <div class="card">
-            <div class="card-header">
-              <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none">
-                <path d="M12 4L8 8H4V16H8L12 20L16 16H20V8H16L12 4Z" stroke="#667eea" stroke-width="1.5" fill="none"/>
-              </svg>
-              <span>我的美术任务</span>
-              <el-button class="btn-link" @click="$router.push('/tasks')">查看全部 →</el-button>
-            </div>
-            <div class="list">
-              <div v-for="task in myPendingTasks" :key="task.id" class="list-item" @click="$router.push(`/tasks/${task.id}`)">
-                <div class="item-priority" :class="getPriorityClass(task.priority)"></div>
-                <div class="item-content">
-                  <div class="item-title">{{ task.title }}</div>
-                  <div class="item-meta">
-                    <span>📁 {{ task.project?.name }}</span>
-                    <span v-if="task.dueDate" :class="{ 'text-danger': isOverdue(task.dueDate) }">
-                      {{ getRemainingTime(task.dueDate) }}
-                    </span>
+              <div class="list">
+                <div v-for="item in section.items" :key="item.id" class="list-item" @click="section.itemClick(item)">
+                  <div class="item-priority" :class="section.getItemClass(item)"></div>
+                  <div class="item-content">
+                    <div class="item-title">{{ item.title }}</div>
+                    <div class="item-meta">
+                      <span>📁 {{ item.project?.name }}</span>
+                      <span v-if="section.getMeta(item)">{{ section.getMeta(item) }}</span>
+                    </div>
                   </div>
+                  <span class="tag" :class="section.getStatusClass(item)">{{ section.getStatusText(item) }}</span>
                 </div>
-                <span class="tag" :class="getPriorityTagClass(task.priority)">{{ getPriorityText(task.priority) }}</span>
-              </div>
-              <div v-if="myPendingTasks.length === 0" class="empty">暂无任务</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="col side">
-          <div class="card">
-            <div class="card-header">
-              <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none">
-                <circle cx="12" cy="12" r="9" stroke="#667eea" stroke-width="1.5" fill="none"/>
-                <path d="M8 12L11 15L16 9" stroke="#667eea" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-              <span>完成统计</span>
-            </div>
-            <div class="donut-card">
-              <div class="donut-container">
-                <svg class="donut-svg" viewBox="0 0 36 36">
-                  <circle class="donut-bg" cx="18" cy="18" r="15.5" fill="none" stroke="#f0f0f0" stroke-width="3" />
-                  <circle class="donut-ring" cx="18" cy="18" r="15.5" fill="none" stroke="#ee0979" stroke-width="3" stroke-dasharray="97.4" :stroke-dashoffset="97.4 - (97.4 * artistCompletionRate / 100)" stroke-linecap="round" />
-                </svg>
-                <div class="donut-center">
-                  <span class="donut-value">{{ myCompletedTasks }}</span>
-                  <span class="donut-label">已完成</span>
-                </div>
-              </div>
-              <div class="donut-stats">
-                <div class="mini-stat">
-                  <span class="mini-num">{{ myTotalTasks }}</span>
-                  <span>总任务</span>
-                </div>
-                <div class="mini-stat">
-                  <span class="mini-num">{{ artistCompletionRate }}%</span>
-                  <span>完成率</span>
-                </div>
+                <div v-if="section.items.length === 0" class="empty">{{ section.emptyText }}</div>
               </div>
             </div>
           </div>
         </div>
-      </div>
-    </template>
-
-    <!-- Designer View -->
-    <template v-else-if="userStore.user?.role === 'designer'">
-      <div class="section">
-        <div class="section-title">
-          <svg class="section-icon" viewBox="0 0 24 24" fill="none">
-            <path d="M4 4H20V8H4V4ZM4 10H20V14H4V10ZM4 16H14V20H4V16Z" stroke="#f59e0b" stroke-width="1.5" fill="none"/>
-          </svg>
-          策划工作台
-        </div>
-        <div class="stats-grid">
-          <div v-for="stat in designerStats" :key="stat.key" class="stat-card" :class="stat.color" @click="stat.click">
-            <div class="stat-accent"></div>
-            <div class="stat-inner">
-              <div class="stat-icon-box">
-                <el-icon :size="22"><component :is="stat.icon" /></el-icon>
-              </div>
-              <div class="stat-content">
-                <div class="stat-value">{{ stat.value }}</div>
-                <div class="stat-label">{{ stat.label }}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="row">
-        <div class="col half">
-          <div class="card">
-            <div class="card-header">
-              <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none">
-                <path d="M8 4H16L20 8V20H4V4H8Z" stroke="#667eea" stroke-width="1.5" fill="none"/>
-                <path d="M8 4V8H12" stroke="#667eea" stroke-width="1.5" stroke-linecap="round"/>
-              </svg>
-              <span>我创建的策划任务</span>
-              <el-button class="btn-link" @click="$router.push('/tasks')">查看全部 →</el-button>
-            </div>
-            <div class="list">
-              <div v-for="task in myCreatedTasks" :key="task.id" class="list-item" @click="$router.push(`/tasks/${task.id}`)">
-                <div class="item-priority" :class="getPriorityClass(task.priority)"></div>
-                <div class="item-content">
-                  <div class="item-title">{{ task.title }}</div>
-                  <div class="item-meta">
-                    <span>📁 {{ task.project?.name }}</span>
-                    <span>👤 {{ task.assignee?.realName || '未分配' }}</span>
-                  </div>
-                </div>
-                <span class="tag" :class="getStatusTagClass(task.status)">{{ getStatusText(task.status) }}</span>
-              </div>
-              <div v-if="myCreatedTasks.length === 0" class="empty">暂无任务</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="col half">
-          <div class="card">
-            <div class="card-header">
-              <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none">
-                <path d="M12 4L6 10V20H18V10L12 4Z" stroke="#e74c3c" stroke-width="1.5" fill="none"/>
-                <path d="M10 14L11 15L14 12" stroke="#e74c3c" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-              <span>我报告的缺陷</span>
-              <el-button class="btn-link" @click="$router.push('/bugs')">查看全部 →</el-button>
-            </div>
-            <div class="list">
-              <div v-for="bug in myReportedBugs" :key="bug.id" class="list-item" @click="$router.push(`/bugs/${bug.id}`)">
-                <div class="item-priority" :class="getSeverityClass(bug.severity)"></div>
-                <div class="item-content">
-                  <div class="item-title">{{ bug.title }}</div>
-                  <div class="item-meta">
-                    <span>📁 {{ bug.project?.name }}</span>
-                    <span>👤 {{ bug.assignee?.realName || '未分配' }}</span>
-                  </div>
-                </div>
-                <span class="tag" :class="getBugStatusTagClass(bug.status)">{{ getBugStatusText(bug.status) }}</span>
-              </div>
-              <div v-if="myReportedBugs.length === 0" class="empty">暂无缺陷</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </template>
-
-    <!-- Tester View -->
-    <template v-else-if="userStore.user?.role === 'tester'">
-      <div class="section">
-        <div class="section-title">
-          <svg class="section-icon" viewBox="0 0 24 24" fill="none">
-            <circle cx="11" cy="11" r="7" stroke="#f59e0b" stroke-width="1.5" fill="none"/>
-            <path d="M16 16L21 21" stroke="#f59e0b" stroke-width="2" stroke-linecap="round"/>
-          </svg>
-          测试工作台
-        </div>
-        <div class="stats-grid">
-          <div v-for="stat in testerStats" :key="stat.key" class="stat-card" :class="stat.color" @click="stat.click">
-            <div class="stat-accent"></div>
-            <div class="stat-inner">
-              <div class="stat-icon-box">
-                <el-icon :size="22"><component :is="stat.icon" /></el-icon>
-              </div>
-              <div class="stat-content">
-                <div class="stat-value">{{ stat.value }}</div>
-                <div class="stat-label">{{ stat.label }}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="row">
-        <div class="col half">
-          <div class="card">
-            <div class="card-header">
-              <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none">
-                <path d="M12 4L6 10V20H18V10L12 4Z" stroke="#e74c3c" stroke-width="1.5" fill="none"/>
-                <path d="M10 14L11 15L14 12" stroke="#e74c3c" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-              <span>我报告的缺陷</span>
-              <el-button class="btn-link" @click="$router.push('/bugs')">查看全部 →</el-button>
-            </div>
-            <div class="list">
-              <div v-for="bug in myReportedBugs" :key="bug.id" class="list-item" @click="$router.push(`/bugs/${bug.id}`)">
-                <div class="item-priority" :class="getSeverityClass(bug.severity)"></div>
-                <div class="item-content">
-                  <div class="item-title">{{ bug.title }}</div>
-                  <div class="item-meta">
-                    <span>📁 {{ bug.project?.name }}</span>
-                    <span>👤 {{ bug.assignee?.realName || '未分配' }}</span>
-                  </div>
-                </div>
-                <span class="tag" :class="getBugStatusTagClass(bug.status)">{{ getBugStatusText(bug.status) }}</span>
-              </div>
-              <div v-if="myReportedBugs.length === 0" class="empty">暂无缺陷</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="col half">
-          <div class="card card-success">
-            <div class="card-header">
-              <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none">
-                <circle cx="12" cy="12" r="9" stroke="#27ae60" stroke-width="1.5" fill="none"/>
-                <path d="M8 12L11 15L16 9" stroke="#27ae60" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-              <span>待验证缺陷</span>
-            </div>
-            <div class="list">
-              <div v-for="bug in bugsToVerify" :key="bug.id" class="list-item" @click="$router.push(`/bugs/${bug.id}`)">
-                <div class="item-priority" :class="getSeverityClass(bug.severity)"></div>
-                <div class="item-content">
-                  <div class="item-title">{{ bug.title }}</div>
-                  <div class="item-meta">
-                    <span>📁 {{ bug.project?.name }}</span>
-                    <span>已修复</span>
-                  </div>
-                </div>
-                <span class="tag tag-success">待验证</span>
-              </div>
-              <div v-if="bugsToVerify.length === 0" class="empty">暂无待验证缺陷</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </template>
-
-    <!-- Default View -->
-    <template v-else>
-      <div class="section">
-        <div class="section-title">
-          <svg class="section-icon" viewBox="0 0 24 24" fill="none">
-            <path d="M3 12L12 3L21 12M5 10V20H19V10" stroke="#f59e0b" stroke-width="1.5" fill="none" stroke-linejoin="round"/>
-          </svg>
-          我的工作台
-        </div>
-        <div class="stats-grid">
-          <div v-for="stat in defaultStats" :key="stat.key" class="stat-card" :class="stat.color" @click="stat.click">
-            <div class="stat-accent"></div>
-            <div class="stat-inner">
-              <div class="stat-icon-box">
-                <el-icon :size="22"><component :is="stat.icon" /></el-icon>
-              </div>
-              <div class="stat-content">
-                <div class="stat-value">{{ stat.value }}</div>
-                <div class="stat-label">{{ stat.label }}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="row">
-        <div class="col half">
-          <div class="card">
-            <div class="card-header">
-              <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none">
-                <rect x="4" y="4" width="16" height="16" rx="2" stroke="#667eea" stroke-width="1.5" fill="none"/>
-                <path d="M8 10H16M8 14H12" stroke="#667eea" stroke-width="1.5" stroke-linecap="round"/>
-              </svg>
-              <span>我的任务</span>
-              <el-button class="btn-link" @click="$router.push('/tasks')">查看全部 →</el-button>
-            </div>
-            <div class="list">
-              <div v-for="task in myPendingTasks" :key="task.id" class="list-item" @click="$router.push(`/tasks/${task.id}`)">
-                <div class="item-priority" :class="getPriorityClass(task.priority)"></div>
-                <div class="item-content">
-                  <div class="item-title">{{ task.title }}</div>
-                  <div class="item-meta">
-                    <span>📁 {{ task.project?.name }}</span>
-                    <span v-if="task.dueDate" :class="{ 'text-danger': isOverdue(task.dueDate) }">
-                      {{ getRemainingTime(task.dueDate) }}
-                    </span>
-                  </div>
-                </div>
-                <span class="tag" :class="getPriorityTagClass(task.priority)">{{ getPriorityText(task.priority) }}</span>
-              </div>
-              <div v-if="myPendingTasks.length === 0" class="empty">暂无任务</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="col half">
-          <div class="card">
-            <div class="card-header">
-              <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none">
-                <path d="M12 4L6 10V20H18V10L12 4Z" stroke="#e74c3c" stroke-width="1.5" fill="none"/>
-                <path d="M10 14L11 15L14 12" stroke="#e74c3c" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-              <span>我的缺陷</span>
-              <el-button class="btn-link" @click="$router.push('/bugs')">查看全部 →</el-button>
-            </div>
-            <div class="list">
-              <div v-for="bug in myPendingBugs" :key="bug.id" class="list-item" @click="$router.push(`/bugs/${bug.id}`)">
-                <div class="item-priority" :class="getSeverityClass(bug.severity)"></div>
-                <div class="item-content">
-                  <div class="item-title">{{ bug.title }}</div>
-                  <div class="item-meta">
-                    <span>📁 {{ bug.project?.name }}</span>
-                    <span v-if="bug.dueDate" :class="{ 'text-danger': isOverdue(bug.dueDate) }">
-                      {{ getRemainingTime(bug.dueDate) }}
-                    </span>
-                  </div>
-                </div>
-                <span class="tag" :class="getSeverityTagClass(bug.severity)">{{ getSeverityText(bug.severity) }}</span>
-              </div>
-              <div v-if="myPendingBugs.length === 0" class="empty">暂无缺陷</div>
-            </div>
-          </div>
-        </div>
-      </div>
+      </template>
     </template>
   </div>
 </template>
@@ -839,6 +545,8 @@ const allBugs = ref<any[]>([])
 const allProjects = ref<any[]>([])
 const allUsers = ref<any[]>([])
 
+// ==================== Shared ====================
+
 const today = computed(() => {
   const date = new Date()
   return date.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })
@@ -856,6 +564,121 @@ const greeting = computed(() => {
 })
 
 const userId = computed(() => userStore.user?.id)
+const userRole = computed(() => userStore.user?.role)
+
+// ==================== Banner ====================
+
+const bannerClass = computed(() => {
+  const role = userRole.value
+  if (role === 'admin') return 'role-admin'
+  if (role === 'project_manager') return 'role-pm'
+  return 'role-dev'
+})
+
+const bannerSubtitle = computed(() => {
+  const role = userRole.value
+  if (role === 'admin') return '系统全局概览'
+  if (role === 'project_manager') return '项目与团队管理'
+  return '个人工作台'
+})
+
+// ==================== Quick Quest (role-specific) ====================
+
+const quickQuests = computed(() => {
+  const role = userRole.value
+  if (role === 'admin') {
+    return [
+      {
+        key: 'projects',
+        title: '项目概览',
+        desc: `${recentProjects.value.length} 个活跃项目`,
+        click: () => router.push('/projects'),
+        svg: '<rect x="8" y="6" width="32" height="36" rx="4" stroke="#667eea" stroke-width="2.5" fill="none"/><path d="M16 18H32M16 26H28M16 34H24" stroke="#667eea" stroke-width="2" stroke-linecap="round"/><circle cx="36" cy="36" r="10" fill="#667eea"/>'
+      },
+      {
+        key: 'pending',
+        title: '待处理项',
+        desc: `${allTasks.value.filter((t: any) => t.status === 'pending').length + allBugs.value.filter((b: any) => b.status === 'pending').length} 个待处理`,
+        click: () => router.push('/tasks'),
+        svg: '<circle cx="24" cy="24" r="18" stroke="#ff6b6b" stroke-width="2.5" fill="none"/><path d="M24 12V24L32 30" stroke="#ff6b6b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>'
+      },
+      {
+        key: 'team',
+        title: '团队管理',
+        desc: `${allUsers.value.filter((u: any) => u.role !== 'admin').length} 位成员`,
+        click: () => router.push('/users'),
+        svg: '<circle cx="24" cy="14" r="7" stroke="#43e97b" stroke-width="2.5" fill="none"/><path d="M8 42C8 34.27 15.16 28 24 28C32.84 28 40 34.27 40 42" stroke="#43e97b" stroke-width="2.5" fill="none"/>'
+      }
+    ]
+  }
+
+  if (role === 'project_manager') {
+    return [
+      {
+        key: 'myProjects',
+        title: '我的项目',
+        desc: `${myProjects.value.length} 个项目`,
+        click: () => router.push('/projects'),
+        svg: '<rect x="8" y="6" width="32" height="36" rx="4" stroke="#667eea" stroke-width="2.5" fill="none"/><path d="M16 18H32M16 26H28M16 34H24" stroke="#667eea" stroke-width="2" stroke-linecap="round"/><circle cx="36" cy="36" r="10" fill="#667eea"/>'
+      },
+      {
+        key: 'teamPending',
+        title: '团队待办',
+        desc: `${pmPendingCount.value} 个待处理任务`,
+        click: () => router.push('/tasks'),
+        svg: '<rect x="8" y="6" width="32" height="36" rx="4" stroke="#f39c12" stroke-width="2.5" fill="none"/><path d="M16 18H32M16 26H28" stroke="#f39c12" stroke-width="2" stroke-linecap="round"/><circle cx="36" cy="36" r="10" fill="#f39c12"/>'
+      },
+      {
+        key: 'openBugs',
+        title: '需关注',
+        desc: `${pmOpenBugCount.value} 个未关闭缺陷`,
+        click: () => router.push('/bugs'),
+        svg: '<path d="M24 8L12 16V32L24 40L36 32V16L24 8Z" stroke="#f5576c" stroke-width="2.5" fill="none"/><path d="M20 24L23 27L28 21" stroke="#f5576c" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>'
+      }
+    ]
+  }
+
+  // All dev roles
+  const quests: any[] = [
+    {
+      key: 'myTasks',
+      title: '我的任务',
+      desc: `${myPendingTasks.value.length} 个待办任务`,
+      click: () => router.push('/tasks'),
+      svg: '<rect x="8" y="6" width="32" height="36" rx="4" stroke="#667eea" stroke-width="2.5" fill="none"/><path d="M16 18H32M16 26H28M16 34H24" stroke="#667eea" stroke-width="2" stroke-linecap="round"/><circle cx="36" cy="36" r="10" fill="#667eea"/>'
+    },
+    {
+      key: 'myBugs',
+      title: '我的缺陷',
+      desc: `${myPendingBugs.value.length} 个待处理缺陷`,
+      click: () => router.push('/bugs'),
+      svg: '<path d="M24 8L12 16V32L24 40L36 32V16L24 8Z" stroke="#f5576c" stroke-width="2.5" fill="none"/><path d="M20 24L23 27L28 21" stroke="#f5576c" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>'
+    }
+  ]
+
+  // Tester gets a "to verify" quest
+  if (role === 'tester') {
+    quests.push({
+      key: 'toVerify',
+      title: '待验证',
+      desc: `${bugsToVerify.value.length} 个待验证缺陷`,
+      click: () => router.push('/bugs'),
+      svg: '<circle cx="24" cy="24" r="18" stroke="#27ae60" stroke-width="2.5" fill="none"/><path d="M18 24L22 28L30 19" stroke="#27ae60" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>'
+    })
+  } else {
+    quests.push({
+      key: 'dueSoon',
+      title: '即将到期',
+      desc: `${dueSoonItems.value.length} 个待处理`,
+      click: () => router.push('/tasks'),
+      svg: '<circle cx="24" cy="24" r="18" stroke="#f39c12" stroke-width="2.5" fill="none"/><path d="M24 12V24L32 30" stroke="#f39c12" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>'
+    })
+  }
+
+  return quests
+})
+
+// ==================== Shared Data ====================
 
 const myTasks = computed(() => allTasks.value.filter((t: any) => t.assignee?.id === userId.value || t.creator?.id === userId.value))
 const myBugs = computed(() => allBugs.value.filter((b: any) => b.assignee?.id === userId.value || b.reporter?.id === userId.value))
@@ -902,7 +725,7 @@ const dueSoonItems = computed(() => {
       items.push({ ...b, type: 'bug' })
     }
   })
-  return items.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()).slice(0, 5)
+  return items.sort((a: any, b: any) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()).slice(0, 5)
 })
 
 const teamMembers = computed(() => allUsers.value.filter((u: any) => u.role !== 'admin'))
@@ -920,21 +743,118 @@ const taskCompletionRate = computed(() => {
   return Math.round((myTasks.value.filter((t: any) => t.status === 'completed' || t.status === 'closed').length / myTasks.value.length) * 100)
 })
 
-const myCompletedTasks = computed(() => myTasks.value.filter((t: any) => t.status === 'completed' || t.status === 'closed').length)
-const myTotalTasks = computed(() => myTasks.value.length)
-const artistCompletionRate = computed(() => {
-  if (myTotalTasks.value === 0) return 0
-  return Math.round((myCompletedTasks.value / myTotalTasks.value) * 100)
-})
-
 const teamWorkload = computed(() => {
   const members = allUsers.value.filter((u: any) => u.role !== 'admin')
   return members.map((m: any) => {
     const taskCount = allTasks.value.filter((t: any) => t.assignee?.id === m.id && t.status !== 'completed' && t.status !== 'closed').length
     const maxTasks = Math.max(...members.map((u: any) => allTasks.value.filter((t: any) => t.assignee?.id === u.id && t.status !== 'completed' && t.status !== 'closed').length), 1)
     return { id: m.id, name: m.realName, taskCount, load: Math.round((taskCount / maxTasks) * 100) }
-  }).sort((a, b) => b.taskCount - a.taskCount).slice(0, 6)
+  }).sort((a: any, b: any) => b.taskCount - a.taskCount).slice(0, 6)
 })
+
+// ==================== Admin-specific ====================
+
+const adminCompletedThisWeek = computed(() => {
+  const now = new Date()
+  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+  return allTasks.value.filter((t: any) => t.status === 'completed' && new Date(t.updatedAt) >= weekAgo).length
+})
+
+const adminStats = computed(() => [
+  { key: 'projects', label: '活跃项目', value: allProjects.value.filter((p: any) => p.status === 'active').length, icon: 'Folder', color: 'stat-blue', click: () => router.push('/projects') },
+  { key: 'tasks', label: '总任务', value: allTasks.value.length, icon: 'List', color: 'stat-green', click: () => router.push('/tasks') },
+  { key: 'bugs', label: '总缺陷', value: allBugs.value.length, icon: 'Warning', color: 'stat-orange', click: () => router.push('/bugs') },
+  { key: 'users', label: '团队成员', value: allUsers.value.filter((u: any) => u.role !== 'admin').length, icon: 'User', color: 'stat-cyan', click: () => router.push('/users') },
+  { key: 'pending', label: '待处理', value: allTasks.value.filter((t: any) => t.status === 'pending').length + allBugs.value.filter((b: any) => b.status === 'pending').length, icon: 'Clock', color: 'stat-red', click: () => router.push('/tasks') },
+  { key: 'completed', label: '本周完成', value: adminCompletedThisWeek.value, icon: 'CircleCheck', color: 'stat-purple', click: () => router.push('/tasks') },
+])
+
+// ==================== PM-specific ====================
+
+const pmPendingCount = computed(() => {
+  const projectIds = myProjects.value.map((p: any) => p.id)
+  return allTasks.value.filter((t: any) => projectIds.includes(t.project?.id) && t.status === 'pending').length
+})
+
+const pmOpenBugCount = computed(() => {
+  const projectIds = myProjects.value.map((p: any) => p.id)
+  return allBugs.value.filter((b: any) => projectIds.includes(b.project?.id) && b.status !== 'closed' && b.status !== 'verified').length
+})
+
+const pmStats = computed(() => [
+  { key: 'myProjects', label: '我的项目', value: myProjects.value.length, icon: 'Folder', color: 'stat-blue', click: () => router.push('/projects') },
+  { key: 'tasks', label: '项目任务', value: myProjects.value.reduce((sum: number, p: any) => sum + getProjectTaskCount(p.id), 0), icon: 'List', color: 'stat-green', click: () => router.push('/tasks') },
+  { key: 'bugs', label: '项目缺陷', value: myProjects.value.reduce((sum: number, p: any) => sum + getProjectBugCount(p.id), 0), icon: 'Warning', color: 'stat-orange', click: () => router.push('/bugs') },
+  { key: 'pending', label: '待处理', value: pmPendingCount.value, icon: 'Clock', color: 'stat-red', click: () => router.push('/tasks') },
+])
+
+const memberCompletionData = computed(() => {
+  const members = allUsers.value.filter((u: any) => u.role !== 'admin')
+  return members.map((m: any) => {
+    const userTasks = allTasks.value.filter((t: any) => t.assignee?.id === m.id)
+    const pendingCount = userTasks.filter((t: any) => t.status === 'pending').length
+    const inProgressCount = userTasks.filter((t: any) => t.status === 'in_progress').length
+    const completedCount = userTasks.filter((t: any) => t.status === 'completed' || t.status === 'closed').length
+    const totalTasks = userTasks.length
+    const completionRate = totalTasks === 0 ? 0 : Math.round((completedCount / totalTasks) * 100)
+    const openBugCount = allBugs.value.filter((b: any) => b.assignee?.id === m.id && b.status !== 'closed' && b.status !== 'verified').length
+    return { id: m.id, name: m.realName, role: m.role, pendingCount, inProgressCount, completedCount, totalTasks, completionRate, openBugCount }
+  }).sort((a: any, b: any) => b.completionRate - a.completionRate)
+})
+
+// ==================== Dev Stats (unified) ====================
+
+const devStats = computed(() => [
+  { key: 'myTasks', label: '我的任务', value: myTasks.value.filter((t: any) => t.status !== 'completed' && t.status !== 'closed').length, icon: 'List', color: 'stat-blue', click: () => router.push('/tasks') },
+  { key: 'myBugs', label: '我的缺陷', value: myBugs.value.filter((b: any) => b.status !== 'closed' && b.status !== 'verified').length, icon: 'Warning', color: 'stat-orange', click: () => router.push('/bugs') },
+  { key: 'completed', label: '本周完成', value: completedTasksThisWeek.value, icon: 'CircleCheck', color: 'stat-green', click: () => router.push('/tasks') },
+  { key: 'rate', label: '完成率', value: taskCompletionRate.value + '%', icon: 'TrendCharts', color: 'stat-purple', click: () => router.push('/tasks') },
+])
+
+// ==================== Role-specific extra sections for dev view ====================
+
+const roleExtraSections = computed(() => {
+  const role = userRole.value
+  const sections: any[] = []
+
+  if (role === 'tester') {
+    sections.push({
+      key: 'toVerify',
+      title: '待验证缺陷',
+      cardClass: 'card-success',
+      items: bugsToVerify.value,
+      headerSvg: '<circle cx="12" cy="12" r="9" stroke="#27ae60" stroke-width="1.5" fill="none"/><path d="M8 12L11 15L16 9" stroke="#27ae60" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>',
+      click: () => router.push('/bugs'),
+      itemClick: (item: any) => router.push(`/bugs/${item.id}`),
+      getItemClass: (item: any) => getSeverityClass(item.severity),
+      getMeta: (item: any) => `👤 ${item.assignee?.realName || '未分配'}`,
+      getStatusClass: (item: any) => 'tag-success',
+      getStatusText: () => '待验证',
+      emptyText: '暂无待验证缺陷'
+    })
+  }
+
+  if (role === 'designer') {
+    sections.push({
+      key: 'myCreated',
+      title: '我创建的任务',
+      cardClass: '',
+      items: myCreatedTasks.value,
+      headerSvg: '<path d="M8 4H16L20 8V20H4V4H8Z" stroke="#667eea" stroke-width="1.5" fill="none"/><path d="M8 4V8H12" stroke="#667eea" stroke-width="1.5" stroke-linecap="round"/>',
+      click: () => router.push('/tasks'),
+      itemClick: (item: any) => router.push(`/tasks/${item.id}`),
+      getItemClass: (item: any) => getPriorityClass(item.priority),
+      getMeta: (item: any) => `👤 ${item.assignee?.realName || '未分配'}`,
+      getStatusClass: (item: any) => getStatusTagClass(item.status),
+      getStatusText: (item: any) => getStatusText(item.status),
+      emptyText: '暂无任务'
+    })
+  }
+
+  return sections
+})
+
+// ==================== Shared Utility Functions ====================
 
 const getProjectProgress = (project: any) => {
   const projectTasks = allTasks.value.filter((t: any) => t.project?.id === project.id)
@@ -945,54 +865,13 @@ const getProjectProgress = (project: any) => {
 
 const getProjectTaskCount = (projectId: number) => allTasks.value.filter((t: any) => t.project?.id === projectId).length
 const getProjectBugCount = (projectId: number) => allBugs.value.filter((b: any) => b.project?.id === projectId).length
-const getUserTaskCount = (userId: number) => allTasks.value.filter((t: any) => t.assignee?.id === userId && t.status !== 'completed' && t.status !== 'closed').length
+const getUserTaskCount = (uid: number) => allTasks.value.filter((t: any) => t.assignee?.id === uid && t.status !== 'completed' && t.status !== 'closed').length
 
-const adminStats = computed(() => [
-  { key: 'projects', label: '活跃项目', value: allProjects.value.filter((p: any) => p.status === 'active').length, icon: 'Folder', color: 'stat-blue', click: () => router.push('/projects') },
-  { key: 'tasks', label: '总任务', value: allTasks.value.length, icon: 'List', color: 'stat-green', click: () => router.push('/tasks') },
-  { key: 'bugs', label: '总缺陷', value: allBugs.value.length, icon: 'Warning', color: 'stat-orange', click: () => router.push('/bugs') },
-  { key: 'users', label: '团队成员', value: allUsers.value.filter((u: any) => u.role !== 'admin').length, icon: 'User', color: 'stat-cyan', click: () => router.push('/users') },
-  { key: 'pending', label: '待处理', value: allTasks.value.filter((t: any) => t.status === 'pending').length + allBugs.value.filter((b: any) => b.status === 'pending').length, icon: 'Clock', color: 'stat-red', click: () => router.push('/tasks') },
-  { key: 'completed', label: '本周完成', value: completedTasksThisWeek.value, icon: 'CircleCheck', color: 'stat-purple', click: () => router.push('/tasks') },
-])
-
-const pmStats = computed(() => [
-  { key: 'myProjects', label: '我的项目', value: myProjects.value.length, icon: 'Folder', color: 'stat-blue', click: () => router.push('/projects') },
-  { key: 'tasks', label: '项目任务', value: myProjects.value.reduce((sum: number, p: any) => sum + getProjectTaskCount(p.id), 0), icon: 'List', color: 'stat-green', click: () => router.push('/tasks') },
-  { key: 'bugs', label: '项目缺陷', value: myProjects.value.reduce((sum: number, p: any) => sum + getProjectBugCount(p.id), 0), icon: 'Warning', color: 'stat-orange', click: () => router.push('/bugs') },
-  { key: 'pending', label: '待处理', value: allTasks.value.filter((t: any) => myProjects.value.some((p: any) => p.id === t.project?.id) && t.status === 'pending').length, icon: 'Clock', color: 'stat-red', click: () => router.push('/tasks') },
-])
-
-const devStats = computed(() => [
-  { key: 'myTasks', label: '我的任务', value: myTasks.value.filter((t: any) => t.status !== 'completed' && t.status !== 'closed').length, icon: 'List', color: 'stat-blue', click: () => router.push('/tasks') },
-  { key: 'myBugs', label: '我的缺陷', value: myBugs.value.filter((b: any) => b.status !== 'closed' && b.status !== 'verified').length, icon: 'Warning', color: 'stat-orange', click: () => router.push('/bugs') },
-  { key: 'completed', label: '本周完成', value: completedTasksThisWeek.value, icon: 'CircleCheck', color: 'stat-green', click: () => router.push('/tasks') },
-  { key: 'rate', label: '完成率', value: taskCompletionRate.value + '%', icon: 'TrendCharts', color: 'stat-purple', click: () => router.push('/tasks') },
-])
-
-const artistStats = computed(() => [
-  { key: 'myTasks', label: '我的任务', value: myTasks.value.filter((t: any) => t.status !== 'completed' && t.status !== 'closed').length, icon: 'List', color: 'stat-blue', click: () => router.push('/tasks') },
-  { key: 'completed', label: '已完成', value: myCompletedTasks.value, icon: 'CircleCheck', color: 'stat-green', click: () => router.push('/tasks') },
-  { key: 'rate', label: '完成率', value: artistCompletionRate.value + '%', icon: 'TrendCharts', color: 'stat-purple', click: () => router.push('/tasks') },
-])
-
-const designerStats = computed(() => [
-  { key: 'created', label: '我创建的', value: myCreatedTasks.value.length, icon: 'List', color: 'stat-blue', click: () => router.push('/tasks') },
-  { key: 'reported', label: '我报告的', value: myReportedBugs.value.length, icon: 'Warning', color: 'stat-orange', click: () => router.push('/bugs') },
-  { key: 'pending', label: '待处理', value: allTasks.value.filter((t: any) => t.creator?.id === userId.value && t.status === 'pending').length, icon: 'Clock', color: 'stat-red', click: () => router.push('/tasks') },
-])
-
-const testerStats = computed(() => [
-  { key: 'reported', label: '我报告的', value: myReportedBugs.value.length, icon: 'Warning', color: 'stat-orange', click: () => router.push('/bugs') },
-  { key: 'toVerify', label: '待验证', value: bugsToVerify.value.length, icon: 'Select', color: 'stat-green', click: () => router.push('/bugs') },
-  { key: 'myTasks', label: '我的任务', value: myPendingTasks.value.length, icon: 'List', color: 'stat-blue', click: () => router.push('/tasks') },
-])
-
-const defaultStats = computed(() => [
-  { key: 'myTasks', label: '我的任务', value: myTasks.value.filter((t: any) => t.status !== 'completed' && t.status !== 'closed').length, icon: 'List', color: 'stat-blue', click: () => router.push('/tasks') },
-  { key: 'myBugs', label: '我的缺陷', value: myBugs.value.filter((b: any) => b.status !== 'closed' && b.status !== 'verified').length, icon: 'Warning', color: 'stat-orange', click: () => router.push('/bugs') },
-  { key: 'completed', label: '已完成', value: myTasks.value.filter((t: any) => t.status === 'completed' || t.status === 'closed').length, icon: 'CircleCheck', color: 'stat-green', click: () => router.push('/tasks') },
-])
+const getHealthColor = (progress: number) => {
+  if (progress >= 60) return 'health-green'
+  if (progress >= 30) return 'health-yellow'
+  return 'health-red'
+}
 
 const getRoleText = (role: string) => {
   const map: Record<string, string> = { admin: '管理员', project_manager: '项目经理', developer: '程序', artist: '美术', designer: '策划', tester: '测试' }
@@ -1089,6 +968,8 @@ const getDueDays = (dueDate: Date | string) => {
   return `${Math.ceil(diff / (1000 * 60 * 60 * 24))}天`
 }
 
+// ==================== Data Loading ====================
+
 onMounted(async () => {
   try {
     const [projectsRes, tasksRes, bugsRes, usersRes] = await Promise.all([
@@ -1112,7 +993,7 @@ onMounted(async () => {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif;
 }
 
-/* Banner */
+/* ==================== Banner ==================== */
 .banner {
   position: relative;
   margin-bottom: 24px;
@@ -1123,18 +1004,12 @@ onMounted(async () => {
 }
 
 .banner.role-admin { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
-.banner.role-project_manager { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
-.banner.role-developer { background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); }
-.banner.role-artist { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
-.banner.role-designer { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
-.banner.role-tester { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+.banner.role-pm { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+.banner.role-dev { background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); }
 
 .banner-bg-pattern {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  top: 0; left: 0; right: 0; bottom: 0;
   pointer-events: none;
   overflow: hidden;
 }
@@ -1197,6 +1072,13 @@ onMounted(async () => {
   opacity: 0.85;
 }
 
+.banner-subtitle {
+  font-size: 12px;
+  opacity: 0.7;
+  margin-top: 2px;
+  letter-spacing: 1px;
+}
+
 .banner-right {
   display: flex;
   align-items: center;
@@ -1237,7 +1119,7 @@ onMounted(async () => {
   fill: #ffd700;
 }
 
-/* Quick Quests */
+/* ==================== Quick Quests ==================== */
 .quick-quests {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1269,7 +1151,7 @@ onMounted(async () => {
   flex-shrink: 0;
 }
 
-.quest-icon svg {
+.quest-icon :deep(svg) {
   width: 100%;
   height: 100%;
 }
@@ -1302,7 +1184,7 @@ onMounted(async () => {
   transform: translateX(4px);
 }
 
-/* Section */
+/* ==================== Section ==================== */
 .section {
   margin-bottom: 24px;
 }
@@ -1323,7 +1205,7 @@ onMounted(async () => {
   height: 22px;
 }
 
-/* Stats Grid */
+/* ==================== Stats Grid ==================== */
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -1397,7 +1279,7 @@ onMounted(async () => {
   color: #8c8c9a;
 }
 
-/* Row Layout */
+/* ==================== Row Layout ==================== */
 .row {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1409,11 +1291,19 @@ onMounted(async () => {
   grid-template-columns: 2fr 1fr;
 }
 
+.row:has(.col.full) {
+  grid-template-columns: 1fr;
+}
+
 .col.half {
   grid-column: span 1;
 }
 
-/* Card */
+.col.full {
+  grid-column: 1 / -1;
+}
+
+/* ==================== Card ==================== */
 .card {
   background: white;
   border-radius: 14px;
@@ -1459,7 +1349,7 @@ onMounted(async () => {
   color: #27ae60;
 }
 
-/* Button Link */
+/* ==================== Button Link ==================== */
 .btn-link {
   padding: 4px 12px;
   font-size: 12px;
@@ -1476,7 +1366,7 @@ onMounted(async () => {
   color: #5a6fd6;
 }
 
-/* List */
+/* ==================== List ==================== */
 .list {
   padding: 12px;
 }
@@ -1575,7 +1465,19 @@ onMounted(async () => {
   color: #e74c3c;
 }
 
-/* Tag */
+.text-warning {
+  color: #f39c12;
+}
+
+.text-blue {
+  color: #4facfe;
+}
+
+.text-success {
+  color: #27ae60;
+}
+
+/* ==================== Tag ==================== */
 .tag {
   padding: 3px 10px;
   font-size: 11px;
@@ -1590,7 +1492,7 @@ onMounted(async () => {
 .tag-danger { background: #fde8e8; color: #e74c3c; }
 .tag-default { background: #f0f0f0; color: #636e72; }
 
-/* Progress */
+/* ==================== Progress ==================== */
 .progress {
   display: flex;
   align-items: center;
@@ -1633,7 +1535,30 @@ onMounted(async () => {
   font-weight: 500;
 }
 
-/* Project Stats Row */
+/* ==================== Health Dot ==================== */
+.health-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.health-green {
+  background: #27ae60;
+  box-shadow: 0 0 6px rgba(39, 174, 96, 0.4);
+}
+
+.health-yellow {
+  background: #f39c12;
+  box-shadow: 0 0 6px rgba(243, 156, 18, 0.4);
+}
+
+.health-red {
+  background: #e74c3c;
+  box-shadow: 0 0 6px rgba(231, 76, 60, 0.4);
+}
+
+/* ==================== Project Stats Row ==================== */
 .project-stats-row {
   display: flex;
   gap: 20px;
@@ -1657,7 +1582,7 @@ onMounted(async () => {
   color: #8c8c9a;
 }
 
-/* Team List */
+/* ==================== Team List ==================== */
 .team-list {
   padding: 12px;
 }
@@ -1694,6 +1619,7 @@ onMounted(async () => {
   font-size: 14px;
   color: white;
   font-weight: 600;
+  flex-shrink: 0;
 }
 
 .member-info {
@@ -1729,7 +1655,105 @@ onMounted(async () => {
   color: #8c8c9a;
 }
 
-/* Donut Chart */
+/* ==================== Member Completion Grid (PM view) ==================== */
+.member-completion-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 12px;
+}
+
+.member-completion-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #f0f0f0;
+  transition: all 0.2s ease;
+}
+
+.member-completion-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  border-color: #e8ecff;
+}
+
+.mcc-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 80px;
+}
+
+.mcc-left .member-avatar {
+  width: 32px;
+  height: 32px;
+  font-size: 13px;
+}
+
+.mcc-info {
+  min-width: 0;
+}
+
+.mcc-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #2d3436;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mcc-role {
+  font-size: 11px;
+  color: #8c8c9a;
+}
+
+.mcc-stats {
+  display: flex;
+  gap: 16px;
+  flex: 1;
+  justify-content: center;
+}
+
+.mcc-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.mcc-stat-num {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.mcc-stat-label {
+  font-size: 10px;
+  color: #8c8c9a;
+}
+
+.mcc-rate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 70px;
+}
+
+.mcc-rate-bar {
+  width: 100%;
+}
+
+.mcc-rate-bar .progress-bar {
+  height: 5px;
+}
+
+.mcc-rate-num {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+/* ==================== Donut Chart ==================== */
 .donut-card {
   padding: 24px;
   display: flex;
@@ -1784,7 +1808,12 @@ onMounted(async () => {
   margin-top: 20px;
 }
 
-/* Empty State */
+/* ==================== Role Extra ==================== */
+.role-extra-row {
+  margin-bottom: 20px;
+}
+
+/* ==================== Empty State ==================== */
 .empty {
   text-align: center;
   padding: 32px;
@@ -1805,12 +1834,20 @@ onMounted(async () => {
   opacity: 0.6;
 }
 
-/* Responsive */
+/* ==================== Responsive ==================== */
 @media (max-width: 768px) {
   .row {
     grid-template-columns: 1fr;
   }
-  
+
+  .row:has(.col.main) {
+    grid-template-columns: 1fr;
+  }
+
+  .row:has(.col.full) {
+    grid-template-columns: 1fr;
+  }
+
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -1818,11 +1855,15 @@ onMounted(async () => {
   .quick-quests {
     grid-template-columns: 1fr;
   }
-  
+
+  .member-completion-grid {
+    grid-template-columns: 1fr;
+  }
+
   .welcome-text h2 {
     font-size: 16px;
   }
-  
+
   .banner-content {
     padding: 20px;
   }

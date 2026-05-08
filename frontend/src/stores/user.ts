@@ -18,6 +18,7 @@ export const useUserStore = defineStore('user', () => {
 
   const isLoggedIn = computed(() => !!token.value)
   const isAdmin = computed(() => user.value?.role === 'admin')
+  const isPM = computed(() => user.value?.role === 'admin' || user.value?.role === 'project_manager')
 
   function getTaskPermission(action: string, extra: { isAssignee?: boolean; isCreator?: boolean } = {}): boolean {
     if (!permissions.value || !user.value) return false
@@ -121,6 +122,7 @@ export const useUserStore = defineStore('user', () => {
     permissions,
     isLoggedIn,
     isAdmin,
+    isPM,
     getTaskPermission,
     getBugPermission,
     getProjectPermission,

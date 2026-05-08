@@ -22,13 +22,13 @@ const routes: RouteRecordRaw[] = [
     path: '/projects',
     name: 'Projects',
     component: () => import('../views/Projects.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, requiresPM: true }
   },
   {
     path: '/projects/:id',
     name: 'ProjectDetail',
     component: () => import('../views/ProjectDetail.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, requiresPM: true }
   },
   {
     path: '/tasks',
@@ -86,6 +86,8 @@ router.beforeEach((to, _from, next) => {
   if (to.meta.requiresAuth && !token) {
     next('/login')
   } else if (to.meta.requiresAdmin && user.role !== 'admin') {
+    next('/dashboard')
+  } else if (to.meta.requiresPM && user.role !== 'admin' && user.role !== 'project_manager') {
     next('/dashboard')
   } else {
     next()

@@ -21,7 +21,7 @@
             <el-icon><DataLine /></el-icon>
             <template #title>工作台</template>
           </el-menu-item>
-          <el-menu-item index="/projects">
+          <el-menu-item index="/projects" v-if="userStore.isPM">
             <el-icon><Folder /></el-icon>
             <template #title>项目管理</template>
           </el-menu-item>
