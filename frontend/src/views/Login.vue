@@ -4,7 +4,7 @@
     <div class="login-card">
       <div class="login-header">
         <div class="logo">
-          <el-icon size="40" color="#409eff"><Monitor /></el-icon>
+          <img src="/bee.png" alt="logo" class="logo-img" />
         </div>
         <h1>小蜜蜂</h1>
         <p>游戏开发项目管理系统</p>
@@ -129,12 +129,17 @@ const handleLogin = async () => {
 .logo {
   width: 72px;
   height: 72px;
-  background: linear-gradient(135deg, #f5f7fa 0%, #e4e7ed 100%);
-  border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 0 auto 16px;
+}
+
+.logo-img {
+  width: 72px;
+  height: 72px;
+  border-radius: 16px;
+  object-fit: contain;
 }
 
 .login-header h1 {

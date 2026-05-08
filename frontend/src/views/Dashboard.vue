@@ -32,7 +32,7 @@
         </div>
         <div class="banner-right">
           <div class="hero-image">
-            <img src="../assets/hero.png" alt="Hero" />
+            <img src="/bee.png" alt="Hero" />
           </div>
           <div class="role-badge">
             <svg class="badge-star" viewBox="0 0 20 20" fill="currentColor">
@@ -94,14 +94,14 @@
             </div>
             <div class="list">
               <div v-for="project in recentProjects" :key="project.id" class="list-item" @click="$router.push(`/projects/${project.id}`)">
-                <div class="item-icon">📁</div>
+                <div class="item-icon"><el-icon size="18" color="#667eea"><Folder /></el-icon></div>
                 <div class="item-content">
                   <div class="item-title">{{ project.name }}</div>
                   <div class="item-meta">
                     <span class="tag" :class="project.status === 'active' ? 'tag-success' : 'tag-default'">
                       {{ project.status === 'active' ? '进行中' : '已完成' }}
                     </span>
-                    <span>👤 {{ project.manager?.realName || '-' }}</span>
+                    <span><el-icon size="12"><Folder /></el-icon> {{ project.manager?.realName || '-' }}</span>
                   </div>
                   <div class="progress">
                     <div class="progress-bar">
@@ -166,8 +166,8 @@
                 <div class="item-content">
                   <div class="item-title">{{ bug.title }}</div>
                   <div class="item-meta">
-                    <span>📁 {{ bug.project?.name }}</span>
-                    <span>👤 {{ bug.assignee?.realName || '未分配' }}</span>
+                    <span><el-icon size="12"><Folder /></el-icon> {{ bug.project?.name }}</span>
+                    <span><el-icon size="12"><User /></el-icon> {{ bug.assignee?.realName || '未分配' }}</span>
                   </div>
                 </div>
                 <span class="tag" :class="getBugStatusTagClass(bug.status)">{{ getBugStatusText(bug.status) }}</span>
@@ -193,8 +193,8 @@
                 <div class="item-content">
                   <div class="item-title">{{ task.title }}</div>
                   <div class="item-meta">
-                    <span>📁 {{ task.project?.name }}</span>
-                    <span>👤 {{ task.assignee?.realName || '未分配' }}</span>
+                    <span><el-icon size="12"><Folder /></el-icon> {{ task.project?.name }}</span>
+                    <span><el-icon size="12"><User /></el-icon> {{ task.assignee?.realName || '未分配' }}</span>
                   </div>
                 </div>
                 <span class="tag" :class="getPriorityTagClass(task.priority)">{{ getPriorityText(task.priority) }}</span>
@@ -242,7 +242,7 @@
             </div>
             <div class="list">
               <div v-for="project in myProjects" :key="project.id" class="list-item project-item" @click="$router.push(`/projects/${project.id}`)">
-                <div class="item-icon">📁</div>
+                <div class="item-icon"><el-icon size="18" color="#667eea"><Folder /></el-icon></div>
                 <div class="item-content">
                   <div class="item-title">{{ project.name }}</div>
                   <div class="item-meta">
@@ -392,7 +392,7 @@
                 <div class="item-content">
                   <div class="item-title">{{ task.title }}</div>
                   <div class="item-meta">
-                    <span>📁 {{ task.project?.name }}</span>
+                    <span><el-icon size="12"><Folder /></el-icon> {{ task.project?.name }}</span>
                     <span v-if="task.dueDate" :class="{ 'text-danger': isOverdue(task.dueDate) }">
                       {{ getRemainingTime(task.dueDate) }}
                     </span>
@@ -421,7 +421,7 @@
                 <div class="item-content">
                   <div class="item-title">{{ bug.title }}</div>
                   <div class="item-meta">
-                    <span>📁 {{ bug.project?.name }}</span>
+                    <span><el-icon size="12"><Folder /></el-icon> {{ bug.project?.name }}</span>
                     <span v-if="bug.dueDate" :class="{ 'text-danger': isOverdue(bug.dueDate) }">
                       {{ getRemainingTime(bug.dueDate) }}
                     </span>
@@ -486,7 +486,7 @@
                   <div class="item-title">{{ item.title }}</div>
                   <div class="item-meta">
                     <span class="tag" :class="item.type === 'task' ? 'tag-primary' : 'tag-danger'">{{ item.type === 'task' ? '任务' : '缺陷' }}</span>
-                    <span>📁 {{ item.project?.name }}</span>
+                    <span><el-icon size="12"><Folder /></el-icon> {{ item.project?.name }}</span>
                   </div>
                 </div>
               </div>
@@ -512,7 +512,7 @@
                   <div class="item-content">
                     <div class="item-title">{{ item.title }}</div>
                     <div class="item-meta">
-                      <span>📁 {{ item.project?.name }}</span>
+                      <span><el-icon size="12"><Folder /></el-icon> {{ item.project?.name }}</span>
                       <span v-if="section.getMeta(item)">{{ section.getMeta(item) }}</span>
                     </div>
                   </div>
@@ -827,7 +827,7 @@ const roleExtraSections = computed(() => {
       click: () => router.push('/bugs'),
       itemClick: (item: any) => router.push(`/bugs/${item.id}`),
       getItemClass: (item: any) => getSeverityClass(item.severity),
-      getMeta: (item: any) => `👤 ${item.assignee?.realName || '未分配'}`,
+      getMeta: (item: any) => `${item.assignee?.realName || '未分配'}`,
       getStatusClass: (item: any) => 'tag-success',
       getStatusText: () => '待验证',
       emptyText: '暂无待验证缺陷'
@@ -844,7 +844,7 @@ const roleExtraSections = computed(() => {
       click: () => router.push('/tasks'),
       itemClick: (item: any) => router.push(`/tasks/${item.id}`),
       getItemClass: (item: any) => getPriorityClass(item.priority),
-      getMeta: (item: any) => `👤 ${item.assignee?.realName || '未分配'}`,
+      getMeta: (item: any) => `${item.assignee?.realName || '未分配'}`,
       getStatusClass: (item: any) => getStatusTagClass(item.status),
       getStatusText: (item: any) => getStatusText(item.status),
       emptyText: '暂无任务'
