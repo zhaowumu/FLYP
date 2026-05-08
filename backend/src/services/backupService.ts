@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 // @ts-expect-error better-sqlite3 类型声明缺失
 import BetterSqlite3 from "better-sqlite3";
+import { uploadBackupToGitee } from "./giteeBackupService";
 
 // 数据库文件路径和备份目录
 const DB_PATH = path.join(__dirname, "../../data/newbee.db");
@@ -34,6 +35,7 @@ function getBackupFilename(): string {
  * - 先 WAL checkpoint 确保数据完整
  * - 拷贝 db 文件到备份目录
  * - 清理超出数量限制的旧备份
+ * - 如果云端备份已启用，异步上传到 Gitee
  */
 function performBackup(): boolean {
   try {
@@ -64,6 +66,17 @@ function performBackup(): boolean {
 
     // 清理旧备份
     cleanOldBackups();
+
+    // 异步上传到 Gitee（不阻塞备份流程）
+    uploadBackupToGitee(destPath).then(result => {
+      if (result.success) {
+        console.log(`[AutoBackup] 云端备份: ${result.message}`);
+      } else {
+        console.warn(`[AutoBackup] 云端备份跳过: ${result.message}`);
+      }
+    }).catch(err => {
+      console.error("[AutoBackup] 云端备份异常:", err);
+    });
 
     return true;
   } catch (error) {

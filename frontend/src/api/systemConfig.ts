@@ -37,4 +37,9 @@ api.interceptors.response.use(
 export const getDingTalkConfig = () => api.get('/system-config/dingtalk')
 export const updateDingTalkConfig = (config: { webhook: string; secret: string; keyword: string }) => api.put('/system-config/dingtalk', config)
 
+// Gitee 云备份
+export const getGiteeBackupConfig = () => api.get('/system-config/gitee-backup')
+export const updateGiteeBackupConfig = (config: { enabled: boolean; token: string; owner: string; repo: string; branch: string }) => api.put('/system-config/gitee-backup', config)
+export const testGiteeBackupConnection = (config: { token: string; owner: string; repo: string; branch: string }) => api.post('/system-config/gitee-backup/test', config, { timeout: 15000 })
+
 export default api

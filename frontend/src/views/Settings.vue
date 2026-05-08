@@ -231,9 +231,69 @@
             </div>
           </div>
 
-          <el-divider />
+          <!-- 云端备份（Gitee） -->
+          <div class="cloud-backup-section">
+            <div class="cloud-backup-header">
+              <span class="list-title" style="border-left-color: #e6a23c;">Gitee 云端备份</span>
+              <el-switch
+                v-model="giteeConfig.enabled"
+                active-text="启用"
+                inactive-text="关闭"
+                style="--el-switch-on-color: #13ce66"
+              />
+            </div>
+            <p style="margin: 0 0 16px 13px; font-size: 12px; color: #909399;">
+              启用后，每次自动备份和手动备份都会同步上传到 Gitee 仓库，实现异地灾备
+            </p>
+            <el-form v-if="giteeConfig.enabled" label-width="120px" style="margin-bottom: 16px">
+              <el-form-item label="Access Token">
+                <el-input
+                  v-model="giteeConfig.token"
+                  placeholder="在 Gitee 设置 → 私人令牌 中生成"
+                  style="width: 500px"
+                  show-password
+                  clearable
+                />
+              </el-form-item>
+              <el-form-item label="仓库路径">
+                <el-input
+                  v-model="giteeConfig.owner"
+                  placeholder="用户名"
+                  style="width: 200px"
+                  clearable
+                />
+                <span style="margin: 0 8px; color: #909399;">/</span>
+                <el-input
+                  v-model="giteeConfig.repo"
+                  placeholder="仓库名"
+                  style="width: 200px"
+                  clearable
+                />
+              </el-form-item>
+              <el-form-item label="分支">
+                <el-input
+                  v-model="giteeConfig.branch"
+                  placeholder="main"
+                  style="width: 200px"
+                  clearable
+                />
+                <span style="margin-left: 12px; color: #909399; font-size: 12px;">默认 main</span>
+              </el-form-item>
+            </el-form>
+            <div class="cloud-backup-actions" v-if="giteeConfig.enabled">
+              <el-button type="primary" @click="saveGiteeConfig" :loading="savingGiteeConfig" plain>
+                保存配置
+              </el-button>
+              <el-button @click="testGiteeConfig" :loading="testingGiteeConfig" plain>
+                测试连接
+              </el-button>
+            </div>
+            <div v-if="giteeTestResult" :class="['cloud-backup-result', giteeTestResult.success ? 'success' : 'error']">
+              {{ giteeTestResult.message }}
+            </div>
+          </div>
 
-          <!-- 备份文件列表 -->
+          <el-divider />
           <div class="backup-list-header">
             <span class="list-title">备份文件列表</span>
             <el-button size="small" @click="loadBackupList" :loading="backupListLoading" circle>
@@ -446,7 +506,7 @@ import { Plus, Delete, Download, Upload, Refresh, RefreshRight } from '@element-
 import { backupData as backupDataApi, restoreData as restoreDataApi, exportAll as exportAllApi, clearDatabase as clearDatabaseApi, clearAllDatabase as clearAllDatabaseApi, getBackupStatus as getBackupStatusApi, getBackupList as getBackupListApi, downloadBackup as downloadBackupApi, deleteBackupFile as deleteBackupFileApi, backupNow as backupNowApi } from '../api/excel'
 import { getPermissions, updatePermissions } from '../api/permission'
 import { getCustomLinks, updateCustomLinks, listMarkdownFiles } from '../api/customLink'
-import { getDingTalkConfig, updateDingTalkConfig } from '../api/systemConfig'
+import { getDingTalkConfig, updateDingTalkConfig, getGiteeBackupConfig, updateGiteeBackupConfig, testGiteeBackupConnection } from '../api/systemConfig'
 import api from '../api'
 
 const activeTab = ref('permissions')
@@ -468,6 +528,12 @@ const dingtalkWebhook = ref('')
 const dingtalkSecret = ref('')
 const dingtalkKeyword = ref('')
 const dingtalkBaseUrl = ref('')
+
+// Gitee 云备份
+const giteeConfig = ref({ enabled: false, token: '', owner: '', repo: '', branch: 'main' })
+const savingGiteeConfig = ref(false)
+const testingGiteeConfig = ref(false)
+const giteeTestResult = ref<{ success: boolean; message: string } | null>(null)
 
 const defaultTemplates = {
   create: '### 新建{type}通知\n\n**标题:** {title}\n**优先级:** {priority}\n**创建人:** {creator}\n**时间:** {time}\n\n[查看详情]({baseUrl}/{type === "任务" ? "tasks" : "bugs"}/{id})',
@@ -725,6 +791,69 @@ async function saveCustomLinks() {
   }
 }
 
+async function loadGiteeBackupConfig() {
+  try {
+    const res = await getGiteeBackupConfig()
+    if (res.data) {
+      giteeConfig.value = {
+        enabled: res.data.enabled || false,
+        token: res.data.token || '',
+        owner: res.data.owner || '',
+        repo: res.data.repo || '',
+        branch: res.data.branch || 'main',
+      }
+    }
+  } catch {
+    giteeConfig.value = { enabled: false, token: '', owner: '', repo: '', branch: 'main' }
+  }
+}
+
+async function saveGiteeConfig() {
+  if (!giteeConfig.value.token) {
+    ElMessage.warning('请填写 Access Token')
+    return
+  }
+  if (!giteeConfig.value.owner || !giteeConfig.value.repo) {
+    ElMessage.warning('请填写仓库路径')
+    return
+  }
+  savingGiteeConfig.value = true
+  try {
+    await updateGiteeBackupConfig(giteeConfig.value)
+    ElMessage.success('Gitee 备份配置已保存')
+  } catch {
+    ElMessage.error('保存失败')
+  } finally {
+    savingGiteeConfig.value = false
+  }
+}
+
+async function testGiteeConfig() {
+  if (!giteeConfig.value.token) {
+    ElMessage.warning('请先填写 Access Token')
+    return
+  }
+  if (!giteeConfig.value.owner || !giteeConfig.value.repo) {
+    ElMessage.warning('请先填写仓库路径')
+    return
+  }
+  testingGiteeConfig.value = true
+  giteeTestResult.value = null
+  try {
+    const res = await testGiteeBackupConnection({
+      token: giteeConfig.value.token,
+      owner: giteeConfig.value.owner,
+      repo: giteeConfig.value.repo,
+      branch: giteeConfig.value.branch || 'main',
+    })
+    giteeTestResult.value = { success: res.data.success, message: res.data.message }
+  } catch (err: any) {
+    giteeTestResult.value = { success: false, message: '请求失败: ' + (err?.message || '网络错误') }
+  } finally {
+    testingGiteeConfig.value = false
+  }
+}
+
 async function handleMarkdownUpload(file: File, index: number) {
   const formData = new FormData()
   formData.append('file', file)
@@ -955,6 +1084,7 @@ onMounted(() => {
   loadCustomLinks()
   loadMarkdownFiles()
   loadDingTalkConfig()
+  loadGiteeBackupConfig()
   loadBackupStatus()
   loadBackupList()
 })
@@ -1194,6 +1324,46 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+.cloud-backup-section {
+  margin-top: 8px;
+  padding: 16px;
+  background: #fdf6ec;
+  border-radius: 8px;
+  border: 1px solid #faecd8;
+}
+
+.cloud-backup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.cloud-backup-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.cloud-backup-result {
+  margin-top: 12px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.cloud-backup-result.success {
+  background: #f0f9eb;
+  color: #67c23a;
+  border: 1px solid #e1f3d8;
+}
+
+.cloud-backup-result.error {
+  background: #fef0f0;
+  color: #f56c6c;
+  border: 1px solid #fde2e2;
 }
 
 :deep(.el-tabs__content) {

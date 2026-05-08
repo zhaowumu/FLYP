@@ -2,6 +2,11 @@ import { Request, Response } from "express";
 import { AppDataSource } from "../config/database";
 import { SystemConfig } from "../entities/SystemConfig";
 import { DingTalkService } from "../services/dingtalkService";
+import {
+  getGiteeBackupConfig,
+  saveGiteeBackupConfig,
+  testGiteeConnection,
+} from "../services/giteeBackupService";
 import axios from "axios";
 import crypto from "crypto";
 
@@ -206,6 +211,40 @@ export const systemConfigController = {
     } catch (error: any) {
       console.error("Error testing DingTalk notification:", error);
       res.json({ success: false, error: error.response?.data?.errmsg || error.message || "发送失败" });
+    }
+  },
+
+  // ========== Gitee 云备份 ==========
+
+  async getGiteeBackupConfig(req: Request, res: Response) {
+    try {
+      const config = await getGiteeBackupConfig();
+      res.json(config);
+    } catch (error) {
+      console.error("Error getting Gitee backup config:", error);
+      res.status(500).json({ error: "获取 Gitee 备份配置失败" });
+    }
+  },
+
+  async updateGiteeBackupConfig(req: Request, res: Response) {
+    try {
+      const { enabled, token, owner, repo, branch } = req.body;
+      await saveGiteeBackupConfig({ enabled, token, owner, repo, branch });
+      res.json({ success: true, message: "Gitee 备份配置已保存" });
+    } catch (error) {
+      console.error("Error updating Gitee backup config:", error);
+      res.status(500).json({ error: "保存 Gitee 备份配置失败" });
+    }
+  },
+
+  async testGiteeBackupConnection(req: Request, res: Response) {
+    try {
+      const { token, owner, repo, branch } = req.body;
+      const result = await testGiteeConnection({ enabled: true, token, owner, repo, branch });
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error testing Gitee connection:", error);
+      res.json({ success: false, message: error.message || "测试失败" });
     }
   },
 };
