@@ -34,3 +34,30 @@ export const clearDatabase = () => {
 export const clearAllDatabase = () => {
   return api.delete('/backup/clear-all')
 }
+
+// 获取自动备份状态
+export const getBackupStatus = () => {
+  return api.get('/backup/status')
+}
+
+// 获取备份文件列表
+export const getBackupList = () => {
+  return api.get('/backup/list')
+}
+
+// 下载指定备份文件
+export const downloadBackup = (filename: string) => {
+  return api.get(`/backup/download/${filename}`, {
+    responseType: 'blob'
+  })
+}
+
+// 删除指定备份文件
+export const deleteBackupFile = (filename: string) => {
+  return api.delete(`/backup/file/${filename}`)
+}
+
+// 立即执行一次备份
+export const backupNow = () => {
+  return api.post('/backup/backup-now')
+}

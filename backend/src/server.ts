@@ -3,6 +3,7 @@ import { config } from "./config";
 import { AppDataSource } from "./config/database";
 import { User } from "./entities/User";
 import bcrypt from "bcryptjs";
+import { startAutoBackup } from "./services/backupService";
 
 const startServer = async () => {
   try {
@@ -13,7 +14,7 @@ const startServer = async () => {
     // 创建默认管理员用户
     const userRepository = AppDataSource.getRepository(User);
     const adminExists = await userRepository.findOne({ where: { username: "admin" } });
-    
+
     if (!adminExists) {
       const hashedPassword = await bcrypt.hash("123456", 10);
       const admin = userRepository.create({
@@ -27,6 +28,9 @@ const startServer = async () => {
       await userRepository.save(admin);
       console.log("Default admin user created: admin / 123456");
     }
+
+    // 启动定时自动备份（每天凌晨 3 点）
+    startAutoBackup("0 3 * * *");
 
     // 启动服务器
     app.listen(config.server.port, "0.0.0.0", () => {

@@ -211,10 +211,74 @@
 
       <el-tab-pane label="数据备份" name="backup">
         <div class="content-card">
+          <!-- 自动备份状态 -->
+          <div class="auto-backup-status">
+            <div class="backup-item" style="background: #ecf5ff; border: 1px solid #d9ecff;">
+              <div class="backup-info">
+                <div class="backup-title">
+                  <span>自动备份</span>
+                  <el-tag v-if="backupStatus.running" type="success" size="small" style="margin-left: 8px;">运行中</el-tag>
+                  <el-tag v-else type="info" size="small" style="margin-left: 8px;">未运行</el-tag>
+                </div>
+                <div class="backup-desc">
+                  每天凌晨 3:00 自动备份，保留最近 30 份 &nbsp;|&nbsp; 当前已有 <strong>{{ backupStatus.backupCount }}</strong> 份备份
+                </div>
+              </div>
+              <el-button type="success" @click="handleBackupNow" :loading="backupNowLoading" plain>
+                <el-icon><RefreshRight /></el-icon>
+                立即备份
+              </el-button>
+            </div>
+          </div>
+
+          <el-divider />
+
+          <!-- 备份文件列表 -->
+          <div class="backup-list-header">
+            <span class="list-title">备份文件列表</span>
+            <el-button size="small" @click="loadBackupList" :loading="backupListLoading" circle>
+              <el-icon><Refresh /></el-icon>
+            </el-button>
+          </div>
+          <el-table :data="backupFiles" size="small" style="width: 100%" v-loading="backupListLoading" max-height="300">
+            <el-table-column label="文件名" prop="name" min-width="200">
+              <template #default="{ row }">
+                <span :style="{ fontWeight: row.name.startsWith('newbee_auto_') ? 'normal' : '500' }">
+                  {{ row.name }}
+                </span>
+                <el-tag v-if="row.name.startsWith('newbee_auto_')" type="success" size="small" style="margin-left: 6px;">自动</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="大小" width="100" align="center">
+              <template #default="{ row }">
+                {{ formatSize(row.size) }}
+              </template>
+            </el-table-column>
+            <el-table-column label="时间" width="180" align="center">
+              <template #default="{ row }">
+                {{ formatDate(row.date) }}
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="120" align="center">
+              <template #default="{ row }">
+                <el-button size="small" type="primary" link @click="handleDownloadBackup(row.name)">
+                  下载
+                </el-button>
+                <el-button size="small" type="danger" link @click="handleDeleteBackup(row.name)">
+                  删除
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+          <el-empty v-if="!backupListLoading && backupFiles.length === 0" description="暂无备份文件" :image-size="60" />
+
+          <el-divider />
+
+          <!-- 手动备份操作 -->
           <div class="backup-section">
             <div class="backup-item">
               <div class="backup-info">
-                <div class="backup-title">备份数据库</div>
+                <div class="backup-title">手动备份数据库</div>
                 <div class="backup-desc">直接下载数据库文件（newbee.db），100% 完整备份，恢复最快最可靠</div>
               </div>
               <el-button type="primary" @click="backupData" :loading="backupLoading">
@@ -378,8 +442,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Delete, Download, Upload } from '@element-plus/icons-vue'
-import { backupData as backupDataApi, restoreData as restoreDataApi, exportAll as exportAllApi, clearDatabase as clearDatabaseApi, clearAllDatabase as clearAllDatabaseApi } from '../api/excel'
+import { Plus, Delete, Download, Upload, Refresh, RefreshRight } from '@element-plus/icons-vue'
+import { backupData as backupDataApi, restoreData as restoreDataApi, exportAll as exportAllApi, clearDatabase as clearDatabaseApi, clearAllDatabase as clearAllDatabaseApi, getBackupStatus as getBackupStatusApi, getBackupList as getBackupListApi, downloadBackup as downloadBackupApi, deleteBackupFile as deleteBackupFileApi, backupNow as backupNowApi } from '../api/excel'
 import { getPermissions, updatePermissions } from '../api/permission'
 import { getCustomLinks, updateCustomLinks, listMarkdownFiles } from '../api/customLink'
 import { getDingTalkConfig, updateDingTalkConfig } from '../api/systemConfig'
@@ -390,6 +454,10 @@ const backupLoading = ref(false)
 const restoreLoading = ref(false)
 const clearLoading = ref(false)
 const clearAllLoading = ref(false)
+const backupStatus = ref<{ running: boolean; schedule: string; backupCount: number }>({ running: false, schedule: '', backupCount: 0 })
+const backupFiles = ref<Array<{ name: string; size: number; date: string }>>([])
+const backupListLoading = ref(false)
+const backupNowLoading = ref(false)
 const savingPermissions = ref(false)
 const savingCustomLinks = ref(false)
 const savingDingtalk = ref(false)
@@ -798,11 +866,97 @@ async function clearAllDatabase() {
   }
 }
 
+async function loadBackupStatus() {
+  try {
+    const res = await getBackupStatusApi()
+    if (res.data) {
+      backupStatus.value = res.data
+    }
+  } catch {
+    // ignore
+  }
+}
+
+async function loadBackupList() {
+  backupListLoading.value = true
+  try {
+    const res = await getBackupListApi()
+    if (res.data) {
+      backupFiles.value = res.data
+    }
+  } catch {
+    backupFiles.value = []
+  } finally {
+    backupListLoading.value = false
+  }
+}
+
+async function handleBackupNow() {
+  backupNowLoading.value = true
+  try {
+    await backupNowApi()
+    ElMessage.success('备份成功')
+    await loadBackupList()
+    await loadBackupStatus()
+  } catch {
+    ElMessage.error('备份失败')
+  } finally {
+    backupNowLoading.value = false
+  }
+}
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return bytes + ' B'
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+}
+
+function formatDate(dateStr: string): string {
+  const d = new Date(dateStr)
+  const pad = (n: number) => n.toString().padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+async function handleDownloadBackup(filename: string) {
+  try {
+    const res = await downloadBackupApi(filename)
+    const blob = new Blob([res.data], { type: 'application/octet-stream' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    link.click()
+    window.URL.revokeObjectURL(url)
+  } catch {
+    ElMessage.error('下载失败')
+  }
+}
+
+async function handleDeleteBackup(filename: string) {
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除备份文件 "${filename}" 吗？`,
+      '确认删除',
+      { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
+    )
+    await deleteBackupFileApi(filename)
+    ElMessage.success('已删除')
+    await loadBackupList()
+    await loadBackupStatus()
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('删除失败')
+    }
+  }
+}
+
 onMounted(() => {
   loadPermissions()
   loadCustomLinks()
   loadMarkdownFiles()
   loadDingTalkConfig()
+  loadBackupStatus()
+  loadBackupList()
 })
 </script>
 
@@ -917,6 +1071,25 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.auto-backup-status {
+  margin-bottom: 8px;
+}
+
+.backup-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.list-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #303133;
+  padding-left: 10px;
+  border-left: 3px solid #67c23a;
 }
 
 .backup-item {
