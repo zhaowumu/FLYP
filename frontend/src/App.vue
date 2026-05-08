@@ -12,9 +12,9 @@
           :default-active="activeMenu"
           class="sidebar-menu"
           :collapse="isCollapse"
-          background-color="#1d1e1f"
-          text-color="#a0a3a8"
-          active-text-color="#409eff"
+          background-color="transparent"
+          text-color="var(--nb-sidebar-text)"
+          active-text-color="var(--nb-sidebar-active-text)"
           @select="handleMenuSelect"
         >
           <el-menu-item index="/dashboard">
@@ -228,20 +228,11 @@ onBeforeUnmount(() => {
 </script>
 
 <style>
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
+/* ==================== Layout Reset ==================== */
 html, body, #app {
   height: 100%;
   width: 100%;
   overflow: hidden;
-}
-
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
 .app-container {
@@ -259,13 +250,15 @@ body {
   width: 100%;
 }
 
+/* ==================== Sidebar ==================== */
 .sidebar {
-  background-color: #1d1e1f;
+  background-color: var(--nb-sidebar-bg);
   display: flex;
   flex-direction: column;
-  transition: width 0.3s;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
   height: 100%;
+  border-right: 1px solid var(--nb-sidebar-border);
 }
 
 .logo-container {
@@ -273,8 +266,9 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 16px;
-  background-color: #141414;
+  padding: 0 var(--nb-space-4);
+  background-color: var(--nb-sidebar-logo-bg);
+  border-bottom: 1px solid var(--nb-sidebar-border);
 }
 
 .logo-icon {
@@ -288,16 +282,17 @@ body {
 .logo-img {
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: var(--nb-radius-md);
   object-fit: contain;
 }
 
 .logo-text {
-  margin-left: 12px;
-  font-size: 18px;
-  font-weight: 600;
-  color: white;
+  margin-left: var(--nb-space-3);
+  font-size: var(--nb-font-size-xl);
+  font-weight: var(--nb-font-weight-bold);
+  color: #e2e8f0;
   white-space: nowrap;
+  letter-spacing: 0.5px;
 }
 
 .sidebar-menu {
@@ -309,37 +304,67 @@ body {
   width: 220px;
 }
 
+/* Sidebar menu item overrides */
+.sidebar-menu .el-menu-item {
+  height: 44px;
+  line-height: 44px;
+  margin: 2px 8px;
+  border-radius: var(--nb-radius-md);
+  color: var(--nb-sidebar-text);
+  transition: all var(--nb-transition-fast);
+}
+
+.sidebar-menu .el-menu-item:hover {
+  background-color: var(--nb-sidebar-hover-bg) !important;
+  color: var(--nb-sidebar-text-hover) !important;
+}
+
+.sidebar-menu .el-menu-item.is-active {
+  background-color: var(--nb-sidebar-active-bg) !important;
+  color: var(--nb-sidebar-active-text) !important;
+}
+
+.sidebar-menu .el-menu-item .el-icon {
+  font-size: 18px;
+  margin-right: 10px;
+}
+
 .collapse-btn {
   height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #a0a3a8;
+  color: var(--nb-sidebar-text);
   cursor: pointer;
-  border-top: 1px solid #2d2d2d;
+  border-top: 1px solid var(--nb-sidebar-border);
+  transition: all var(--nb-transition-fast);
 }
 
 .collapse-btn:hover {
-  background-color: #2d2d2d;
-  color: white;
+  background-color: var(--nb-sidebar-hover-bg);
+  color: var(--nb-sidebar-text-hover);
 }
 
+/* ==================== Main Container ==================== */
 .main-container {
   height: 100%;
   display: flex;
   flex-direction: column;
+  background-color: var(--nb-bg-page);
 }
 
+/* ==================== Header ==================== */
 .main-header {
   height: 56px;
   min-height: 56px;
-  background-color: white;
+  background-color: var(--nb-bg-elevated);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 24px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
-  z-index: 100;
+  padding: 0 var(--nb-space-6);
+  box-shadow: var(--nb-shadow-xs);
+  border-bottom: 1px solid var(--nb-border-light);
+  z-index: var(--nb-z-sticky);
 }
 
 .header-left {
@@ -350,27 +375,28 @@ body {
 .header-right {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: var(--nb-space-4);
 }
 
+/* ==================== Search Trigger ==================== */
 .search-trigger {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  background: #f5f7fa;
-  border: 1px solid #e4e7ed;
-  border-radius: 6px;
+  gap: var(--nb-space-2);
+  padding: 6px var(--nb-space-3);
+  background: var(--nb-bg-muted);
+  border: 1px solid var(--nb-border);
+  border-radius: var(--nb-radius-md);
   cursor: pointer;
-  color: #909399;
-  font-size: 14px;
-  transition: all 0.2s;
+  color: var(--nb-text-secondary);
+  font-size: var(--nb-font-size-base);
+  transition: all var(--nb-transition-fast);
 }
 
 .search-trigger:hover {
-  background: #ecf5ff;
-  border-color: #409eff;
-  color: #409eff;
+  background: var(--nb-primary-lighter);
+  border-color: var(--nb-primary);
+  color: var(--nb-primary);
 }
 
 .search-trigger .el-icon {
@@ -380,45 +406,51 @@ body {
 .search-shortcut {
   display: flex;
   gap: 2px;
-  margin-left: 8px;
+  margin-left: var(--nb-space-2);
 }
 
 .search-shortcut kbd {
-  font-size: 11px;
-  background: white;
-  border: 1px solid #dcdfe6;
+  font-size: var(--nb-font-size-xs);
+  font-family: var(--nb-font-mono);
+  background: var(--nb-bg-card);
+  border: 1px solid var(--nb-border);
   border-radius: 3px;
   padding: 1px 5px;
-  color: #909399;
+  color: var(--nb-text-secondary);
 }
 
+/* ==================== User Dropdown ==================== */
 .user-dropdown {
   display: flex;
   align-items: center;
   cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 4px;
+  padding: var(--nb-space-1) var(--nb-space-2);
+  border-radius: var(--nb-radius-sm);
+  transition: background var(--nb-transition-fast);
 }
 
 .user-dropdown:hover {
-  background-color: #f5f5f5;
+  background-color: var(--nb-bg-hover);
 }
 
 .user-avatar {
-  background: linear-gradient(135deg, #409eff 0%, #67c23a 100%);
+  background: var(--nb-gradient-primary);
   color: white;
-  font-weight: 500;
+  font-weight: var(--nb-font-weight-medium);
+  font-size: var(--nb-font-size-sm);
 }
 
 .user-name {
-  margin: 0 8px;
-  font-size: 14px;
-  color: #333;
+  margin: 0 var(--nb-space-2);
+  font-size: var(--nb-font-size-md);
+  color: var(--nb-text-primary);
+  font-weight: var(--nb-font-weight-medium);
 }
 
+/* ==================== Main Content ==================== */
 .main-content {
-  background-color: #f5f7fa;
-  padding: 20px;
+  background-color: var(--nb-bg-page);
+  padding: var(--nb-space-5);
   overflow-y: auto;
   flex: 1;
 }

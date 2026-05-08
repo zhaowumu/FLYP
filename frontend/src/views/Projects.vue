@@ -245,67 +245,67 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
+  margin-bottom: var(--nb-space-6);
 }
 
 .header-left h2 {
-  font-size: 22px;
-  font-weight: 600;
-  color: #303133;
-  margin: 0 0 4px 0;
+  font-size: var(--nb-font-size-2xl);
+  font-weight: var(--nb-font-weight-semibold);
+  color: var(--nb-text-primary);
+  margin: 0 0 var(--nb-space-1) 0;
 }
 
 .header-left p {
-  font-size: 14px;
-  color: #909399;
+  font-size: var(--nb-font-size-md);
+  color: var(--nb-text-secondary);
   margin: 0;
 }
 
 .project-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 20px;
+  gap: var(--nb-space-5);
 }
 
 .project-card {
-  background: #fff;
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  background: var(--nb-bg-card);
+  border-radius: var(--nb-radius-lg);
+  padding: var(--nb-space-5);
+  box-shadow: var(--nb-shadow-sm);
   cursor: pointer;
-  transition: all 0.3s ease;
-  border: 1px solid #f0f0f0;
+  transition: all var(--nb-transition-slow) ease;
+  border: 1px solid var(--nb-border-light);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--nb-space-3);
 }
 
 .project-card:hover {
-  box-shadow: 0 6px 20px rgba(64, 158, 255, 0.15);
+  box-shadow: 0 6px 20px rgba(var(--nb-primary-rgb), 0.15);
   transform: translateY(-4px);
-  border-color: #409eff;
+  border-color: var(--nb-primary-light);
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 12px;
+  gap: var(--nb-space-3);
 }
 
 .card-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #303133;
+  font-size: var(--nb-font-size-lg);
+  font-weight: var(--nb-font-weight-semibold);
+  color: var(--nb-text-primary);
   margin: 0;
   flex: 1;
-  line-height: 1.4;
+  line-height: var(--nb-line-height-tight);
 }
 
 .card-desc {
-  font-size: 13px;
-  color: #909399;
-  line-height: 1.6;
+  font-size: var(--nb-font-size-base);
+  color: var(--nb-text-secondary);
+  line-height: var(--nb-line-height-relaxed);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -314,40 +314,40 @@ onMounted(() => {
 
 .card-stats {
   display: flex;
-  gap: 16px;
-  padding-top: 12px;
-  border-top: 1px solid #f5f5f5;
+  gap: var(--nb-space-4);
+  padding-top: var(--nb-space-3);
+  border-top: 1px solid var(--nb-border-light);
 }
 
 .stat-item {
   display: flex;
   align-items: center;
-  gap: 4px;
-  font-size: 12px;
-  color: #606266;
+  gap: var(--nb-space-1);
+  font-size: var(--nb-font-size-sm);
+  color: var(--nb-text-regular);
 }
 
 .stat-item .el-icon {
-  font-size: 14px;
-  color: #909399;
+  font-size: var(--nb-font-size-base);
+  color: var(--nb-text-secondary);
 }
 
 .card-actions {
   display: flex;
-  gap: 8px;
-  padding-top: 12px;
-  border-top: 1px solid #f5f5f5;
+  gap: var(--nb-space-2);
+  padding-top: var(--nb-space-3);
+  border-top: 1px solid var(--nb-border-light);
   justify-content: flex-end;
 }
 
 .empty-state {
   grid-column: 1 / -1;
-  padding: 40px 0;
+  padding: var(--nb-space-10) 0;
 }
 
 /* 对话框样式 */
 :deep(.el-dialog) {
-  border-radius: 12px;
+  border-radius: var(--nb-radius-lg);
   overflow: hidden;
   max-height: 96vh;
   display: flex;

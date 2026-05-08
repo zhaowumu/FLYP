@@ -76,23 +76,23 @@ onMounted(() => {
 }
 
 .header-left h2 {
-  font-size: 20px;
-  font-weight: 600;
-  color: #303133;
-  margin: 0 0 4px 0;
+  font-size: var(--nb-font-size-2xl);
+  font-weight: var(--nb-font-weight-semibold);
+  color: var(--nb-text-primary);
+  margin: 0 0 var(--nb-space-1) 0;
 }
 
 .header-left p {
-  font-size: 14px;
-  color: #909399;
+  font-size: var(--nb-font-size-md);
+  color: var(--nb-text-secondary);
   margin: 0;
 }
 
 .content-card {
-  background: white;
-  border-radius: 12px;
-  padding: 32px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  background: var(--nb-bg-card);
+  border-radius: var(--nb-radius-lg);
+  padding: var(--nb-space-8);
+  box-shadow: var(--nb-shadow-sm);
   min-height: 400px;
 }
 

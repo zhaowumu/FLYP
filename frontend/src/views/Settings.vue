@@ -213,7 +213,7 @@
         <div class="content-card">
           <!-- 自动备份状态 -->
           <div class="auto-backup-status">
-            <div class="backup-item" style="background: #ecf5ff; border: 1px solid #d9ecff;">
+            <div class="backup-item backup-item-info" style="background: var(--nb-primary-lighter); border: 1px solid var(--nb-primary-lighter);">
               <div class="backup-info">
                 <div class="backup-title">
                   <span>自动备份</span>
@@ -234,7 +234,7 @@
           <!-- 云端备份（Gitee） -->
           <div class="cloud-backup-section">
             <div class="cloud-backup-header">
-              <span class="list-title" style="border-left-color: #e6a23c;">Gitee 云端备份</span>
+              <span class="list-title" style="border-left-color: var(--nb-warning);">Gitee 云端备份</span>
               <el-switch
                 v-model="giteeConfig.enabled"
                 active-text="启用"
@@ -242,7 +242,7 @@
                 style="--el-switch-on-color: #13ce66"
               />
             </div>
-            <p style="margin: 0 0 16px 13px; font-size: 12px; color: #909399;">
+            <p style="margin: 0 0 16px 13px; font-size: var(--nb-font-size-sm); color: var(--nb-text-secondary);">
               启用后，每次自动备份和手动备份都会同步上传到 Gitee 仓库，实现异地灾备
             </p>
             <el-form v-if="giteeConfig.enabled" label-width="120px" style="margin-bottom: 16px">
@@ -262,7 +262,7 @@
                   style="width: 200px"
                   clearable
                 />
-                <span style="margin: 0 8px; color: #909399;">/</span>
+                <span style="margin: 0 8px; color: var(--nb-text-secondary);">/</span>
                 <el-input
                   v-model="giteeConfig.repo"
                   placeholder="仓库名"
@@ -277,7 +277,7 @@
                   style="width: 200px"
                   clearable
                 />
-                <span style="margin-left: 12px; color: #909399; font-size: 12px;">默认 main</span>
+                <span style="margin-left: 12px; color: var(--nb-text-secondary); font-size: var(--nb-font-size-sm);">默认 main</span>
               </el-form-item>
             </el-form>
             <div class="cloud-backup-actions" v-if="giteeConfig.enabled">
@@ -424,7 +424,7 @@
                 style="width: 500px"
                 clearable
               />
-              <span style="margin-left: 12px; color: #909399; font-size: 12px;">勾选"加签"时填写</span>
+              <span style="margin-left: 12px; color: var(--nb-text-secondary); font-size: var(--nb-font-size-sm);">勾选"加签"时填写</span>
             </el-form-item>
             <el-form-item label="关键字">
               <el-input
@@ -433,7 +433,7 @@
                 style="width: 200px"
                 clearable
               />
-              <span style="margin-left: 12px; color: #909399; font-size: 12px;">勾选"关键字"时填写</span>
+              <span style="margin-left: 12px; color: var(--nb-text-secondary); font-size: var(--nb-font-size-sm);">勾选"关键字"时填写</span>
             </el-form-item>
             <el-form-item label="系统地址">
               <el-input
@@ -442,7 +442,7 @@
                 style="width: 500px"
                 clearable
               />
-              <span style="margin-left: 12px; color: #909399; font-size: 12px;">用于生成通知中的详情链接</span>
+              <span style="margin-left: 12px; color: var(--nb-text-secondary); font-size: var(--nb-font-size-sm);">用于生成通知中的详情链接</span>
             </el-form-item>
           </el-form>
 
@@ -1099,81 +1099,81 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: var(--nb-space-6);
 }
 
 .header-left h2 {
-  font-size: 20px;
-  font-weight: 600;
-  color: #303133;
-  margin: 0 0 4px 0;
+  font-size: var(--nb-font-size-2xl);
+  font-weight: var(--nb-font-weight-semibold);
+  color: var(--nb-text-primary);
+  margin: 0 0 var(--nb-space-1) 0;
 }
 
 .header-left p {
-  font-size: 14px;
-  color: #909399;
+  font-size: var(--nb-font-size-md);
+  color: var(--nb-text-secondary);
   margin: 0;
 }
 
 .content-card {
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  background: var(--nb-bg-card);
+  border-radius: var(--nb-radius-lg);
+  padding: var(--nb-space-5);
+  box-shadow: var(--nb-shadow-sm);
 }
 
 .permissions-container {
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  background: var(--nb-bg-card);
+  border-radius: var(--nb-radius-lg);
+  padding: var(--nb-space-5);
+  box-shadow: var(--nb-shadow-sm);
 }
 
 .permission-sections {
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: var(--nb-space-8);
 }
 
 .permission-section {
-  padding: 8px 0;
+  padding: var(--nb-space-2) 0;
 }
 
 .section-header {
-  margin-bottom: 16px;
+  margin-bottom: var(--nb-space-4);
   display: flex;
   align-items: baseline;
-  gap: 16px;
+  gap: var(--nb-space-4);
 }
 
 .section-header h3 {
-  font-size: 15px;
-  font-weight: 600;
-  color: #303133;
+  font-size: var(--nb-font-size-md);
+  font-weight: var(--nb-font-weight-semibold);
+  color: var(--nb-text-primary);
   margin: 0;
-  padding-left: 10px;
-  border-left: 3px solid #409eff;
+  padding-left: var(--nb-space-3);
+  border-left: 3px solid var(--nb-primary);
   white-space: nowrap;
 }
 
 .section-tip {
-  font-size: 12px;
-  color: #909399;
+  font-size: var(--nb-font-size-sm);
+  color: var(--nb-text-secondary);
 }
 
 .permission-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
-  margin-top: 20px;
-  padding-top: 16px;
-  border-top: 1px solid #ebeef5;
+  gap: var(--nb-space-3);
+  margin-top: var(--nb-space-5);
+  padding-top: var(--nb-space-4);
+  border-top: 1px solid var(--nb-border);
 }
 
 .export-section {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--nb-space-4);
 }
 
 .export-item {
@@ -1187,53 +1187,53 @@ onMounted(() => {
 }
 
 .export-title {
-  font-size: 14px;
-  color: #303133;
-  margin-bottom: 4px;
+  font-size: var(--nb-font-size-md);
+  color: var(--nb-text-primary);
+  margin-bottom: var(--nb-space-1);
 }
 
 .export-desc {
-  font-size: 12px;
-  color: #909399;
+  font-size: var(--nb-font-size-sm);
+  color: var(--nb-text-secondary);
 }
 
 .backup-section {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--nb-space-4);
 }
 
 .auto-backup-status {
-  margin-bottom: 8px;
+  margin-bottom: var(--nb-space-2);
 }
 
 .backup-list-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: var(--nb-space-3);
 }
 
 .list-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #303133;
-  padding-left: 10px;
-  border-left: 3px solid #67c23a;
+  font-size: var(--nb-font-size-md);
+  font-weight: var(--nb-font-weight-semibold);
+  color: var(--nb-text-primary);
+  padding-left: var(--nb-space-3);
+  border-left: 3px solid var(--nb-success);
 }
 
 .backup-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px;
-  background: #f5f7fa;
-  border-radius: 8px;
+  padding: var(--nb-space-4);
+  background: var(--nb-bg-hover);
+  border-radius: var(--nb-radius-md);
 }
 
 .backup-item.danger {
-  background: #fef0f0;
-  border: 1px solid #fde2e2;
+  background: var(--nb-danger-light);
+  border: 1px solid var(--nb-danger-light);
 }
 
 .backup-info {
@@ -1241,15 +1241,15 @@ onMounted(() => {
 }
 
 .backup-title {
-  font-size: 14px;
-  color: #303133;
-  margin-bottom: 4px;
-  font-weight: 500;
+  font-size: var(--nb-font-size-md);
+  color: var(--nb-text-primary);
+  margin-bottom: var(--nb-space-1);
+  font-weight: var(--nb-font-weight-medium);
 }
 
 .backup-desc {
-  font-size: 12px;
-  color: #909399;
+  font-size: var(--nb-font-size-sm);
+  color: var(--nb-text-secondary);
 }
 
 .custom-links-container {
@@ -1260,64 +1260,64 @@ onMounted(() => {
 .links-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin-bottom: 20px;
+  gap: var(--nb-space-3);
+  margin-bottom: var(--nb-space-5);
 }
 
 .link-item {
-  padding: 12px;
-  background: #f5f7fa;
-  border-radius: 8px;
+  padding: var(--nb-space-3);
+  background: var(--nb-bg-hover);
+  border-radius: var(--nb-radius-md);
 }
 
 .link-fields {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--nb-space-3);
   flex-wrap: wrap;
 }
 
 .links-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
-  padding-top: 16px;
-  border-top: 1px solid #ebeef5;
+  gap: var(--nb-space-3);
+  padding-top: var(--nb-space-4);
+  border-top: 1px solid var(--nb-border);
 }
 
 .markdown-upload-area,
 .markdown-input-area {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--nb-space-2);
 }
 
 .uploaded-file-name {
-  font-size: 12px;
-  color: #67c23a;
+  font-size: var(--nb-font-size-sm);
+  color: var(--nb-success);
   white-space: nowrap;
 }
 
 .dingtalk-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
-  margin-top: 20px;
-  padding-top: 16px;
-  border-top: 1px solid #ebeef5;
+  gap: var(--nb-space-3);
+  margin-top: var(--nb-space-5);
+  padding-top: var(--nb-space-4);
+  border-top: 1px solid var(--nb-border);
 }
 
 .notify-config-list {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  margin-bottom: 20px;
+  gap: var(--nb-space-4);
+  margin-bottom: var(--nb-space-5);
 }
 
 .notify-config-item {
-  padding: 16px;
-  background: #f5f7fa;
-  border-radius: 8px;
+  padding: var(--nb-space-4);
+  background: var(--nb-bg-hover);
+  border-radius: var(--nb-radius-md);
 }
 
 .notify-header {
@@ -1327,43 +1327,43 @@ onMounted(() => {
 }
 
 .cloud-backup-section {
-  margin-top: 8px;
-  padding: 16px;
-  background: #fdf6ec;
-  border-radius: 8px;
-  border: 1px solid #faecd8;
+  margin-top: var(--nb-space-2);
+  padding: var(--nb-space-4);
+  background: var(--nb-warning-light);
+  border-radius: var(--nb-radius-md);
+  border: 1px solid var(--nb-warning-light);
 }
 
 .cloud-backup-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 4px;
+  margin-bottom: var(--nb-space-1);
 }
 
 .cloud-backup-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
+  gap: var(--nb-space-3);
 }
 
 .cloud-backup-result {
-  margin-top: 12px;
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-size: 13px;
+  margin-top: var(--nb-space-3);
+  padding: var(--nb-space-2) var(--nb-space-3);
+  border-radius: var(--nb-radius-sm);
+  font-size: var(--nb-font-size-base);
 }
 
 .cloud-backup-result.success {
-  background: #f0f9eb;
-  color: #67c23a;
-  border: 1px solid #e1f3d8;
+  background: var(--nb-success-light);
+  color: var(--nb-success);
+  border: 1px solid var(--nb-success-light);
 }
 
 .cloud-backup-result.error {
-  background: #fef0f0;
-  color: #f56c6c;
-  border: 1px solid #fde2e2;
+  background: var(--nb-danger-light);
+  color: var(--nb-danger);
+  border: 1px solid var(--nb-danger-light);
 }
 
 :deep(.el-tabs__content) {
@@ -1376,7 +1376,7 @@ onMounted(() => {
 }
 
 :deep(.el-alert__description p) {
-  margin: 4px 0;
-  line-height: 1.6;
+  margin: var(--nb-space-1) 0;
+  line-height: var(--nb-line-height-relaxed);
 }
 </style>

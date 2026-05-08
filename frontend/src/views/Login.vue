@@ -99,7 +99,7 @@ const handleLogin = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--nb-gradient-login);
   position: relative;
   overflow: hidden;
 }
@@ -113,17 +113,17 @@ const handleLogin = async () => {
 
 .login-card {
   width: 400px;
-  background: white;
-  border-radius: 16px;
-  padding: 40px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  background: var(--nb-bg-card);
+  border-radius: var(--nb-radius-xl);
+  padding: var(--nb-space-10);
+  box-shadow: var(--nb-shadow-xl);
   position: relative;
   z-index: 1;
 }
 
 .login-header {
   text-align: center;
-  margin-bottom: 40px;
+  margin-bottom: var(--nb-space-10);
 }
 
 .logo {
@@ -132,50 +132,50 @@ const handleLogin = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 16px;
+  margin: 0 auto var(--nb-space-4);
 }
 
 .logo-img {
   width: 72px;
   height: 72px;
-  border-radius: 16px;
+  border-radius: var(--nb-radius-xl);
   object-fit: contain;
 }
 
 .login-header h1 {
   font-size: 28px;
-  font-weight: 600;
-  color: #303133;
-  margin: 0 0 8px 0;
+  font-weight: var(--nb-font-weight-semibold);
+  color: var(--nb-text-primary);
+  margin: 0 0 var(--nb-space-2) 0;
 }
 
 .login-header p {
-  font-size: 14px;
-  color: #909399;
+  font-size: var(--nb-font-size-md);
+  color: var(--nb-text-secondary);
   margin: 0;
 }
 
 .login-form {
-  margin-bottom: 24px;
+  margin-bottom: var(--nb-space-6);
 }
 
 .login-form :deep(.el-input__wrapper) {
-  border-radius: 8px;
-  box-shadow: 0 0 0 1px #dcdfe6 inset;
+  border-radius: var(--nb-input-radius);
+  box-shadow: 0 0 0 1px var(--nb-border) inset;
 }
 
 .login-form :deep(.el-input__wrapper:hover) {
-  box-shadow: 0 0 0 1px #c0c4cc inset;
+  box-shadow: 0 0 0 1px var(--nb-border-dark) inset;
 }
 
 .login-form :deep(.el-input__wrapper.is-focus) {
-  box-shadow: 0 0 0 1px #409eff inset;
+  box-shadow: 0 0 0 1px var(--nb-primary) inset;
 }
 
 .login-btn {
   width: 100%;
   height: 44px;
-  border-radius: 8px;
-  font-size: 16px;
+  border-radius: var(--nb-radius-md);
+  font-size: var(--nb-font-size-lg);
 }
 </style>

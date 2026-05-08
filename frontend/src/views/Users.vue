@@ -257,39 +257,39 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: var(--nb-space-6);
 }
 
 .header-left h2 {
-  font-size: 20px;
-  font-weight: 600;
-  color: #303133;
-  margin: 0 0 4px 0;
+  font-size: var(--nb-font-size-2xl);
+  font-weight: var(--nb-font-weight-semibold);
+  color: var(--nb-text-primary);
+  margin: 0 0 var(--nb-space-1) 0;
 }
 
 .header-left p {
-  font-size: 14px;
-  color: #909399;
+  font-size: var(--nb-font-size-md);
+  color: var(--nb-text-secondary);
   margin: 0;
 }
 
 .content-card {
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  background: var(--nb-bg-card);
+  border-radius: var(--nb-radius-lg);
+  padding: var(--nb-space-5);
+  box-shadow: var(--nb-shadow-sm);
 }
 
 .user-cell {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--nb-space-3);
 }
 
 .user-avatar {
-  background: linear-gradient(135deg, #409eff 0%, #67c23a 100%);
+  background: var(--nb-gradient-primary);
   color: white;
-  font-weight: 500;
+  font-weight: var(--nb-font-weight-medium);
 }
 
 .user-info {
@@ -298,13 +298,13 @@ onMounted(() => {
 }
 
 .user-name {
-  font-size: 14px;
-  color: #303133;
-  font-weight: 500;
+  font-size: var(--nb-font-size-md);
+  color: var(--nb-text-primary);
+  font-weight: var(--nb-font-weight-medium);
 }
 
 .user-username {
-  font-size: 12px;
-  color: #909399;
+  font-size: var(--nb-font-size-sm);
+  color: var(--nb-text-secondary);
 }
 </style>

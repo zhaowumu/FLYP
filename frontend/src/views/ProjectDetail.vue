@@ -41,7 +41,7 @@
             <div class="info-item full-width">
               <div class="info-label">项目描述</div>
               <div v-if="!isEditingDescription">
-                <div class="info-value rich-content" v-html="project?.description || '<span style=color:#909399>暂无描述</span>'"></div>
+                <div class="info-value rich-content" v-html="project?.description || '<span style=color:var(--nb-text-secondary)>暂无描述</span>'"></div>
               </div>
               <div v-else class="description-editor">
                 <RichEditor
@@ -348,31 +348,35 @@ onMounted(async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: var(--nb-space-5);
+  background: var(--nb-bg-card);
+  padding: var(--nb-space-4) var(--nb-space-5);
+  border-radius: var(--nb-radius-md);
+  box-shadow: var(--nb-shadow-sm);
 }
 
 .header-left {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: var(--nb-space-4);
 }
 
 .project-title {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--nb-space-3);
 }
 
 .project-title-area {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--nb-space-2);
 }
 
 .project-title h2 {
-  font-size: 20px;
-  font-weight: 600;
-  color: #303133;
+  font-size: var(--nb-font-size-2xl);
+  font-weight: var(--nb-font-weight-semibold);
+  color: var(--nb-text-primary);
   margin: 0;
 }
 
@@ -381,122 +385,122 @@ onMounted(async () => {
 }
 
 .project-name-edit .el-input {
-  margin-bottom: 8px;
+  margin-bottom: var(--nb-space-2);
 }
 
 .edit-btn {
-  color: #909399;
-  padding: 4px;
-  border-radius: 4px;
-  transition: all 0.2s;
+  color: var(--nb-text-secondary);
+  padding: var(--nb-space-1);
+  border-radius: var(--nb-radius-sm);
+  transition: all var(--nb-transition-normal);
 }
 
 .edit-btn:hover {
-  color: #409eff;
-  background: #ecf5ff;
+  color: var(--nb-primary);
+  background: var(--nb-primary-lighter);
 }
 
 .edit-actions {
   display: flex;
-  gap: 8px;
+  gap: var(--nb-space-2);
   justify-content: flex-end;
-  margin-top: 8px;
+  margin-top: var(--nb-space-2);
 }
 
 .description-editor {
-  margin-top: 12px;
+  margin-top: var(--nb-space-3);
 }
 
 .description-editor .edit-actions {
-  margin-top: 12px;
+  margin-top: var(--nb-space-3);
 }
 
 .content-card {
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  background: var(--nb-bg-card);
+  border-radius: var(--nb-radius-lg);
+  padding: var(--nb-space-5);
+  box-shadow: var(--nb-shadow-sm);
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: var(--nb-space-4);
 }
 
 .card-header h3 {
-  font-size: 16px;
-  font-weight: 600;
-  color: #303133;
+  font-size: var(--nb-font-size-lg);
+  font-weight: var(--nb-font-weight-semibold);
+  color: var(--nb-text-primary);
   margin: 0;
 }
 
 .member-count {
-  font-size: 14px;
-  color: #909399;
+  font-size: var(--nb-font-size-md);
+  color: var(--nb-text-secondary);
 }
 
 .info-grid {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--nb-space-4);
 }
 
 .info-row {
   display: flex;
-  gap: 40px;
+  gap: var(--nb-space-10);
 }
 
 .info-item {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--nb-space-1);
 }
 
 .info-label {
-  font-size: 13px;
-  color: #909399;
+  font-size: var(--nb-font-size-base);
+  color: var(--nb-text-secondary);
 }
 
 .info-value {
-  font-size: 14px;
-  color: #303133;
-  line-height: 1.8;
+  font-size: var(--nb-font-size-md);
+  color: var(--nb-text-primary);
+  line-height: var(--nb-line-height-relaxed);
   white-space: pre-wrap;
 }
 
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
+  gap: var(--nb-space-4);
   text-align: center;
 }
 
 .stat-item {
-  padding: 12px;
-  background: #f5f7fa;
-  border-radius: 8px;
+  padding: var(--nb-space-3);
+  background: var(--nb-bg-hover);
+  border-radius: var(--nb-radius-md);
 }
 
 .stat-value {
-  font-size: 24px;
-  font-weight: 600;
-  color: #303133;
+  font-size: var(--nb-font-size-3xl);
+  font-weight: var(--nb-font-weight-semibold);
+  color: var(--nb-text-primary);
 }
 
 .stat-value.text-warning {
-  color: #e6a23c;
+  color: var(--nb-warning);
 }
 
 .stat-value.text-success {
-  color: #67c23a;
+  color: var(--nb-success);
 }
 
 .stat-label {
-  font-size: 12px;
-  color: #909399;
-  margin-top: 4px;
+  font-size: var(--nb-font-size-sm);
+  color: var(--nb-text-secondary);
+  margin-top: var(--nb-space-1);
 }
 
 .member-list {
@@ -507,9 +511,9 @@ onMounted(async () => {
 .member-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 0;
-  border-bottom: 1px solid #f0f0f0;
+  gap: var(--nb-space-3);
+  padding: var(--nb-space-2) 0;
+  border-bottom: 1px solid var(--nb-border-light);
 }
 
 .member-item:last-child {
@@ -517,9 +521,9 @@ onMounted(async () => {
 }
 
 .member-avatar {
-  background: linear-gradient(135deg, #409eff 0%, #67c23a 100%);
+  background: var(--nb-gradient-primary);
   color: white;
-  font-weight: 500;
+  font-weight: var(--nb-font-weight-medium);
 }
 
 .member-info {
@@ -527,18 +531,18 @@ onMounted(async () => {
 }
 
 .member-name {
-  font-size: 14px;
-  color: #303133;
+  font-size: var(--nb-font-size-md);
+  color: var(--nb-text-primary);
 }
 
 .member-role {
-  font-size: 12px;
-  color: #909399;
+  font-size: var(--nb-font-size-sm);
+  color: var(--nb-text-secondary);
 }
 
 .empty-tip {
   text-align: center;
-  color: #909399;
-  padding: 40px 0;
+  color: var(--nb-text-secondary);
+  padding: var(--nb-space-10) 0;
 }
 </style>

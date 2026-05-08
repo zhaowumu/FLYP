@@ -46,7 +46,7 @@
                 {{ task.description ? '编辑' : '添加描述' }}
               </el-button>
             </div>
-            <div v-if="!isEditingDescription" class="description-content" v-html="task.description || '<span style=color:#909399>暂无描述</span>'"></div>
+            <div v-if="!isEditingDescription" class="description-content" v-html="task.description || '<span style=color:var(--nb-text-secondary)>暂无描述</span>'"></div>
             <div v-else class="description-editor">
               <RichEditor
                 v-model="editDescription"
@@ -331,7 +331,7 @@
           <!-- 延期 -->
           <div class="form-section" v-if="currentAction === 'extend'">
             <span class="label">当前截止日期</span>
-            <div style="margin-bottom: 12px; color: #909399; font-size: 13px;">
+            <div style="margin-bottom: var(--nb-space-3); color: var(--nb-text-secondary); font-size: var(--nb-font-size-base);">
               {{ task?.dueDate ? new Date(task.dueDate).toLocaleString() : '未设置' }}
             </div>
             <span class="label">新截止日期</span>
@@ -550,7 +550,7 @@ const renderRemark = (remark: string) => {
   if (remark.includes('<') && remark.includes('>')) {
     return remark
   }
-  return remark.replace(/\[图片\]/g, '<span style="color:#409eff">[图片]</span>')
+  return remark.replace(/\[图片\]/g, '<span style="color:var(--nb-primary)">[图片]</span>')
 }
 
 const goBack = () => {
@@ -825,20 +825,20 @@ watch(() => route.params.id, (newId) => {
 <style scoped>
 .task-detail-page {
   padding: 0;
-  background: #f5f7fa;
+  background: var(--nb-bg-page);
   min-height: calc(100vh - 120px);
 }
 
 .page-header {
-  margin-bottom: 16px;
-  background: white;
-  padding: 16px 20px;
-  border-radius: 8px;
+  margin-bottom: var(--nb-space-4);
+  background: var(--nb-bg-elevated);
+  padding: var(--nb-space-4) var(--nb-space-5);
+  border-radius: var(--nb-radius-md);
 }
 
 .detail-container {
   display: flex;
-  gap: 16px;
+  gap: var(--nb-space-4);
 }
 
 .main-content {
@@ -852,47 +852,47 @@ watch(() => route.params.id, (newId) => {
 }
 
 .content-card {
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  background: var(--nb-bg-card);
+  border-radius: var(--nb-radius-lg);
+  padding: var(--nb-space-5);
+  box-shadow: var(--nb-shadow-sm);
 }
 
 .task-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 16px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #ebeef5;
+  gap: var(--nb-space-4);
+  padding-bottom: var(--nb-space-4);
+  border-bottom: 1px solid var(--nb-border);
 }
 
 .task-title-area {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--nb-space-2);
   flex: 1;
 }
 
 .task-header h1 {
-  font-size: 22px;
-  font-weight: 600;
-  color: #303133;
+  font-size: var(--nb-font-size-2xl);
+  font-weight: var(--nb-font-weight-semibold);
+  color: var(--nb-text-primary);
   margin: 0;
   flex: 1;
-  line-height: 1.4;
+  line-height: var(--nb-line-height-tight);
 }
 
 .edit-btn {
-  color: #909399;
-  padding: 4px;
-  border-radius: 4px;
-  transition: all 0.2s;
+  color: var(--nb-text-secondary);
+  padding: var(--nb-space-1);
+  border-radius: var(--nb-radius-sm);
+  transition: all var(--nb-transition-normal);
 }
 
 .edit-btn:hover {
-  color: #409eff;
-  background: #ecf5ff;
+  color: var(--nb-primary);
+  background: var(--nb-primary-lighter);
 }
 
 .task-title-edit {
@@ -900,134 +900,133 @@ watch(() => route.params.id, (newId) => {
 }
 
 .task-title-edit .el-input {
-  margin-bottom: 8px;
+  margin-bottom: var(--nb-space-2);
 }
 
 .task-title-edit .edit-actions,
 .description-editor .edit-actions {
   display: flex;
-  gap: 8px;
+  gap: var(--nb-space-2);
   justify-content: flex-end;
 }
 
 .description-editor {
-  margin-top: 12px;
+  margin-top: var(--nb-space-3);
 }
 
 .description-editor .edit-actions {
-  margin-top: 12px;
+  margin-top: var(--nb-space-3);
 }
 
 .task-tags {
   display: flex;
-  gap: 8px;
+  gap: var(--nb-space-2);
   flex-shrink: 0;
 }
 
 .task-description {
-  padding-top: 16px;
+  padding-top: var(--nb-space-4);
 }
 
 .description-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: var(--nb-space-3);
 }
 
 .task-description h3 {
-  font-size: 14px;
-  font-weight: 600;
-  color: #909399;
+  font-size: var(--nb-font-size-md);
+  font-weight: var(--nb-font-weight-semibold);
+  color: var(--nb-text-secondary);
   margin: 0;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--nb-space-2);
 }
 
 .task-description h3::before {
   content: '';
   width: 4px;
   height: 16px;
-  background: #409eff;
+  background: var(--nb-primary);
   border-radius: 2px;
 }
 
 .description-content {
-  font-size: 14px;
-  color: #606266;
-  line-height: 1.8;
-  padding: 16px;
-  background: #fafafa;
-  border-radius: 8px;
+  font-size: var(--nb-font-size-md);
+  color: var(--nb-text-regular);
+  line-height: var(--nb-line-height-relaxed);
+  padding: var(--nb-space-4);
+  background: var(--nb-bg-muted);
+  border-radius: var(--nb-radius-md);
   min-height: 80px;
 }
 
 .description-content :deep(img) {
   max-width: 100%;
   height: auto;
-  border-radius: 6px;
-  margin: 8px 0;
+  border-radius: var(--nb-radius-sm);
+  margin: var(--nb-space-2) 0;
 }
 
 .description-content :deep(video) {
   max-width: 100%;
   height: auto;
-  border-radius: 6px;
-  margin: 8px 0;
+  border-radius: var(--nb-radius-sm);
+  margin: var(--nb-space-2) 0;
   display: block;
   background: #000;
 }
 
 /* 子任务区域 */
 .subtasks-section {
-  padding: 16px 0;
-  border-bottom: 1px solid #ebeef5;
+  margin-bottom: var(--nb-space-5);
 }
 
 .subtasks-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: var(--nb-space-4);
 }
 
 .subtasks-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #606266;
+  font-size: var(--nb-font-size-md);
+  font-weight: var(--nb-font-weight-semibold);
+  color: var(--nb-text-regular);
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--nb-space-2);
 }
 
 .subtasks-tree-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--nb-space-2);
 }
 
 .subtask-tree-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px 16px;
-  background: #f5f7fa;
-  border-radius: 8px;
+  gap: var(--nb-space-3);
+  padding: var(--nb-space-3) var(--nb-space-4);
+  background: var(--nb-bg-hover);
+  border-radius: var(--nb-radius-md);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--nb-transition-normal);
   border: 1px solid transparent;
 }
 
 .subtask-tree-item:hover {
-  background: #ecf5ff;
-  border-color: #409eff;
+  background: var(--nb-primary-lighter);
+  border-color: var(--nb-primary-light);
 }
 
 .tree-icon {
-  font-family: monospace;
-  font-size: 12px;
-  color: #909399;
+  font-family: var(--nb-font-mono);
+  font-size: var(--nb-font-size-sm);
+  color: var(--nb-text-secondary);
   flex-shrink: 0;
 }
 
@@ -1041,26 +1040,26 @@ watch(() => route.params.id, (newId) => {
 
 .subtask-link-title {
   flex: 1;
-  font-size: 13px;
-  color: #303133;
+  font-size: var(--nb-font-size-base);
+  color: var(--nb-text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  transition: color 0.2s;
+  transition: color var(--nb-transition-fast);
 }
 
 .subtask-tree-item:hover .subtask-link-title {
-  color: #409eff;
+  color: var(--nb-primary);
 }
 
 .arrow-icon {
-  color: #c0c4cc;
-  font-size: 12px;
-  transition: color 0.2s;
+  color: var(--nb-text-placeholder);
+  font-size: var(--nb-font-size-sm);
+  transition: color var(--nb-transition-fast);
 }
 
 .subtask-tree-item:hover .arrow-icon {
-  color: #409eff;
+  color: var(--nb-primary);
 }
 
 /* 操作记录 */
@@ -1068,40 +1067,40 @@ watch(() => route.params.id, (newId) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 0;
+  padding: var(--nb-space-4) 0;
 }
 
 .activity-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #606266;
+  font-size: var(--nb-font-size-md);
+  font-weight: var(--nb-font-weight-semibold);
+  color: var(--nb-text-regular);
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--nb-space-2);
 }
 
 .activity-count {
-  font-size: 12px;
-  color: #909399;
+  font-size: var(--nb-font-size-sm);
+  color: var(--nb-text-secondary);
 }
 
 .activity-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--nb-space-3);
 }
 
 .activity-item {
   display: flex;
-  gap: 12px;
-  padding: 12px;
-  background: #fafafa;
-  border-radius: 8px;
-  transition: background 0.2s;
+  gap: var(--nb-space-3);
+  padding: var(--nb-space-3);
+  background: var(--nb-bg-muted);
+  border-radius: var(--nb-radius-md);
+  transition: background var(--nb-transition-fast);
 }
 
 .activity-item:hover {
-  background: #f0f2f5;
+  background: var(--nb-bg-hover);
 }
 
 .activity-avatar {
@@ -1109,10 +1108,10 @@ watch(() => route.params.id, (newId) => {
 }
 
 .activity-avatar :deep(.el-avatar) {
-  background: linear-gradient(135deg, #409eff 0%, #67c23a 100%);
+  background: var(--nb-gradient-primary);
   color: white;
-  font-weight: 500;
-  font-size: 12px;
+  font-weight: var(--nb-font-weight-medium);
+  font-size: var(--nb-font-size-sm);
 }
 
 .activity-content {
@@ -1123,82 +1122,82 @@ watch(() => route.params.id, (newId) => {
 .activity-info {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--nb-space-2);
   flex-wrap: wrap;
-  margin-bottom: 4px;
+  margin-bottom: var(--nb-space-1);
 }
 
 .activity-user {
-  font-weight: 500;
-  color: #303133;
-  font-size: 13px;
+  font-weight: var(--nb-font-weight-medium);
+  color: var(--nb-text-primary);
+  font-size: var(--nb-font-size-base);
 }
 
 .activity-action {
-  color: #606266;
-  font-size: 13px;
+  color: var(--nb-text-regular);
+  font-size: var(--nb-font-size-base);
 }
 
 .activity-time {
-  color: #c0c4cc;
-  font-size: 12px;
+  color: var(--nb-text-placeholder);
+  font-size: var(--nb-font-size-sm);
   margin-left: auto;
 }
 
 .activity-remark {
-  background: white;
-  border-radius: 6px;
-  padding: 10px 12px;
-  font-size: 13px;
-  color: #606266;
-  line-height: 1.6;
+  background: var(--nb-bg-elevated);
+  border-radius: var(--nb-radius-sm);
+  padding: var(--nb-space-3) var(--nb-space-3);
+  font-size: var(--nb-font-size-base);
+  color: var(--nb-text-regular);
+  line-height: var(--nb-line-height-relaxed);
   word-break: break-word;
-  border: 1px solid #ebeef5;
+  border: 1px solid var(--nb-border);
 }
 
 .activity-remark :deep(img) {
   max-width: 100%;
   height: auto;
-  border-radius: 4px;
-  margin: 6px 0;
+  border-radius: var(--nb-radius-sm);
+  margin: var(--nb-space-2) 0;
 }
 
 .activity-remark :deep(video) {
   max-width: 100%;
   height: auto;
-  border-radius: 4px;
-  margin: 6px 0;
+  border-radius: var(--nb-radius-sm);
+  margin: var(--nb-space-2) 0;
   display: block;
   background: #000;
 }
 
 .activity-remark :deep(p) {
-  margin: 4px 0;
+  margin: var(--nb-space-1) 0;
 }
 
-/* 侧边栏信息 */
+/* 侧边栏 */
 .side-content .content-card {
   position: sticky;
-  top: 20px;
+  top: var(--nb-space-5);
 }
 
 .side-content h3 {
-  font-size: 15px;
-  font-weight: 600;
-  color: #303133;
-  margin: 0 0 16px 0;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #ebeef5;
+  font-size: var(--nb-font-size-md);
+  font-weight: var(--nb-font-weight-semibold);
+  color: var(--nb-text-primary);
+  margin: 0 0 var(--nb-space-4) 0;
+  padding-bottom: var(--nb-space-3);
+  border-bottom: 1px solid var(--nb-border);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--nb-space-2);
 }
 
 .side-content h3::before {
   content: '';
   width: 4px;
   height: 16px;
-  background: #409eff;
+  background: var(--nb-primary);
   border-radius: 2px;
 }
 
@@ -1211,78 +1210,78 @@ watch(() => route.params.id, (newId) => {
 .info-item {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--nb-space-2);
 }
 
 .info-item .label {
-  font-size: 12px;
-  color: #909399;
-  font-weight: 500;
+  font-size: var(--nb-font-size-sm);
+  color: var(--nb-text-secondary);
+  font-weight: var(--nb-font-weight-medium);
 }
 
 .info-item .value {
-  font-size: 14px;
-  color: #303133;
+  font-size: var(--nb-font-size-md);
+  color: var(--nb-text-primary);
 }
 
 .assignee-display {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  color: #303133;
+  gap: var(--nb-space-2);
+  font-size: var(--nb-font-size-md);
+  color: var(--nb-text-primary);
 }
 
 .assignee-display .el-avatar {
-  background: #409eff;
+  background: var(--nb-primary);
 }
 
 .text-muted {
-  color: #c0c4cc;
-  font-size: 14px;
+  color: var(--nb-text-placeholder);
+  font-size: var(--nb-font-size-md);
 }
 
 /* 悬浮操作栏 */
 .floating-action-bar {
   position: fixed;
-  bottom: 24px;
+  bottom: var(--nb-space-6);
   left: 50%;
   transform: translateX(-50%);
   display: flex;
-  gap: 12px;
-  padding: 16px 24px;
-  background: white;
+  gap: var(--nb-space-3);
+  padding: var(--nb-space-4) var(--nb-space-6);
+  background: var(--nb-bg-elevated);
   border-radius: 50px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-  z-index: 100;
+  box-shadow: var(--nb-shadow-lg);
+  z-index: var(--nb-z-sticky);
 }
 
 .floating-action-bar .el-button {
-  border-radius: 20px;
-  padding: 10px 20px;
-  font-weight: 500;
+  border-radius: var(--nb-radius-full);
+  padding: var(--nb-space-3) var(--nb-space-5);
+  font-weight: var(--nb-font-weight-medium);
 }
 
 /* 操作面板 */
 .form-section {
-  margin-bottom: 20px;
+  margin-bottom: var(--nb-space-5);
 }
 
 .form-section .label {
   display: block;
-  font-size: 14px;
-  color: #606266;
-  margin-bottom: 8px;
-  font-weight: 500;
+  font-size: var(--nb-font-size-md);
+  color: var(--nb-text-regular);
+  margin-bottom: var(--nb-space-2);
+  font-weight: var(--nb-font-weight-medium);
 }
 
 /* 空状态 */
 :deep(.el-empty) {
-  padding: 40px 0;
+  padding: var(--nb-space-10) 0;
 }
 
 :deep(.el-empty__description) {
-  margin-top: 8px;
+  margin-top: var(--nb-space-2);
 }
 
 /* 分割线 */
@@ -1291,7 +1290,7 @@ watch(() => route.params.id, (newId) => {
 }
 
 :deep(.el-divider--horizontal) {
-  margin: 16px 0;
+  margin: var(--nb-space-4) 0;
 }
 
 /* Drawer 样式 */
@@ -1309,7 +1308,7 @@ watch(() => route.params.id, (newId) => {
 .drawer-body-scroll {
   flex: 1;
   overflow: hidden;
-  padding: 20px;
+  padding: var(--nb-space-5);
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -1317,19 +1316,19 @@ watch(() => route.params.id, (newId) => {
 
 .drawer-body-scroll .label {
   display: block;
-  font-size: 14px;
-  font-weight: 500;
-  color: #303133;
-  margin-bottom: 10px;
+  font-size: var(--nb-font-size-md);
+  font-weight: var(--nb-font-weight-medium);
+  color: var(--nb-text-primary);
+  margin-bottom: var(--nb-space-3);
 }
 
 .drawer-body-scroll .form-section {
-  margin-bottom: 20px;
+  margin-bottom: var(--nb-space-5);
   flex-shrink: 0;
 }
 
 .drawer-body-scroll .editor-section {
-  margin-top: 12px;
+  margin-top: var(--nb-space-3);
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -1337,8 +1336,8 @@ watch(() => route.params.id, (newId) => {
 }
 
 .editor-wrapper {
-  border: 1px solid #e4e7ed;
-  border-radius: 8px;
+  border: 1px solid var(--nb-border);
+  border-radius: var(--nb-radius-md);
   overflow: hidden;
   flex: 1;
   display: flex;
@@ -1350,138 +1349,10 @@ watch(() => route.params.id, (newId) => {
 .drawer-footer {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
-  padding: 16px 20px;
-  border-top: 1px solid #e4e7ed;
-  background: #fafafa;
+  gap: var(--nb-space-3);
+  padding: var(--nb-space-4) var(--nb-space-5);
+  border-top: 1px solid var(--nb-border);
+  background: var(--nb-bg-muted);
   flex-shrink: 0;
-}
-
-/* 侧边栏样式 */
-.side-content h3 {
-  font-size: 14px;
-  font-weight: 600;
-  color: #303133;
-  margin: 0 0 16px 0;
-}
-
-.info-list {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.info-item {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.info-item .label {
-  font-size: 12px;
-  color: #909399;
-  font-weight: 500;
-}
-
-.info-item .value {
-  font-size: 14px;
-  color: #303133;
-}
-
-.assignee-display {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  color: #303133;
-}
-
-.text-muted {
-  color: #909399;
-  font-size: 14px;
-}
-
-/* 子任务列表区域样式 */
-.subtasks-section {
-  margin-bottom: 20px;
-}
-
-.subtasks-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.subtasks-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #606266;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.subtasks-tree-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding-left: 8px;
-}
-
-.subtask-tree-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 16px;
-  background: #f5f7fa;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.subtask-tree-item:hover {
-  background: #e8eaed;
-}
-
-.subtask-tree-item:hover .subtask-link-title {
-  color: #409eff;
-}
-
-.tree-icon {
-  font-family: monospace;
-  font-size: 14px;
-  color: #909399;
-  flex-shrink: 0;
-  width: 24px;
-}
-
-.subtask-status {
-  flex-shrink: 0;
-}
-
-.subtask-priority-tag {
-  flex-shrink: 0;
-}
-
-.subtask-link-title {
-  flex: 1;
-  font-size: 14px;
-  color: #303133;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  transition: color 0.2s;
-}
-
-.arrow-icon {
-  color: #909399;
-  font-size: 14px;
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-
-.subtask-tree-item:hover .arrow-icon {
-  opacity: 1;
 }
 </style>
