@@ -36,14 +36,29 @@ async function getTaskLogs(taskId: number): Promise<OperationLog[]> {
   });
 }
 
+/** 辅助：将 assigneeIds 数组转为 User 实体数组 */
+async function resolveAssigneeIds(ids: number[] | undefined): Promise<User[]> {
+  if (!ids || ids.length === 0) return [];
+  const users = await userRepository.findByIds(ids);
+  return users;
+}
+
+/** 辅助：获取 assignees 的显示名称列表 */
+function getAssigneeNames(assignees: User[] | undefined): string {
+  if (!assignees || assignees.length === 0) return "未分配";
+  return assignees.map(u => u.realName).join("、");
+}
+
 export const taskController = {
   async createTask(req: Request, res: Response) {
     try {
-      const { title, description, priority, dueDate, projectId, assigneeId, parentTaskId, category } = req.body;
+      const { title, description, priority, dueDate, projectId, assigneeIds, parentTaskId, category } = req.body;
       const createdBy = (req as any).user.id;
 
       const creator = await userRepository.findOne({ where: { id: createdBy } });
-      
+
+      const assignees = await resolveAssigneeIds(assigneeIds);
+
       const task = taskRepository.create({
         title,
         description,
@@ -52,7 +67,7 @@ export const taskController = {
         dueDate,
         category: category || null,
         project: projectId ? { id: projectId } : undefined,
-        assignee: assigneeId ? { id: assigneeId } : undefined,
+        assignees,
         creator: { id: createdBy },
         parentTask: parentTaskId ? { id: parentTaskId } : undefined,
       });
@@ -77,7 +92,7 @@ export const taskController = {
 
       const savedTask = await taskRepository.findOne({
         where: { id: task.id },
-        relations: ["project", "project.manager", "assignee", "creator", "parentTask", "subtasks"],
+        relations: ["project", "project.manager", "assignees", "creator", "parentTask", "subtasks"],
       });
 
       res.status(201).json(savedTask);
@@ -94,7 +109,6 @@ export const taskController = {
 
       if (projectId) where.project = { id: projectId };
       if (status) where.status = status;
-      if (assigneeId) where.assignee = { id: assigneeId };
       if (creatorId) where.creator = { id: creatorId };
       if (priority) where.priority = priority;
       if (category) where.category = category;
@@ -103,9 +117,30 @@ export const taskController = {
       const sortField = sortBy && validSortFields.includes(sortBy as string) ? sortBy as string : "createdAt";
       const order = sortOrder === "ASC" ? "ASC" : "DESC";
 
+      // 如果按 assigneeId 过滤，需要通过关联表查询
+      if (assigneeId) {
+        const tasks = await taskRepository
+          .createQueryBuilder("task")
+          .leftJoinAndSelect("task.project", "project")
+          .leftJoinAndSelect("project.manager", "project_manager")
+          .leftJoinAndSelect("task.assignees", "assignees")
+          .leftJoinAndSelect("task.creator", "creator")
+          .leftJoinAndSelect("task.parentTask", "parentTask")
+          .leftJoinAndSelect("task.subtasks", "subtasks")
+          .leftJoin("task.assignees", "filterAssignee", "filterAssignee.id = :aid", { aid: assigneeId })
+          .where("filterAssignee.id IS NOT NULL")
+          .andWhere(projectId ? "project.id = :pid" : "1=1", { pid: projectId })
+          .andWhere(status ? "task.status = :status" : "1=1", { status })
+          .andWhere(priority ? "task.priority = :priority" : "1=1", { priority })
+          .andWhere(category ? "task.category = :category" : "1=1", { category })
+          .orderBy(`task.${sortField}`, order)
+          .getMany();
+        return res.json(tasks);
+      }
+
       const tasks = await taskRepository.find({
         where,
-        relations: ["project", "project.manager", "assignee", "creator", "parentTask", "subtasks"],
+        relations: ["project", "project.manager", "assignees", "creator", "parentTask", "subtasks"],
         order: { [sortField]: order },
       });
 
@@ -121,7 +156,7 @@ export const taskController = {
       const { id } = req.params;
       const task = await taskRepository.findOne({
         where: { id: parseInt(id as string) },
-        relations: ["project", "project.manager", "assignee", "creator", "parentTask", "subtasks"],
+        relations: ["project", "project.manager", "assignees", "creator", "parentTask", "subtasks"],
       });
 
       if (!task) {
@@ -145,7 +180,7 @@ export const taskController = {
 
       const task = await taskRepository.findOne({
         where: { id: parseInt(id as string) },
-        relations: ["assignee", "creator"],
+        relations: ["assignees", "creator"],
       });
 
       if (!task) {
@@ -155,18 +190,20 @@ export const taskController = {
       const user = await userRepository.findOne({ where: { id: userId } });
       const userName = user?.realName || "未知用户";
 
-      if (updateData.assigneeId) {
-        const oldAssignee = task.assignee;
-        const newAssignee = await userRepository.findOne({ where: { id: updateData.assigneeId } });
-        
+      // 处理 assignees 变更
+      if (updateData.assigneeIds) {
+        const oldAssigneeNames = getAssigneeNames(task.assignees);
+        const newAssignees = await resolveAssigneeIds(updateData.assigneeIds);
+        const newAssigneeNames = getAssigneeNames(newAssignees);
+
         await createOperationLog(
           task.id,
           userId,
           userName,
           "assign",
           {
-            oldAssignee: oldAssignee?.realName || "未处理",
-            newAssignee: newAssignee?.realName || "未知",
+            oldAssignee: oldAssigneeNames,
+            newAssignee: newAssigneeNames,
             remark: updateData.log?.remark || "",
           }
         );
@@ -175,14 +212,14 @@ export const taskController = {
           type: "任务",
           id: String(task.id),
           title: task.title,
-          oldAssignee: oldAssignee?.realName || "未处理",
-          newAssignee: newAssignee?.realName || "未知",
+          oldAssignee: oldAssigneeNames,
+          newAssignee: newAssigneeNames,
           operator: userName,
           time: new Date().toLocaleString("zh-CN")
         });
-        
-        task.assignee = newAssignee!;
-        delete updateData.assigneeId;
+
+        task.assignees = newAssignees;
+        delete updateData.assigneeIds;
       }
 
       if (updateData.status && updateData.status !== task.status) {
@@ -237,7 +274,7 @@ export const taskController = {
 
       const updatedTask = await taskRepository.findOne({
         where: { id: parseInt(id as string) },
-        relations: ["project", "project.manager", "assignee", "creator", "parentTask", "subtasks"],
+        relations: ["project", "project.manager", "assignees", "creator", "parentTask", "subtasks"],
       });
 
       res.json(updatedTask);
@@ -255,7 +292,7 @@ export const taskController = {
 
       const task = await taskRepository.findOne({
         where: { id: parseInt(id as string) },
-        relations: ["assignee", "creator"],
+        relations: ["assignees", "creator"],
       });
 
       if (!task) {
@@ -277,9 +314,9 @@ export const taskController = {
       if (log?.newPriority) extraFields.newPriority = log.newPriority;
 
       if (status === "completed" && task.creator) {
-        extraFields.oldAssignee = task.assignee?.realName || "未处理";
+        extraFields.oldAssignee = getAssigneeNames(task.assignees);
         extraFields.newAssignee = task.creator.realName;
-        task.assignee = task.creator;
+        task.assignees = [task.creator];
       }
 
       task.status = status;
@@ -305,7 +342,7 @@ export const taskController = {
 
       const updatedTask = await taskRepository.findOne({
         where: { id: parseInt(id as string) },
-        relations: ["project", "project.manager", "assignee", "creator", "parentTask", "subtasks"],
+        relations: ["project", "project.manager", "assignees", "creator", "parentTask", "subtasks"],
       });
 
       res.json(updatedTask);
@@ -323,7 +360,7 @@ export const taskController = {
 
       const task = await taskRepository.findOne({
         where: { id: parseInt(id as string) },
-        relations: ["assignee", "creator"],
+        relations: ["assignees", "creator"],
       });
 
       if (!task) {
@@ -337,18 +374,20 @@ export const taskController = {
         remark: log.remark || "",
       };
 
-      if (log.action === "assign" && log.newAssigneeId) {
-        const newAssignee = await userRepository.findOne({ where: { id: log.newAssigneeId } });
-        extraFields.oldAssignee = task.assignee?.realName || "未处理";
-        extraFields.newAssignee = newAssignee?.realName || "未知";
-        task.assignee = newAssignee!;
+      if (log.action === "assign" && log.newAssigneeIds) {
+        const newAssignees = await resolveAssigneeIds(log.newAssigneeIds);
+        const oldAssigneeNames = getAssigneeNames(task.assignees);
+        const newAssigneeNames = getAssigneeNames(newAssignees);
+        extraFields.oldAssignee = oldAssigneeNames;
+        extraFields.newAssignee = newAssigneeNames;
+        task.assignees = newAssignees;
 
         dingTalkService.sendNotification("assignee_change", {
           type: "任务",
           id: String(task.id),
           title: task.title,
-          oldAssignee: task.assignee?.realName || "未处理",
-          newAssignee: newAssignee?.realName || "未知",
+          oldAssignee: oldAssigneeNames,
+          newAssignee: newAssigneeNames,
           operator: userName,
           time: new Date().toLocaleString("zh-CN")
         });
@@ -398,7 +437,7 @@ export const taskController = {
 
       const updatedTask = await taskRepository.findOne({
         where: { id: parseInt(id as string) },
-        relations: ["project", "project.manager", "assignee", "creator", "parentTask", "subtasks"],
+        relations: ["project", "project.manager", "assignees", "creator", "parentTask", "subtasks"],
       });
 
       res.json(updatedTask);
@@ -456,7 +495,7 @@ export const taskController = {
 
       const task = await taskRepository.findOne({
         where: { id: parseInt(id as string) },
-        relations: ["assignee", "creator"],
+        relations: ["assignees", "creator"],
       });
 
       if (!task) {
@@ -485,7 +524,7 @@ export const taskController = {
 
       const updatedTask = await taskRepository.findOne({
         where: { id: parseInt(id as string) },
-        relations: ["project", "project.manager", "assignee", "creator", "parentTask", "subtasks"],
+        relations: ["project", "project.manager", "assignees", "creator", "parentTask", "subtasks"],
       });
 
       res.json(updatedTask);

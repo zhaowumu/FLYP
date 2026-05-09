@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany, ManyToMany } from "typeorm";
 import { Task } from "./Task";
 import { Bug } from "./Bug";
 
@@ -25,7 +25,7 @@ export class User {
   @Column({ default: true })
   isActive: boolean;
 
-  @OneToMany(() => Task, task => task.assignee)
+  @ManyToMany(() => Task, task => task.assignees)
   assignedTasks: Task[];
 
   @OneToMany(() => Task, task => task.creator)

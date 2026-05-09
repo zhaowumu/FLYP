@@ -69,7 +69,7 @@ export class ExcelService {
 
       const tasks = await taskRepository.find({
         where,
-        relations: ["project", "assignee", "creator", "parentTask"],
+        relations: ["project", "assignees", "creator", "parentTask"],
       });
 
       // 准备数据
@@ -79,7 +79,7 @@ export class ExcelService {
         "任务描述": this.stripHtml(task.description),
         "优先级": this.getTaskPriorityText(task.priority),
         "状态": this.getTaskStatusText(task.status),
-        "负责人": task.assignee?.realName || "未分配",
+        "负责人": task.assignees?.map((a: any) => a.realName).join('、') || "未分配",
         "创建人": task.creator?.realName,
         "所属项目": task.project?.name,
         "父任务": task.parentTask ? task.parentTask.title : "无",
@@ -156,7 +156,7 @@ export class ExcelService {
       const users = await userRepository.find();
       const projects = await projectRepository.find();
       const tasks = await taskRepository.find({
-        relations: ["project", "assignee", "creator", "parentTask"],
+        relations: ["project", "assignees", "creator", "parentTask"],
       });
       const bugs = await bugRepository.find({
         relations: ["project", "assignee", "reporter"],
@@ -200,7 +200,7 @@ export class ExcelService {
         "任务描述": this.stripHtml(task.description),
         "优先级": this.getTaskPriorityText(task.priority),
         "状态": this.getTaskStatusText(task.status),
-        "负责人": task.assignee?.realName || "未分配",
+        "负责人": task.assignees?.map((a: any) => a.realName).join('、') || "未分配",
         "创建人": task.creator?.realName,
         "所属项目": task.project?.name,
         "父任务": task.parentTask ? task.parentTask.title : "无",
@@ -280,12 +280,14 @@ export class ExcelService {
 
       for (const row of data as any[]) {
         try {
-          // 查找负责人
-          let assignee = null;
+          // 查找负责人（支持多个，用、或,分隔）
+          let assignees: User[] = [];
           if (row["负责人"] && row["负责人"] !== "未分配") {
-            assignee = await userRepository.findOne({
-              where: { realName: row["负责人"] },
-            });
+            const names = row["负责人"].split(/[、,]/).map((n: string) => n.trim()).filter(Boolean);
+            for (const name of names) {
+              const user = await userRepository.findOne({ where: { realName: name } });
+              if (user) assignees.push(user);
+            }
           }
 
           // 创建任务
@@ -296,7 +298,7 @@ export class ExcelService {
             status: this.convertToTaskStatus(row["状态"]),
             dueDate: row["截止日期"] ? new Date(row["截止日期"]) : undefined,
             project: { id: projectId } as any,
-            assignee: assignee ? { id: assignee.id } as any : null,
+            assignees: assignees.length > 0 ? assignees : [],
           });
 
           await taskRepository.save(task);

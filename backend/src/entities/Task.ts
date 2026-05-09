@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, ManyToMany, JoinTable } from "typeorm";
 import { Project } from "./Project";
 import { User } from "./User";
 import { OperationLog } from "./OperationLog";
@@ -29,8 +29,9 @@ export class Task {
   @ManyToOne(() => Project, project => project.tasks)
   project: Project;
 
-  @ManyToOne(() => User, user => user.assignedTasks)
-  assignee: User;
+  @ManyToMany(() => User, user => user.assignedTasks)
+  @JoinTable()
+  assignees: User[];
 
   @ManyToOne(() => User, user => user.createdTasks)
   creator: User;

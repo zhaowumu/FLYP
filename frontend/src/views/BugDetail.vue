@@ -116,15 +116,35 @@
           <div class="info-list">
             <div class="info-item">
               <span class="label">状态</span>
-              <el-tag :type="getStatusType(bug.status)" size="small">
-                {{ getStatusText(bug.status) }}
-              </el-tag>
+              <div class="info-value-row">
+                <el-tag :type="getStatusType(bug.status)" size="small">
+                  {{ getStatusText(bug.status) }}
+                </el-tag>
+                <el-button
+                  v-if="canChangeStatus"
+                  text size="small"
+                  class="inline-edit-btn"
+                  @click="showActionPanel('changeStatus')"
+                >
+                  <el-icon><EditPen /></el-icon>
+                </el-button>
+              </div>
             </div>
             <div class="info-item">
               <span class="label">严重程度</span>
-              <el-tag :type="getSeverityType(bug.severity)" size="small">
-                {{ getSeverityText(bug.severity) }}
-              </el-tag>
+              <div class="info-value-row">
+                <el-tag :type="getSeverityType(bug.severity)" size="small">
+                  {{ getSeverityText(bug.severity) }}
+                </el-tag>
+                <el-button
+                  v-if="canChangeSeverity"
+                  text size="small"
+                  class="inline-edit-btn"
+                  @click="showActionPanel('severity')"
+                >
+                  <el-icon><EditPen /></el-icon>
+                </el-button>
+              </div>
             </div>
             <div class="info-item">
               <span class="label">当前负责人</span>
@@ -225,15 +245,6 @@
         分配
       </el-button>
       
-      <!-- 更改严重程度 -->
-      <el-button 
-        v-if="canChangeSeverity"
-        @click="showActionPanel('severity')"
-      >
-        <el-icon><Rank /></el-icon>
-        严重程度
-      </el-button>
-      
       <!-- 转交 -->
       <el-button 
         v-if="canTransfer"
@@ -242,16 +253,6 @@
       >
         <el-icon><Switch /></el-icon>
         转交
-      </el-button>
-      
-      <!-- 更改状态 -->
-      <el-button 
-        v-if="canChangeStatus"
-        type="primary"
-        @click="showActionPanel('changeStatus')"
-      >
-        <el-icon><EditPen /></el-icon>
-        更改状态
       </el-button>
       
       <!-- 备注按钮：任何人都可以添加 -->
@@ -462,15 +463,16 @@ const isFixed = computed(() => bug.value?.status === 'fixed')
 const isActive = computed(() => !isClosed.value && !isVerified.value)
 
 // 按钮权限配置（角色权限 + 关系权限）
-const canFix = computed(() => userStore.getBugPermission('fix', { isAssignee: true }) && isAssignee.value && isActive.value && !isFixed.value)
-const canReopenFix = computed(() => userStore.getBugPermission('reopen', { isReporter: true }) && isFixed.value)
-const canVerify = computed(() => userStore.getBugPermission('verify', { isReporter: true }) && isFixed.value)
-const canClose = computed(() => userStore.getBugPermission('close', { isReporter: true }) && (isVerified.value || isFixed.value))
-const canReopen = computed(() => userStore.getBugPermission('reopen', { isReporter: true }) && isClosed.value)
-const canAssign = computed(() => userStore.getBugPermission('assign', { isReporter: true }) && !isClosed.value && !isVerified.value)
-const canChangeSeverity = computed(() => userStore.getBugPermission('changeSeverity', { isReporter: true }) && !isClosed.value && !isVerified.value)
-const canTransfer = computed(() => userStore.getBugPermission('transfer', { isReporter: true, isAssignee: true }) && !isClosed.value && !isVerified.value)
-const canChangeStatus = computed(() => userStore.getBugPermission('changeStatus', { isAssignee: true, isReporter: true }) && !isClosed.value && !isVerified.value)
+// extra 需传入实际关系布尔值，不能用字面量 true
+const canFix = computed(() => userStore.getBugPermission('fix', { isAssignee: isAssignee.value }) && isAssignee.value && isActive.value && !isFixed.value)
+const canReopenFix = computed(() => userStore.getBugPermission('reopen', { isReporter: isReporter.value }) && isFixed.value)
+const canVerify = computed(() => userStore.getBugPermission('verify', { isReporter: isReporter.value }) && isFixed.value)
+const canClose = computed(() => userStore.getBugPermission('close', { isReporter: isReporter.value }) && (isVerified.value || isFixed.value))
+const canReopen = computed(() => userStore.getBugPermission('reopen', { isReporter: isReporter.value }) && isClosed.value)
+const canAssign = computed(() => userStore.getBugPermission('assign', { isReporter: isReporter.value }) && !isClosed.value && !isVerified.value)
+const canChangeSeverity = computed(() => userStore.getBugPermission('changeSeverity', { isReporter: isReporter.value }) && !isClosed.value && !isVerified.value)
+const canTransfer = computed(() => userStore.getBugPermission('transfer', { isReporter: isReporter.value, isAssignee: isAssignee.value }) && !isClosed.value && !isVerified.value)
+const canChangeStatus = computed(() => userStore.getBugPermission('changeStatus', { isReporter: isReporter.value }) && !isClosed.value && !isVerified.value)
 const canComment = computed(() => userStore.getBugPermission('comment'))
 const canDelete = computed(() => userStore.getBugPermission('delete'))
 const canExtend = computed(() => userStore.getBugPermission('extendDueDate') && !isClosed.value)
@@ -1240,6 +1242,24 @@ onMounted(() => {
 .info-item .value {
   font-size: var(--nb-font-size-md);
   color: var(--nb-text-primary);
+}
+
+.info-value-row {
+  display: flex;
+  align-items: center;
+  gap: var(--nb-space-2);
+}
+
+.inline-edit-btn {
+  color: var(--nb-text-placeholder);
+  padding: 2px;
+  border-radius: var(--nb-radius-sm);
+  transition: all var(--nb-transition-fast);
+}
+
+.inline-edit-btn:hover {
+  color: var(--nb-primary);
+  background: var(--nb-primary-lighter);
 }
 
 .assignee-display {

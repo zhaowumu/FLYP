@@ -19,6 +19,7 @@ import sharedFolderRoutes from "./routes/sharedFolderRoutes";
 import markdownRoutes from "./routes/markdownRoutes";
 import searchRoutes from "./routes/searchRoutes";
 import systemConfigRoutes from "./routes/systemConfigRoutes";
+import operationLogRoutes from "./routes/operationLogRoutes";
 
 const app = express();
 
@@ -48,6 +49,7 @@ app.use("/api/shared-folder", authMiddleware, sharedFolderRoutes);
 app.use("/api/markdown", authMiddleware, markdownRoutes);
 app.use("/api/system-config", authMiddleware, systemConfigRoutes);
 app.use("/api/search", authMiddleware, searchRoutes);
+app.use("/api/operation-logs", authMiddleware, operationLogRoutes);
 
 // 健康检查
 app.get("/health", (req, res) => {

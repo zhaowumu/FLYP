@@ -22,40 +22,48 @@ export const useUserStore = defineStore('user', () => {
 
   function getTaskPermission(action: string, extra: { isAssignee?: boolean; isCreator?: boolean } = {}): boolean {
     if (!permissions.value || !user.value) return false
-    const rolePerms = permissions.value[user.value.role]
+    const role = user.value.role
+    const isAdminOrPM = role === 'admin' || role === 'project_manager'
+
+    const rolePerms = permissions.value[role]
     const roleHas = rolePerms?.task?.[action] ?? false
-    
+
+    // 关系级权限：由 extra 中的实际布尔值判断（组件需传入 isAssignee.value / isCreator.value）
     const relationPerms: Record<string, boolean> = {
       complete: extra.isAssignee || false,
       reopen: extra.isCreator || false,
       close: extra.isCreator || false,
       transfer: (extra.isAssignee || false) || (extra.isCreator || false),
-      changePriority: (extra.isAssignee || false) || (extra.isCreator || false),
-      changeStatus: (extra.isAssignee || false) || (extra.isCreator || false),
+      changePriority: isAdminOrPM || (extra.isCreator || false),
+      changeStatus: isAdminOrPM || (extra.isCreator || false),
       comment: true,
       delete: false,
     }
-    
+
     return roleHas || (relationPerms[action] ?? false)
   }
 
   function getBugPermission(action: string, extra: { isReporter?: boolean; isAssignee?: boolean } = {}): boolean {
     if (!permissions.value || !user.value) return false
-    const rolePerms = permissions.value[user.value.role]
+    const role = user.value.role
+    const isAdminOrPM = role === 'admin' || role === 'project_manager'
+
+    const rolePerms = permissions.value[role]
     const roleHas = rolePerms?.bug?.[action] ?? false
-    
+
+    // 关系级权限：由 extra 中的实际布尔值判断（组件需传入 isReporter.value / isAssignee.value）
     const relationPerms: Record<string, boolean> = {
       fix: extra.isAssignee || false,
       reopen: extra.isReporter || false,
       verify: extra.isReporter || false,
       close: extra.isReporter || false,
       transfer: (extra.isReporter || false) || (extra.isAssignee || false),
-      changeSeverity: extra.isReporter || false,
-      changeStatus: (extra.isReporter || false) || (extra.isAssignee || false),
+      changeSeverity: isAdminOrPM || (extra.isReporter || false),
+      changeStatus: isAdminOrPM || (extra.isReporter || false),
       comment: true,
       delete: false,
     }
-    
+
     return roleHas || (relationPerms[action] ?? false)
   }
 
@@ -72,11 +80,11 @@ export const useUserStore = defineStore('user', () => {
       user.value = res.data.user
       localStorage.setItem('token', token.value)
       localStorage.setItem('user', JSON.stringify(user.value))
-      
+
       const permRes = await getPermissions()
       permissions.value = permRes.data
       localStorage.setItem('permissions', JSON.stringify(permissions.value))
-      
+
       return res.data
     } catch (error) {
       throw error
@@ -98,7 +106,7 @@ export const useUserStore = defineStore('user', () => {
       const res = await getUserInfo(user.value.id)
       user.value = res.data
       localStorage.setItem('user', JSON.stringify(user.value))
-      
+
       const permRes = await getPermissions()
       permissions.value = permRes.data
       localStorage.setItem('permissions', JSON.stringify(permissions.value))

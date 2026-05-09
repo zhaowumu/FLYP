@@ -194,7 +194,7 @@
                   <div class="item-title">{{ task.title }}</div>
                   <div class="item-meta">
                     <span><el-icon size="12"><Folder /></el-icon> {{ task.project?.name }}</span>
-                    <span><el-icon size="12"><User /></el-icon> {{ task.assignee?.realName || '未分配' }}</span>
+                    <span><el-icon size="12"><User /></el-icon> {{ task.assignees?.map((a: any) => a.realName).join('、') || '未分配' }}</span>
                   </div>
                 </div>
                 <span class="tag" :class="getPriorityTagClass(task.priority)">{{ getPriorityText(task.priority) }}</span>
@@ -236,37 +236,26 @@
           <div class="card">
             <div class="card-header">
               <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none">
-                <path d="M3 7V17C3 18.1 3.9 19 5 19H19C20.1 19 21 18.1 21 17V9C21 7.9 20.1 7 19 7H13L11 5H5C3.9 5 3 5.9 3 7Z" stroke="#667eea" stroke-width="1.5" fill="none"/>
+                <circle cx="12" cy="12" r="10" stroke="#667eea" stroke-width="1.5" fill="none"/>
+                <path d="M12 6V12L16 14" stroke="#667eea" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
-              <span>我管理的项目</span>
+              <span>操作历史</span>
             </div>
-            <div class="list">
-              <div v-for="project in myProjects" :key="project.id" class="list-item project-item" @click="$router.push(`/projects/${project.id}`)">
-                <div class="item-icon"><el-icon size="18" color="#667eea"><Folder /></el-icon></div>
-                <div class="item-content">
-                  <div class="item-title">{{ project.name }}</div>
-                  <div class="item-meta">
-                    <span class="tag" :class="project.status === 'active' ? 'tag-success' : 'tag-default'">
-                      {{ project.status === 'active' ? '进行中' : '已完成' }}
-                    </span>
+            <div class="timeline-list">
+              <div v-for="log in recentLogs" :key="log.id" class="timeline-item">
+                <div class="timeline-dot" :class="getLogActionClass(log.action)"></div>
+                <div class="timeline-content">
+                  <div class="timeline-main">
+                    <span class="timeline-user">{{ log.user?.realName || '未知' }}</span>
+                    <span class="timeline-action" :class="getLogActionClass(log.action)">{{ getLogActionText(log) }}</span>
+                    <span class="timeline-target" v-if="log.title">《{{ log.title }}》</span>
                   </div>
-                  <div class="project-stats-row">
-                    <div class="mini-stat">
-                      <span class="mini-num">{{ getProjectTaskCount(project.id) }}</span>
-                      <span>任务</span>
-                    </div>
-                    <div class="mini-stat">
-                      <span class="mini-num">{{ getProjectBugCount(project.id) }}</span>
-                      <span>缺陷</span>
-                    </div>
-                    <div class="mini-stat">
-                      <span class="mini-num">{{ getProjectProgress(project) }}%</span>
-                      <span>进度</span>
-                    </div>
+                  <div class="timeline-meta">
+                    <span class="timeline-time">{{ formatLogTime(log.createdAt) }}</span>
                   </div>
                 </div>
               </div>
-              <div v-if="myProjects.length === 0" class="empty">暂无管理的项目</div>
+              <div v-if="recentLogs.length === 0" class="empty">暂无操作记录</div>
             </div>
           </div>
         </div>
@@ -535,6 +524,7 @@ import { getProjects } from '../api/project'
 import { getTasks } from '../api/task'
 import { getBugs } from '../api/bug'
 import { getUsers } from '../api/user'
+import { getOperationLogs } from '../api/operationLog'
 import { useRouter } from 'vue-router'
 
 const userStore = useUserStore()
@@ -544,6 +534,7 @@ const allTasks = ref<any[]>([])
 const allBugs = ref<any[]>([])
 const allProjects = ref<any[]>([])
 const allUsers = ref<any[]>([])
+const recentLogs = ref<any[]>([])
 
 // ==================== Shared ====================
 
@@ -680,7 +671,7 @@ const quickQuests = computed(() => {
 
 // ==================== Shared Data ====================
 
-const myTasks = computed(() => allTasks.value.filter((t: any) => t.assignee?.id === userId.value || t.creator?.id === userId.value))
+const myTasks = computed(() => allTasks.value.filter((t: any) => t.assignees?.some((a: any) => a.id === userId.value) || t.creator?.id === userId.value))
 const myBugs = computed(() => allBugs.value.filter((b: any) => b.assignee?.id === userId.value || b.reporter?.id === userId.value))
 const myPendingTasks = computed(() => myTasks.value.filter((t: any) => t.status !== 'completed' && t.status !== 'closed').sort((a: any, b: any) => {
   const order: Record<string, number> = { urgent: 0, high: 1, medium: 2, low: 3 }
@@ -746,8 +737,8 @@ const taskCompletionRate = computed(() => {
 const teamWorkload = computed(() => {
   const members = allUsers.value.filter((u: any) => u.role !== 'admin')
   return members.map((m: any) => {
-    const taskCount = allTasks.value.filter((t: any) => t.assignee?.id === m.id && t.status !== 'completed' && t.status !== 'closed').length
-    const maxTasks = Math.max(...members.map((u: any) => allTasks.value.filter((t: any) => t.assignee?.id === u.id && t.status !== 'completed' && t.status !== 'closed').length), 1)
+    const taskCount = allTasks.value.filter((t: any) => t.assignees?.some((a: any) => a.id === m.id) && t.status !== 'completed' && t.status !== 'closed').length
+    const maxTasks = Math.max(...members.map((u: any) => allTasks.value.filter((t: any) => t.assignees?.some((a: any) => a.id === u.id) && t.status !== 'completed' && t.status !== 'closed').length), 1)
     return { id: m.id, name: m.realName, taskCount, load: Math.round((taskCount / maxTasks) * 100) }
   }).sort((a: any, b: any) => b.taskCount - a.taskCount).slice(0, 6)
 })
@@ -791,7 +782,7 @@ const pmStats = computed(() => [
 const memberCompletionData = computed(() => {
   const members = allUsers.value.filter((u: any) => u.role !== 'admin')
   return members.map((m: any) => {
-    const userTasks = allTasks.value.filter((t: any) => t.assignee?.id === m.id)
+    const userTasks = allTasks.value.filter((t: any) => t.assignees?.some((a: any) => a.id === m.id))
     const pendingCount = userTasks.filter((t: any) => t.status === 'pending').length
     const inProgressCount = userTasks.filter((t: any) => t.status === 'in_progress').length
     const completedCount = userTasks.filter((t: any) => t.status === 'completed' || t.status === 'closed').length
@@ -844,7 +835,7 @@ const roleExtraSections = computed(() => {
       click: () => router.push('/tasks'),
       itemClick: (item: any) => router.push(`/tasks/${item.id}`),
       getItemClass: (item: any) => getPriorityClass(item.priority),
-      getMeta: (item: any) => `${item.assignee?.realName || '未分配'}`,
+      getMeta: (item: any) => `${item.assignees?.map((a: any) => a.realName).join('、') || '未分配'}`,
       getStatusClass: (item: any) => getStatusTagClass(item.status),
       getStatusText: (item: any) => getStatusText(item.status),
       emptyText: '暂无任务'
@@ -865,7 +856,7 @@ const getProjectProgress = (project: any) => {
 
 const getProjectTaskCount = (projectId: number) => allTasks.value.filter((t: any) => t.project?.id === projectId).length
 const getProjectBugCount = (projectId: number) => allBugs.value.filter((b: any) => b.project?.id === projectId).length
-const getUserTaskCount = (uid: number) => allTasks.value.filter((t: any) => t.assignee?.id === uid && t.status !== 'completed' && t.status !== 'closed').length
+const getUserTaskCount = (uid: number) => allTasks.value.filter((t: any) => t.assignees?.some((a: any) => a.id === uid) && t.status !== 'completed' && t.status !== 'closed').length
 
 const getHealthColor = (progress: number) => {
   if (progress >= 60) return 'health-green'
@@ -968,17 +959,99 @@ const getDueDays = (dueDate: Date | string) => {
   return `${Math.ceil(diff / (1000 * 60 * 60 * 24))}天`
 }
 
+// ==================== Operation Log Helpers ====================
+
+const statusTextMap: Record<string, string> = {
+  pending: '待处理', in_progress: '进行中', completed: '已完成', closed: '已关闭',
+  assigned: '已分配', fixing: '修复中', fixed: '已修复', verified: '已验证'
+}
+const priorityTextMap: Record<string, string> = { low: '低', medium: '中', high: '高', urgent: '紧急' }
+const severityTextMap: Record<string, string> = { low: '低', medium: '中', high: '高', critical: '严重' }
+
+const formatLogTargetTime = (timeStr: string | Date | null | undefined) => {
+  if (!timeStr) return ''
+  const d = new Date(timeStr)
+  return `${d.getMonth() + 1}/${d.getDate()} ${d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`
+}
+
+const getLogActionText = (log: any) => {
+  const { action } = log
+  switch (action) {
+    case 'create':
+      return log.targetType === 'task' ? '创建了任务' : '创建了缺陷'
+    case 'status_change': {
+      let text = `将状态从「${statusTextMap[log.oldStatus] || log.oldStatus || '待处理'}」变更为「${statusTextMap[log.newStatus] || log.newStatus}」`
+      if (log.oldAssignee && log.newAssignee && log.oldAssignee !== log.newAssignee) {
+        text += `，负责人从「${log.oldAssignee}」变更为「${log.newAssignee}」`
+      } else if (log.newAssignee) {
+        text += `，负责人变更为「${log.newAssignee}」`
+      }
+      return text
+    }
+    case 'assign':
+      return `将负责人从「${log.oldAssignee || '未分配'}」变更为「${log.newAssignee}」`
+    case 'priority_change':
+      return `将优先级从「${priorityTextMap[log.oldPriority] || log.oldPriority || '中'}」调整为「${priorityTextMap[log.newPriority] || log.newPriority}」`
+    case 'severity_change':
+      return `将严重程度从「${severityTextMap[log.oldSeverity] || log.oldSeverity || '中'}」调整为「${severityTextMap[log.newSeverity] || log.newSeverity}」`
+    case 'due_date_change':
+    case 'extend_due_date':
+      return `将截止日期从「${formatLogTargetTime(log.oldDueDate)}」延期至「${formatLogTargetTime(log.newDueDate)}」`
+    case 'complete': {
+      let text = log.targetType === 'task' ? '完成了任务' : '完成了缺陷'
+      if (log.oldAssignee && log.newAssignee && log.oldAssignee !== log.newAssignee) {
+        text += `，负责人从「${log.oldAssignee}」变更为「${log.newAssignee}」`
+      }
+      return text
+    }
+    case 'close':
+      return log.targetType === 'task' ? '关闭了任务' : '关闭了缺陷'
+    case 'comment':
+      return '添加了备注'
+    case 'reopen':
+      return log.targetType === 'task' ? '重新打开了任务' : '重新打开了缺陷'
+    default:
+      return action
+  }
+}
+
+const getLogActionClass = (action: string) => {
+  if (action === 'create') return 'log-create'
+  if (action === 'comment') return 'log-comment'
+  if (action === 'status_change') return 'log-status'
+  if (action === 'assign') return 'log-assign'
+  if (action === 'priority_change') return 'log-priority'
+  if (action === 'severity_change') return 'log-severity'
+  return 'log-default'
+}
+
+const formatLogTime = (dateStr: string) => {
+  const date = new Date(dateStr)
+  const now = new Date()
+  const isToday = date.toDateString() === now.toDateString()
+  if (isToday) {
+    return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+  }
+  const yesterday = new Date(now)
+  yesterday.setDate(yesterday.getDate() - 1)
+  if (date.toDateString() === yesterday.toDateString()) {
+    return `昨天 ${date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`
+  }
+  return `${(date.getMonth() + 1)}/${date.getDate()} ${date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`
+}
+
 // ==================== Data Loading ====================
 
 onMounted(async () => {
   try {
-    const [projectsRes, tasksRes, bugsRes, usersRes] = await Promise.all([
-      getProjects(), getTasks(), getBugs(), getUsers()
+    const [projectsRes, tasksRes, bugsRes, usersRes, logsRes] = await Promise.all([
+      getProjects(), getTasks(), getBugs(), getUsers(), getOperationLogs({ limit: 20 })
     ])
     allProjects.value = projectsRes.data || []
     allTasks.value = tasksRes.data || []
     allBugs.value = bugsRes.data || []
     allUsers.value = usersRes.data || []
+    recentLogs.value = logsRes.data || []
   } catch (error) {
     console.error('Failed to load dashboard data:', error)
   }
@@ -1475,6 +1548,86 @@ onMounted(async () => {
 
 .text-success {
   color: var(--nb-success);
+}
+
+/* ==================== Timeline List ==================== */
+.timeline-list {
+  padding: 4px 0;
+  max-height: 420px;
+  overflow-y: auto;
+}
+.timeline-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 16px;
+  border-radius: var(--nb-radius-md);
+  transition: background 0.2s;
+}
+.timeline-item:hover {
+  background: var(--nb-bg-hover);
+}
+.timeline-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-top: 7px;
+  flex-shrink: 0;
+}
+.timeline-dot.log-create { background: var(--nb-success); }
+.timeline-dot.log-comment { background: var(--nb-primary); }
+.timeline-dot.log-status { background: #f59e0b; }
+.timeline-dot.log-assign { background: #8b5cf6; }
+.timeline-dot.log-priority { background: #3b82f6; }
+.timeline-dot.log-severity { background: var(--nb-danger); }
+.timeline-dot.log-default { background: var(--nb-text-tertiary); }
+.timeline-content {
+  flex: 1;
+  min-width: 0;
+}
+.timeline-main {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: var(--nb-font-size-base);
+}
+.timeline-user {
+  font-weight: var(--nb-font-weight-medium);
+  color: var(--nb-text-primary);
+}
+.timeline-action {
+  color: var(--nb-text-secondary);
+  font-size: 13px;
+}
+.timeline-action.log-status { color: #d97706; }
+.timeline-action.log-assign { color: #7c3aed; }
+.timeline-action.log-priority { color: #2563eb; }
+.timeline-action.log-severity { color: var(--nb-danger); }
+.timeline-target {
+  color: var(--nb-primary);
+  font-size: 12px;
+  font-weight: var(--nb-font-weight-medium);
+  margin-left: 4px;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.timeline-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--nb-text-tertiary);
+}
+.timeline-type {
+  font-size: 11px;
+  padding: 1px 6px;
+}
+.timeline-time {
+  font-size: 11px;
 }
 
 /* ==================== Tag ==================== */

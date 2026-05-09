@@ -24,7 +24,7 @@ export const searchController = {
         taskRepository
           .createQueryBuilder("task")
           .leftJoinAndSelect("task.project", "project")
-          .leftJoinAndSelect("task.assignee", "assignee")
+          .leftJoinAndSelect("task.assignees", "assignees")
           .leftJoinAndSelect("task.creator", "creator")
           .where("task.title LIKE :term", { term: searchTerm })
           .orWhere("task.description LIKE :term", { term: searchTerm })

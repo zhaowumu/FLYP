@@ -124,21 +124,41 @@
           <div class="info-list">
             <div class="info-item">
               <span class="label">状态</span>
-              <el-tag :type="getStatusType(task.status)" size="small">
-                {{ getStatusText(task.status) }}
-              </el-tag>
+              <div class="info-value-row">
+                <el-tag :type="getStatusType(task.status)" size="small">
+                  {{ getStatusText(task.status) }}
+                </el-tag>
+                <el-button
+                  v-if="canChangeStatus"
+                  text size="small"
+                  class="inline-edit-btn"
+                  @click="showActionPanel('changeStatus')"
+                >
+                  <el-icon><EditPen /></el-icon>
+                </el-button>
+              </div>
             </div>
             <div class="info-item">
               <span class="label">优先级</span>
-              <el-tag :type="getPriorityType(task.priority)" size="small">
-                {{ getPriorityText(task.priority) }}
-              </el-tag>
+              <div class="info-value-row">
+                <el-tag :type="getPriorityType(task.priority)" size="small">
+                  {{ getPriorityText(task.priority) }}
+                </el-tag>
+                <el-button
+                  v-if="canChangePriority"
+                  text size="small"
+                  class="inline-edit-btn"
+                  @click="showActionPanel('priority')"
+                >
+                  <el-icon><EditPen /></el-icon>
+                </el-button>
+              </div>
             </div>
             <div class="info-item">
               <span class="label">当前负责人</span>
-              <div class="assignee-display" v-if="task.assignee">
-                <el-avatar :size="24">{{ task.assignee.realName?.charAt(0) }}</el-avatar>
-                <span>{{ task.assignee.realName }}</span>
+              <div class="assignee-display" v-if="task.assignees && task.assignees.length > 0">
+                <el-avatar v-for="a in task.assignees" :key="a.id" :size="24" class="assignee-avatar">{{ a.realName?.charAt(0) }}</el-avatar>
+                <span>{{ task.assignees.map((a: any) => a.realName).join('、') }}</span>
               </div>
               <span v-else class="text-muted">未处理</span>
             </div>
@@ -215,25 +235,6 @@
       >
         <el-icon><Switch /></el-icon>
         转交
-      </el-button>
-      
-      <!-- 更改优先级：创建人和负责人都可以更改 -->
-      <el-button 
-        v-if="canChangePriority"
-        @click="showActionPanel('priority')"
-      >
-        <el-icon><Rank /></el-icon>
-        优先级
-      </el-button>
-      
-      <!-- 更改状态 -->
-      <el-button 
-        v-if="canChangeStatus"
-        type="primary"
-        @click="showActionPanel('changeStatus')"
-      >
-        <el-icon><EditPen /></el-icon>
-        更改状态
       </el-button>
       
       <!-- 备注按钮：任何人都可以添加 -->
@@ -422,7 +423,7 @@ const operationLogs = computed(() => {
 // 角色判断
 const currentUserId = computed(() => userStore.user?.id)
 const isCreator = computed(() => task.value?.creator?.id === currentUserId.value)
-const isAssignee = computed(() => task.value?.assignee?.id === currentUserId.value)
+const isAssignee = computed(() => task.value?.assignees?.some((a: any) => a.id === currentUserId.value))
 const isParticipant = computed(() => isCreator.value || isAssignee.value)
 const isProjectManager = computed(() => task.value?.project?.manager?.id === currentUserId.value)
 const isAdmin = computed(() => userStore.user?.role === 'admin')
@@ -436,12 +437,13 @@ const isCompleted = computed(() => task.value?.status === 'completed')
 const isActive = computed(() => !isClosed.value && !isCompleted.value)
 
 // 按钮权限配置（角色权限 + 关系权限）
-const canComplete = computed(() => userStore.getTaskPermission('complete', { isAssignee: true }) && isAssignee.value && isActive.value)
-const canReopen = computed(() => userStore.getTaskPermission('reopen', { isCreator: true }) && isCompleted.value)
-const canClose = computed(() => userStore.getTaskPermission('close', { isCreator: true }) && !isClosed.value)
-const canTransfer = computed(() => userStore.getTaskPermission('transfer', { isAssignee: true, isCreator: true }) && !isClosed.value)
-const canChangePriority = computed(() => userStore.getTaskPermission('changePriority', { isCreator: true }) && !isClosed.value)
-const canChangeStatus = computed(() => userStore.getTaskPermission('changeStatus', { isAssignee: true, isCreator: true }) && !isClosed.value)
+// extra 需传入实际关系布尔值，不能用字面量 true
+const canComplete = computed(() => userStore.getTaskPermission('complete', { isAssignee: isAssignee.value }) && isAssignee.value && isActive.value)
+const canReopen = computed(() => userStore.getTaskPermission('reopen', { isCreator: isCreator.value }) && isCompleted.value)
+const canClose = computed(() => userStore.getTaskPermission('close', { isCreator: isCreator.value }) && !isClosed.value)
+const canTransfer = computed(() => userStore.getTaskPermission('transfer', { isAssignee: isAssignee.value, isCreator: isCreator.value }) && !isClosed.value)
+const canChangePriority = computed(() => userStore.getTaskPermission('changePriority', { isCreator: isCreator.value }) && !isClosed.value)
+const canChangeStatus = computed(() => userStore.getTaskPermission('changeStatus', { isCreator: isCreator.value }) && !isClosed.value)
 const canComment = computed(() => userStore.getTaskPermission('comment'))
 const canDelete = computed(() => userStore.getTaskPermission('delete'))
 const canExtend = computed(() => userStore.getTaskPermission('extendDueDate') && !isClosed.value)
@@ -681,7 +683,7 @@ const executeAction = async () => {
   try {
     switch (currentAction.value) {
       case 'complete': {
-        const oldAssigneeName = task.value.assignee?.realName || '未处理'
+        const oldAssigneeName = task.value.assignees?.map((a: any) => a.realName).join('、') || '未处理'
         const creatorName = task.value.creator?.realName
         await updateTaskStatus(task.value.id, 'completed', {
           action: 'complete',
@@ -712,9 +714,8 @@ const executeAction = async () => {
       }
 
       case 'transfer': {
-        const newAssignee = users.value.find(u => u.id === transferUserId.value)
         await updateTask(task.value.id, {
-          assigneeId: transferUserId.value,
+          assigneeIds: [transferUserId.value],
           log: { remark: commentText.value || '' }
         })
         ElMessage.success('转交成功')
@@ -1222,6 +1223,24 @@ watch(() => route.params.id, (newId) => {
 .info-item .value {
   font-size: var(--nb-font-size-md);
   color: var(--nb-text-primary);
+}
+
+.info-value-row {
+  display: flex;
+  align-items: center;
+  gap: var(--nb-space-2);
+}
+
+.inline-edit-btn {
+  color: var(--nb-text-placeholder);
+  padding: 2px;
+  border-radius: var(--nb-radius-sm);
+  transition: all var(--nb-transition-fast);
+}
+
+.inline-edit-btn:hover {
+  color: var(--nb-primary);
+  background: var(--nb-primary-lighter);
 }
 
 .assignee-display {

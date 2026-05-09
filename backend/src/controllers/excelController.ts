@@ -23,7 +23,7 @@ export const excelController = {
 
       const users = await userRepository.find();
       const projects = await projectRepository.find({ relations: ["manager"] });
-      const tasks = await taskRepository.find({ relations: ["project", "assignee", "creator", "parentTask"] });
+      const tasks = await taskRepository.find({ relations: ["project", "assignees", "creator", "parentTask"] });
       const bugs = await bugRepository.find({ relations: ["project", "assignee", "reporter"] });
       const logs = await operationLogRepository.find({ relations: ["user"], order: { createdAt: "DESC" } });
       const configs = await systemConfigRepository.find();
@@ -62,7 +62,7 @@ export const excelController = {
           priority: t.priority,
           status: t.status,
           projectId: t.project?.id,
-          assigneeId: t.assignee?.id,
+          assigneeIds: t.assignees?.map((a: any) => a.id).join(',') || '',
           creatorId: t.creator?.id,
           parentTaskId: t.parentTask?.id,
           dueDate: t.dueDate,
@@ -149,7 +149,7 @@ export const excelController = {
           priority: t.priority,
           status: t.status,
           project: t.project?.name || "无",
-          assignee: t.assignee?.realName || "未分配",
+          assignee: t.assignees?.map((a: any) => a.realName).join('、') || "未分配",
           creator: t.creator?.realName || "未知",
           parentTask: t.parentTask?.title || "无",
           dueDate: t.dueDate,

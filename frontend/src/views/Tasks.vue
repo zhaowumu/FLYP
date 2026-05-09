@@ -124,11 +124,11 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="负责人" width="120">
+        <el-table-column label="负责人" width="200">
           <template #default="{ row }">
-            <div v-if="row.assignee" class="assignee-cell">
-              <el-avatar :size="24">{{ row.assignee.realName?.charAt(0) }}</el-avatar>
-              <span>{{ row.assignee.realName }}</span>
+            <div v-if="row.assignees && row.assignees.length > 0" class="assignee-cell">
+              <el-avatar v-for="a in row.assignees" :key="a.id" :size="24" class="assignee-avatar">{{ a.realName?.charAt(0) }}</el-avatar>
+              <span>{{ row.assignees.map((a: any) => a.realName).join('、') }}</span>
             </div>
             <span v-else class="text-muted">未分配</span>
           </template>
@@ -148,11 +148,11 @@
         </el-table-column>
         <el-table-column label="操作" width="150" fixed="right">
           <template #default="{ row }">
-            <template v-if="row.level < 2">
-              <el-button 
-                type="primary" 
-                link 
-                size="small" 
+            <template v-if="row.level < 2 && userStore.getTaskPermission('create')">
+              <el-button
+                type="primary"
+                link
+                size="small"
                 @click="showSubtaskDialog(row)"
                 :disabled="row.status === 'closed'"
               >
@@ -236,8 +236,8 @@
             </el-form-item>
           </el-col>
           <el-col :span="8">
-            <el-form-item label="负责人" prop="assigneeId">
-              <el-select v-model="taskForm.assigneeId" placeholder="请选择负责人" clearable style="width: 100%">
+            <el-form-item label="负责人" prop="assigneeIds">
+              <el-select v-model="taskForm.assigneeIds" placeholder="请选择负责人" clearable multiple style="width: 100%">
                 <el-option
                   v-for="user in users"
                   :key="user.id"
@@ -302,8 +302,8 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="负责人" prop="assigneeId">
-              <el-select v-model="subtaskForm.assigneeId" placeholder="请选择负责人" clearable style="width: 100%">
+            <el-form-item label="负责人" prop="assigneeIds">
+              <el-select v-model="subtaskForm.assigneeIds" placeholder="请选择负责人" clearable multiple style="width: 100%">
                 <el-option
                   v-for="user in users"
                   :key="user.id"
@@ -356,7 +356,7 @@ const taskForm = reactive({
   title: '',
   description: '',
   priority: 'medium',
-  assigneeId: null as number | null,
+  assigneeIds: [] as number[],
   dueDate: null as Date | null,
   category: ''
 })
@@ -365,7 +365,7 @@ const subtaskForm = reactive({
   title: '',
   description: '',
   priority: 'medium',
-  assigneeId: null as number | null
+  assigneeIds: [] as number[]
 })
 
 const taskRules = {
@@ -383,15 +383,16 @@ const filteredTasks = computed(() => {
   const userId = userStore.user?.id
   return tasks.value.filter(task => {
     if (activeTab.value === 'my') {
-      if (task.assignee?.id !== userId && task.creator?.id !== userId) return false
+      const isAssignee = task.assignees?.some((a: any) => a.id === userId)
+      if (!isAssignee && task.creator?.id !== userId) return false
     } else if (activeTab.value === 'created') {
       if (task.creator?.id !== userId) return false
     } else if (activeTab.value === 'assigned') {
-      if (task.assignee?.id !== userId) return false
+      if (!task.assignees?.some((a: any) => a.id === userId)) return false
     }
     if (filterStatus.value && task.status !== filterStatus.value) return false
     if (filterPriority.value && task.priority !== filterPriority.value) return false
-    if (filterUser.value && task.assignee?.id !== filterUser.value) return false
+    if (filterUser.value && !task.assignees?.some((a: any) => a.id === filterUser.value)) return false
     if (filterCategory.value && task.category !== filterCategory.value) return false
     return true
   })
@@ -400,9 +401,9 @@ const filteredTasks = computed(() => {
 const tabs = computed(() => {
   const userId = userStore.user?.id
   return [
-    { key: 'my', label: '我参与的', count: tasks.value.filter((t: any) => t.assignee?.id === userId || t.creator?.id === userId).length },
+    { key: 'my', label: '我参与的', count: tasks.value.filter((t: any) => t.assignees?.some((a: any) => a.id === userId) || t.creator?.id === userId).length },
     { key: 'created', label: '我创建的', count: tasks.value.filter((t: any) => t.creator?.id === userId).length },
-    { key: 'assigned', label: '我负责的', count: tasks.value.filter((t: any) => t.assignee?.id === userId).length },
+    { key: 'assigned', label: '我负责的', count: tasks.value.filter((t: any) => t.assignees?.some((a: any) => a.id === userId)).length },
     { key: 'all', label: '全部', count: tasks.value.length },
   ]
 })
@@ -543,7 +544,7 @@ const showCreateDialog = () => {
     title: '',
     description: '',
     priority: 'medium',
-    assigneeId: null,
+    assigneeIds: [],
     dueDate: null,
     category: ''
   })
@@ -560,14 +561,14 @@ const showSubtaskDialog = (task: any) => {
     title: '',
     description: '',
     priority: 'medium',
-    assigneeId: null
+    assigneeIds: []
   })
   subtaskDialogVisible.value = true
 }
 
 const submitSubtask = async () => {
   if (!subtaskFormRef.value || !parentTask.value) return
-  
+
   await subtaskFormRef.value.validate(async (valid: boolean) => {
     if (valid) {
       submitting.value = true
@@ -576,7 +577,7 @@ const submitSubtask = async () => {
           title: subtaskForm.title,
           description: subtaskForm.description,
           priority: subtaskForm.priority,
-          assigneeId: subtaskForm.assigneeId,
+          assigneeIds: subtaskForm.assigneeIds,
           projectId: parentTask.value.project?.id
         })
         ElMessage.success('子任务添加成功')
@@ -585,7 +586,7 @@ const submitSubtask = async () => {
           title: '',
           description: '',
           priority: 'medium',
-          assigneeId: null
+          assigneeIds: []
         })
         loadTasks()
       } catch (error) {
@@ -795,12 +796,21 @@ onMounted(() => {
   gap: var(--nb-space-2);
   font-size: var(--nb-font-size-base);
   color: var(--nb-text-regular);
+  flex-wrap: wrap;
 }
 
 .assignee-cell .el-avatar {
   background: var(--nb-gradient-primary);
   font-size: var(--nb-font-size-xs);
   font-weight: var(--nb-font-weight-medium);
+}
+
+.assignee-avatar {
+  margin-left: -4px;
+}
+
+.assignee-avatar:first-child {
+  margin-left: 0;
 }
 
 .text-muted {
