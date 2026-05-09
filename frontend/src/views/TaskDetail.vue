@@ -156,17 +156,37 @@
             </div>
             <div class="info-item">
               <span class="label">当前负责人</span>
-              <div class="assignee-display" v-if="task.assignees && task.assignees.length > 0">
-                <el-avatar v-for="a in task.assignees" :key="a.id" :size="24" class="assignee-avatar">{{ a.realName?.charAt(0) }}</el-avatar>
-                <span>{{ task.assignees.map((a: any) => a.realName).join('、') }}</span>
+              <div class="info-value-row">
+                <div class="assignee-display" v-if="task.assignees && task.assignees.length > 0">
+                  <el-avatar v-for="a in task.assignees" :key="a.id" :size="24" class="assignee-avatar">{{ a.realName?.charAt(0) }}</el-avatar>
+                  <span>{{ task.assignees.map((a: any) => a.realName).join('、') }}</span>
+                </div>
+                <span v-else class="text-muted">未分配</span>
+                <el-button
+                  v-if="canManageSidebar && !isClosed"
+                  text size="small"
+                  class="inline-edit-btn"
+                  @click="showActionPanel('editAssignees')"
+                >
+                  <el-icon><EditPen /></el-icon>
+                </el-button>
               </div>
-              <span v-else class="text-muted">未处理</span>
             </div>
             <div class="info-item">
               <span class="label">创建人</span>
-              <div class="assignee-display">
-                <el-avatar :size="24">{{ task.creator?.realName?.charAt(0) || '-' }}</el-avatar>
-                <span>{{ task.creator?.realName || '-' }}</span>
+              <div class="info-value-row">
+                <div class="assignee-display">
+                  <el-avatar :size="24">{{ task.creator?.realName?.charAt(0) || '-' }}</el-avatar>
+                  <span>{{ task.creator?.realName || '-' }}</span>
+                </div>
+                <el-button
+                  v-if="canManageSidebar && !isClosed"
+                  text size="small"
+                  class="inline-edit-btn"
+                  @click="showActionPanel('editCreator')"
+                >
+                  <el-icon><EditPen /></el-icon>
+                </el-button>
               </div>
             </div>
             <div class="info-item">
@@ -175,12 +195,32 @@
             </div>
             <div class="info-item">
               <span class="label">分类</span>
-              <el-tag v-if="task.category" type="info" size="small" effect="plain">{{ task.category }}</el-tag>
-              <span v-else class="text-muted value">未设置</span>
+              <div class="info-value-row">
+                <el-tag v-if="task.category" type="info" size="small" effect="plain">{{ task.category }}</el-tag>
+                <span v-else class="text-muted value">未设置</span>
+                <el-button
+                  v-if="canManageSidebar && !isClosed"
+                  text size="small"
+                  class="inline-edit-btn"
+                  @click="showActionPanel('editCategory')"
+                >
+                  <el-icon><EditPen /></el-icon>
+                </el-button>
+              </div>
             </div>
             <div class="info-item">
               <span class="label">截止日期</span>
-              <span class="value">{{ task.dueDate ? new Date(task.dueDate).toLocaleDateString() : '未设置' }}</span>
+              <div class="info-value-row">
+                <span class="value">{{ task.dueDate ? new Date(task.dueDate).toLocaleDateString() : '未设置' }}</span>
+                <el-button
+                  v-if="canManageSidebar && !isClosed"
+                  text size="small"
+                  class="inline-edit-btn"
+                  @click="showActionPanel('editDueDate')"
+                >
+                  <el-icon><EditPen /></el-icon>
+                </el-button>
+              </div>
             </div>
             <div class="info-item">
               <span class="label">创建时间</span>
@@ -345,6 +385,73 @@
             />
           </div>
 
+          <!-- 编辑负责人 -->
+          <div class="form-section" v-if="currentAction === 'editAssignees'">
+            <span class="label">选择负责人</span>
+            <el-select 
+              v-model="editAssigneeIds" 
+              placeholder="请选择负责人" 
+              multiple
+              style="width: 100%"
+            >
+              <el-option
+                v-for="user in users"
+                :key="user.id"
+                :label="user.realName"
+                :value="user.id"
+              />
+            </el-select>
+          </div>
+
+          <!-- 编辑创建人 -->
+          <div class="form-section" v-if="currentAction === 'editCreator'">
+            <span class="label">选择创建人</span>
+            <el-select 
+              v-model="editCreatorId" 
+              placeholder="请选择创建人" 
+              style="width: 100%"
+            >
+              <el-option
+                v-for="user in users"
+                :key="user.id"
+                :label="user.realName"
+                :value="user.id"
+              />
+            </el-select>
+          </div>
+
+          <!-- 编辑截止日期 -->
+          <div class="form-section" v-if="currentAction === 'editDueDate'">
+            <span class="label">截止日期</span>
+            <el-date-picker
+              v-model="editDueDate"
+              type="datetime"
+              placeholder="选择截止日期"
+              style="width: 100%"
+              format="YYYY-MM-DD HH:mm"
+            />
+          </div>
+
+          <!-- 编辑分类 -->
+          <div class="form-section" v-if="currentAction === 'editCategory'">
+            <span class="label">分类</span>
+            <el-select
+              v-model="editCategory"
+              placeholder="请选择或输入分类"
+              filterable
+              allow-create
+              clearable
+              style="width: 100%"
+            >
+              <el-option
+                v-for="cat in categories"
+                :key="cat"
+                :label="cat"
+                :value="cat"
+              />
+            </el-select>
+          </div>
+
           <!-- 重新打开 -->
           <div class="form-section" v-if="currentAction === 'reopen'">
             <el-alert 
@@ -389,7 +496,7 @@
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getTask, updateTaskStatus, addComment as addTaskComment, updateTask, deleteTask, extendDueDate as extendTaskDueDate } from '../api/task'
+import { getTask, updateTaskStatus, addComment as addTaskComment, updateTask, deleteTask, extendDueDate as extendTaskDueDate, getTaskCategories } from '../api/task'
 import { getUsers } from '../api/user'
 import { useUserStore } from '../stores/user'
 import RichEditor from '../components/RichEditor.vue'
@@ -415,6 +522,11 @@ const editDescription = ref('')
 const saving = ref(false)
 const titleInputRef = ref()
 const newDueDate = ref<Date | null>(null)
+const editAssigneeIds = ref<number[]>([])
+const editCreatorId = ref<number | null>(null)
+const editDueDate = ref<Date | null>(null)
+const categories = ref<string[]>([])
+const editCategory = ref('')
 
 const operationLogs = computed(() => {
   return task.value?.operationLogs || []
@@ -427,6 +539,7 @@ const isAssignee = computed(() => task.value?.assignees?.some((a: any) => a.id =
 const isParticipant = computed(() => isCreator.value || isAssignee.value)
 const isProjectManager = computed(() => task.value?.project?.manager?.id === currentUserId.value)
 const isAdmin = computed(() => userStore.user?.role === 'admin')
+const canManageSidebar = computed(() => isAdmin.value || userStore.user?.role === 'project_manager')
 
 // 可编辑权限：当前负责人、创建人、项目经理、管理员，或拥有删除权限的角色
 const canEdit = computed(() => isAssignee.value || isCreator.value || isProjectManager.value || isAdmin.value || canDelete.value)
@@ -495,10 +608,19 @@ const formatLogAction = (log: any) => {
       return `将优先级从「${getPriorityText(oldPriority || 'medium')}」调整为「${getPriorityText(newPriority)}」`
     case 'assign':
       return `将负责人从「${oldAssignee || '未处理'}」变更为「${newAssignee}」`
+    case 'creator_change':
+      return `将创建人从「${oldAssignee || '未知'}」变更为「${newAssignee}」`
     case 'complete': {
       let text = '完成了任务'
       if (oldAssignee && newAssignee && oldAssignee !== newAssignee) {
         text += `，负责人从「${oldAssignee}」变更为「${newAssignee}」`
+      }
+      return text
+    }
+    case 'partial_complete': {
+      let text = '完成了部分任务'
+      if (oldAssignee && newAssignee && oldAssignee !== newAssignee) {
+        text += `，已从负责人「${oldAssignee}」中退出`
       }
       return text
     }
@@ -508,6 +630,10 @@ const formatLogAction = (log: any) => {
       return '添加了备注'
     case 'extend_due_date':
       return `将截止日期从「${formatTime(oldDueDate)}」延期至「${formatTime(newDueDate)}」`
+    case 'due_date_change':
+      return `将截止日期从「${formatTime(oldDueDate)}」变更为「${formatTime(newDueDate)}」`
+    case 'category_change':
+      return '更改了分类'
     default:
       return action
   }
@@ -522,7 +648,11 @@ const getActionTitle = (action: string) => {
     priority: '更改优先级',
     changeStatus: '更改状态',
     comment: '添加备注',
-    extend: '延期任务'
+    extend: '延期任务',
+    editAssignees: '编辑负责人',
+    editCreator: '编辑创建人',
+    editDueDate: '编辑截止日期',
+    editCategory: '编辑分类',
   }
   return map[action] || action
 }
@@ -536,7 +666,11 @@ const getActionConfirmText = (action: string) => {
     priority: '确认修改',
     changeStatus: '确认修改',
     comment: '添加备注',
-    extend: '确认延期'
+    extend: '确认延期',
+    editAssignees: '确认修改',
+    editCreator: '确认修改',
+    editDueDate: '确认修改',
+    editCategory: '确认修改',
   }
   return map[action] || '确认'
 }
@@ -575,6 +709,15 @@ const loadUsers = async () => {
     users.value = res.data
   } catch (error) {
     console.error('Failed to load users:', error)
+  }
+}
+
+const loadCategories = async () => {
+  try {
+    const res = await getTaskCategories()
+    categories.value = res.data
+  } catch (error) {
+    console.error('Failed to load categories:', error)
   }
 }
 
@@ -639,6 +782,10 @@ const showActionPanel = (action: string) => {
   newPriority.value = task.value?.priority || 'medium'
   newStatus.value = task.value?.status || ''
   newDueDate.value = task.value?.dueDate ? new Date(task.value.dueDate) : null
+  editAssigneeIds.value = task.value?.assignees?.map((a: any) => a.id) || []
+  editCreatorId.value = task.value?.creator?.id || null
+  editDueDate.value = task.value?.dueDate ? new Date(task.value.dueDate) : null
+  editCategory.value = task.value?.category || ''
   currentAction.value = action
   showPanel.value = true
 }
@@ -655,6 +802,10 @@ const onDrawerClosed = () => {
   newPriority.value = ''
   newStatus.value = ''
   newDueDate.value = null
+  editAssigneeIds.value = []
+  editCreatorId.value = null
+  editDueDate.value = null
+  editCategory.value = ''
 }
 
 const executeAction = async () => {
@@ -683,15 +834,12 @@ const executeAction = async () => {
   try {
     switch (currentAction.value) {
       case 'complete': {
-        const oldAssigneeName = task.value.assignees?.map((a: any) => a.realName).join('、') || '未处理'
-        const creatorName = task.value.creator?.realName
+        const isMultiAssignee = (task.value.assignees?.length || 0) > 1
         await updateTaskStatus(task.value.id, 'completed', {
           action: 'complete',
-          oldAssignee: oldAssigneeName,
-          newAssignee: creatorName,
           remark: commentText.value || ''
         })
-        ElMessage.success('任务已完成')
+        ElMessage.success(isMultiAssignee ? '已从负责人列表退出，任务继续由其他负责人跟进' : '任务已完成')
         break
       }
 
@@ -771,6 +919,43 @@ const executeAction = async () => {
         ElMessage.success(`截止日期已从 ${formatTime(oldDueDate)} 延期至 ${formatTime(newDueDate.value)}`)
         break
       }
+
+      case 'editAssignees': {
+        await updateTask(task.value.id, {
+          assigneeIds: editAssigneeIds.value,
+          log: { remark: commentText.value || '' }
+        })
+        ElMessage.success('负责人已更新')
+        break
+      }
+
+      case 'editCreator': {
+        if (!editCreatorId.value) {
+          ElMessage.warning('请选择创建人')
+          submitting.value = false
+          return
+        }
+        await updateTask(task.value.id, {
+          creatorId: editCreatorId.value,
+          log: { remark: commentText.value || '' }
+        })
+        ElMessage.success('创建人已更新')
+        break
+      }
+
+      case 'editDueDate': {
+        await updateTask(task.value.id, {
+          dueDate: editDueDate.value ? editDueDate.value.toISOString() : null
+        })
+        ElMessage.success(editDueDate.value ? '截止日期已更新' : '截止日期已清除')
+        break
+      }
+
+      case 'editCategory': {
+        await updateTask(task.value.id, { category: editCategory.value || null })
+        ElMessage.success('分类已更新')
+        break
+      }
     }
 
     closeActionPanel()
@@ -813,6 +998,7 @@ const confirmDelete = async () => {
 onMounted(() => {
   loadTask()
   loadUsers()
+  loadCategories()
 })
 
 // 监听路由参数变化，重新加载任务数据

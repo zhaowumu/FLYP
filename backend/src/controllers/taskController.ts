@@ -222,6 +222,71 @@ export const taskController = {
         delete updateData.assigneeIds;
       }
 
+      // 处理创建人变更
+      if (updateData.creatorId) {
+        const newCreator = await userRepository.findOne({ where: { id: updateData.creatorId } });
+        if (newCreator) {
+          await createOperationLog(
+            task.id,
+            userId,
+            userName,
+            "creator_change",
+            {
+              oldAssignee: task.creator?.realName || "未知用户",
+              newAssignee: newCreator.realName,
+              remark: updateData.log?.remark || "",
+            }
+          );
+
+          task.creator = newCreator;
+        }
+        delete updateData.creatorId;
+      }
+
+      // 处理截止日期变更
+      if (updateData.dueDate !== undefined) {
+        const oldDueDate = task.dueDate;
+        const newDueDate = updateData.dueDate ? new Date(updateData.dueDate) : null;
+
+        if (oldDueDate?.getTime() !== newDueDate?.getTime()) {
+          await createOperationLog(
+            task.id,
+            userId,
+            userName,
+            "due_date_change",
+            {
+              oldDueDate: oldDueDate ? oldDueDate.toISOString() : undefined,
+              newDueDate: newDueDate ? newDueDate.toISOString() : undefined,
+              remark: updateData.log?.remark || "",
+            }
+          );
+        }
+
+        task.dueDate = newDueDate as Date;
+        delete updateData.dueDate;
+      }
+
+      // 处理分类变更
+      if (updateData.category !== undefined) {
+        const oldCategory = task.category;
+        const newCategory = updateData.category || null;
+
+        if (oldCategory !== newCategory) {
+          await createOperationLog(
+            task.id,
+            userId,
+            userName,
+            "category_change",
+            {
+              remark: `分类从「${oldCategory || '未设置'}」变更为「${newCategory || '未设置'}」${updateData.log?.remark ? ' - ' + updateData.log.remark : ''}`,
+            }
+          );
+        }
+
+        task.category = newCategory;
+        delete updateData.category;
+      }
+
       if (updateData.status && updateData.status !== task.status) {
         await createOperationLog(
           task.id,
@@ -313,13 +378,49 @@ export const taskController = {
       if (log?.oldPriority) extraFields.oldPriority = log.oldPriority;
       if (log?.newPriority) extraFields.newPriority = log.newPriority;
 
-      if (status === "completed" && task.creator) {
-        extraFields.oldAssignee = getAssigneeNames(task.assignees);
-        extraFields.newAssignee = task.creator.realName;
-        task.assignees = [task.creator];
+      // 多负责人完成逻辑：逐人退出
+      if (status === "completed") {
+        const isCurrentAssignee = task.assignees.some(a => a.id === userId);
+
+        if (isCurrentAssignee && task.assignees.length > 1) {
+          // 多个负责人 → 部分完成：移除当前用户，不改变状态
+          const oldAssigneeNames = getAssigneeNames(task.assignees);
+          task.assignees = task.assignees.filter(a => a.id !== userId);
+          const newAssigneeNames = getAssigneeNames(task.assignees);
+
+          await taskRepository.save(task);
+
+          await createOperationLog(
+            task.id,
+            userId,
+            userName,
+            "partial_complete",
+            {
+              oldAssignee: oldAssigneeNames,
+              newAssignee: newAssigneeNames,
+              remark: log?.remark || "",
+            }
+          );
+
+          const updatedTask = await taskRepository.findOne({
+            where: { id: parseInt(id as string) },
+            relations: ["project", "project.manager", "assignees", "creator", "parentTask", "subtasks"],
+          });
+
+          return res.json(updatedTask);
+        }
+
+        // 最后一个负责人 → 真正完成，负责人改为创建人
+        task.status = status;
+        if (task.creator) {
+          extraFields.oldAssignee = getAssigneeNames(task.assignees);
+          extraFields.newAssignee = task.creator.realName;
+          task.assignees = [task.creator];
+        }
+      } else {
+        task.status = status;
       }
 
-      task.status = status;
       await taskRepository.save(task);
 
       await createOperationLog(
@@ -333,8 +434,7 @@ export const taskController = {
       dingTalkService.sendNotification("status_change", {
         type: "任务",
         id: String(task.id),
-        title: task.title,
-        oldStatus: task.status,
+        oldStatus: extraFields.oldStatus || task.status,
         newStatus: status,
         operator: userName,
         time: new Date().toLocaleString("zh-CN")
