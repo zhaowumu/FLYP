@@ -148,7 +148,8 @@ const currentRoute = computed(() => {
     '/tasks': '任务管理',
     '/bugs': '缺陷管理',
     '/users': '成员管理',
-    '/settings': '系统设置'
+    '/settings': '系统设置',
+    '/operation-logs': '操作历史'
   }
   if (routeMap[route.path]) return routeMap[route.path]
   if (route.path.startsWith('/tasks/')) return '任务详情'

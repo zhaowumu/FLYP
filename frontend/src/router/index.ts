@@ -71,6 +71,12 @@ const routes: RouteRecordRaw[] = [
     name: 'MarkdownViewer',
     component: () => import('../views/MarkdownViewer.vue'),
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/operation-logs',
+    name: 'OperationLogs',
+    component: () => import('../views/OperationLogs.vue'),
+    meta: { requiresAuth: true, title: '操作历史' }
   }
 ]
 

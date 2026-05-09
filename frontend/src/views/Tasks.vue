@@ -325,7 +325,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getTasks, createTask, addSubtask, getTaskCategories } from '../api/task'
 import { getProjects } from '../api/project'
@@ -334,6 +334,7 @@ import { useUserStore } from '../stores/user'
 import RichEditor from '../components/RichEditor.vue'
 
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
 const tasks = ref<any[]>([])
 const projects = ref<any[]>([])
@@ -624,6 +625,11 @@ onMounted(() => {
   loadProjects()
   loadUsers()
   loadCategories()
+  // 支持从路由 query 传入 assigneeId 进行过滤
+  const queryAssigneeId = route.query.assigneeId
+  if (queryAssigneeId) {
+    filterUser.value = Number(queryAssigneeId)
+  }
 })
 </script>
 

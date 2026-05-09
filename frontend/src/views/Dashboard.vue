@@ -240,9 +240,12 @@
                 <path d="M12 6V12L16 14" stroke="#667eea" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
               <span>操作历史</span>
+              <el-button class="view-all-btn" text @click="viewAllLogs">
+                查看全部<el-icon><ArrowRight /></el-icon>
+              </el-button>
             </div>
             <div class="timeline-list">
-              <div v-for="log in recentLogs" :key="log.id" class="timeline-item">
+              <div v-for="log in recentLogs" :key="log.id" class="timeline-item clickable" @click="goToTarget(log)">
                 <div class="timeline-dot" :class="getLogActionClass(log.action)"></div>
                 <div class="timeline-content">
                   <div class="timeline-main">
@@ -264,77 +267,36 @@
           <div class="card">
             <div class="card-header">
               <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none">
-                <path d="M12 20V4M12 4L8 8M12 4L16 8" stroke="#667eea" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M17 21V19C17 17.9 16.1 17 15 17H9C7.9 17 7 17.9 7 19V21M12 13C14.76 13 17 10.76 17 8C17 5.24 14.76 3 12 3C9.24 3 7 5.24 7 8C7 10.76 9.24 13 12 13Z" stroke="#667eea" stroke-width="1.5" fill="none"/>
               </svg>
-              <span>成员负载</span>
+              <span>团队概览</span>
             </div>
             <div class="team-list">
-              <div v-for="member in teamWorkload" :key="member.id" class="team-member">
+              <div v-for="member in teamMembers" :key="member.id" class="team-member clickable" @click="router.push({ path: '/tasks', query: { assigneeId: member.id } })">
                 <div class="member-avatar">{{ member.name.charAt(0) }}</div>
                 <div class="member-info">
-                  <div class="member-name">{{ member.name }}</div>
-                  <div class="progress">
+                  <div class="member-name">{{ member.name }}
+                    <span class="member-role">{{ getRoleText(member.role) }}</span>
+                  </div>
+                  <div class="member-stats">
+                    <span class="stat-item text-warning">{{ member.pendingCount }}待处理</span>
+                    <span class="stat-item text-blue">{{ member.inProgressCount }}进行中</span>
+                    <span class="stat-item text-success">{{ member.completedCount }}已完成</span>
+                    <span class="stat-item text-danger">{{ member.openBugCount }}缺陷</span>
+                  </div>
+                  <div class="member-progress">
                     <div class="progress-bar">
-                      <div class="progress-fill" :class="member.load > 80 ? 'fill-danger' : member.load > 50 ? 'fill-warning' : 'fill-success'" :style="{ width: member.load + '%' }"></div>
+                      <div class="progress-fill fill-success" :style="{ width: member.completionRate + '%' }"></div>
                     </div>
+                    <span class="progress-text" :class="member.completionRate >= 60 ? 'text-success' : member.completionRate >= 30 ? 'text-warning' : 'text-danger'">{{ member.completionRate }}%</span>
                   </div>
                 </div>
-                <div class="member-badge">
-                  <span class="badge-num">{{ member.taskCount }}</span>
-                  <span class="badge-label">项</span>
+                <div class="member-arrow">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      </div>
-
-      <!-- Member Task Completion (NEW) -->
-      <div class="section">
-        <div class="section-title">
-          <svg class="section-icon" viewBox="0 0 24 24" fill="none">
-            <path d="M17 21V19C17 17.9 16.1 17 15 17H9C7.9 17 7 17.9 7 19V21M12 13C14.76 13 17 10.76 17 8C17 5.24 14.76 3 12 3C9.24 3 7 5.24 7 8C7 10.76 9.24 13 12 13Z" stroke="#f59e0b" stroke-width="1.5" fill="none"/>
-            <path d="M20 8V14M23 11H17" stroke="#43e97b" stroke-width="2" stroke-linecap="round"/>
-          </svg>
-          成员任务完成情况
-        </div>
-        <div class="member-completion-grid">
-          <div v-for="member in memberCompletionData" :key="member.id" class="member-completion-card">
-            <div class="mcc-left">
-              <div class="member-avatar">{{ member.name.charAt(0) }}</div>
-              <div class="mcc-info">
-                <div class="mcc-name">{{ member.name }}</div>
-                <div class="mcc-role">{{ getRoleText(member.role) }}</div>
-              </div>
-            </div>
-            <div class="mcc-stats">
-              <div class="mcc-stat">
-                <span class="mcc-stat-num text-warning">{{ member.pendingCount }}</span>
-                <span class="mcc-stat-label">待处理</span>
-              </div>
-              <div class="mcc-stat">
-                <span class="mcc-stat-num text-blue">{{ member.inProgressCount }}</span>
-                <span class="mcc-stat-label">进行中</span>
-              </div>
-              <div class="mcc-stat">
-                <span class="mcc-stat-num text-success">{{ member.completedCount }}</span>
-                <span class="mcc-stat-label">已完成</span>
-              </div>
-              <div class="mcc-stat">
-                <span class="mcc-stat-num text-danger">{{ member.openBugCount }}</span>
-                <span class="mcc-stat-label">待修缺陷</span>
-              </div>
-            </div>
-            <div class="mcc-rate">
-              <div class="mcc-rate-bar">
-                <div class="progress-bar">
-                  <div class="progress-fill fill-success" :style="{ width: member.completionRate + '%' }"></div>
-                </div>
-              </div>
-              <span class="mcc-rate-num" :class="member.completionRate >= 60 ? 'text-success' : member.completionRate >= 30 ? 'text-warning' : 'text-danger'">{{ member.completionRate }}%</span>
-            </div>
-          </div>
-          <div v-if="memberCompletionData.length === 0" class="empty">暂无团队成员数据</div>
         </div>
       </div>
     </template>
@@ -719,8 +681,6 @@ const dueSoonItems = computed(() => {
   return items.sort((a: any, b: any) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()).slice(0, 5)
 })
 
-const teamMembers = computed(() => allUsers.value.filter((u: any) => u.role !== 'admin'))
-
 const completedTasksThisWeek = computed(() => {
   const now = new Date()
   const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
@@ -732,15 +692,6 @@ const totalTasksThisWeek = computed(() => myTasks.value.length)
 const taskCompletionRate = computed(() => {
   if (myTasks.value.length === 0) return 0
   return Math.round((myTasks.value.filter((t: any) => t.status === 'completed' || t.status === 'closed').length / myTasks.value.length) * 100)
-})
-
-const teamWorkload = computed(() => {
-  const members = allUsers.value.filter((u: any) => u.role !== 'admin')
-  return members.map((m: any) => {
-    const taskCount = allTasks.value.filter((t: any) => t.assignees?.some((a: any) => a.id === m.id) && t.status !== 'completed' && t.status !== 'closed').length
-    const maxTasks = Math.max(...members.map((u: any) => allTasks.value.filter((t: any) => t.assignees?.some((a: any) => a.id === u.id) && t.status !== 'completed' && t.status !== 'closed').length), 1)
-    return { id: m.id, name: m.realName, taskCount, load: Math.round((taskCount / maxTasks) * 100) }
-  }).sort((a: any, b: any) => b.taskCount - a.taskCount).slice(0, 6)
 })
 
 // ==================== Admin-specific ====================
@@ -790,6 +741,38 @@ const memberCompletionData = computed(() => {
     const completionRate = totalTasks === 0 ? 0 : Math.round((completedCount / totalTasks) * 100)
     const openBugCount = allBugs.value.filter((b: any) => b.assignee?.id === m.id && b.status !== 'closed' && b.status !== 'verified').length
     return { id: m.id, name: m.realName, role: m.role, pendingCount, inProgressCount, completedCount, totalTasks, completionRate, openBugCount }
+  }).sort((a: any, b: any) => b.completionRate - a.completionRate)
+})
+
+// 统一的团队概览数据（合并负载和任务完成情况）
+const teamMembers = computed(() => {
+  const members = allUsers.value.filter((u: any) => u.role !== 'admin')
+  return members.map((m: any) => {
+    // 负载数据
+    const activeTasks = allTasks.value.filter((t: any) => t.assignees?.some((a: any) => a.id === m.id) && t.status !== 'completed' && t.status !== 'closed')
+    const taskCount = activeTasks.length
+    
+    // 任务完成情况
+    const userTasks = allTasks.value.filter((t: any) => t.assignees?.some((a: any) => a.id === m.id))
+    const pendingCount = userTasks.filter((t: any) => t.status === 'pending').length
+    const inProgressCount = userTasks.filter((t: any) => t.status === 'in_progress').length
+    const completedCount = userTasks.filter((t: any) => t.status === 'completed' || t.status === 'closed').length
+    const totalTasks = userTasks.length
+    const completionRate = totalTasks === 0 ? 0 : Math.round((completedCount / totalTasks) * 100)
+    const openBugCount = allBugs.value.filter((b: any) => b.assignee?.id === m.id && b.status !== 'closed' && b.status !== 'verified').length
+    
+    return { 
+      id: m.id, 
+      name: m.realName, 
+      role: m.role,
+      taskCount,
+      pendingCount, 
+      inProgressCount, 
+      completedCount, 
+      totalTasks, 
+      completionRate, 
+      openBugCount 
+    }
   }).sort((a: any, b: any) => b.completionRate - a.completionRate)
 })
 
@@ -1025,8 +1008,10 @@ const getLogActionClass = (action: string) => {
   return 'log-default'
 }
 
-const formatLogTime = (dateStr: string) => {
+const formatLogTime = (dateStr: string | Date | null | undefined) => {
+  if (!dateStr) return '未知时间'
   const date = new Date(dateStr)
+  if (isNaN(date.getTime())) return '未知时间'
   const now = new Date()
   const isToday = date.toDateString() === now.toDateString()
   if (isToday) {
@@ -1037,7 +1022,19 @@ const formatLogTime = (dateStr: string) => {
   if (date.toDateString() === yesterday.toDateString()) {
     return `昨天 ${date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`
   }
-  return `${(date.getMonth() + 1)}/${date.getDate()} ${date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`
+  return `${date.getMonth() + 1}/${date.getDate()} ${date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`
+}
+
+const goToTarget = (log: any) => {
+  if (log.targetType === 'task') {
+    router.push(`/tasks/${log.targetId}`)
+  } else if (log.targetType === 'bug') {
+    router.push(`/bugs/${log.targetId}`)
+  }
+}
+
+const viewAllLogs = () => {
+  router.push('/operation-logs')
 }
 
 // ==================== Data Loading ====================
@@ -1045,13 +1042,15 @@ const formatLogTime = (dateStr: string) => {
 onMounted(async () => {
   try {
     const [projectsRes, tasksRes, bugsRes, usersRes, logsRes] = await Promise.all([
-      getProjects(), getTasks(), getBugs(), getUsers(), getOperationLogs({ limit: 20 })
+      getProjects(), getTasks(), getBugs(), getUsers(), getOperationLogs({ limit: 10 })
     ])
-    allProjects.value = projectsRes.data || []
-    allTasks.value = tasksRes.data || []
-    allBugs.value = bugsRes.data || []
-    allUsers.value = usersRes.data || []
-    recentLogs.value = logsRes.data || []
+    // 处理响应数据 - API 返回格式为 { data: [...] }，axios 响应在 res.data 中
+    allProjects.value = projectsRes.data?.data || projectsRes.data || []
+    allTasks.value = tasksRes.data?.data || tasksRes.data || []
+    allBugs.value = bugsRes.data?.data || bugsRes.data || []
+    allUsers.value = usersRes.data?.data || usersRes.data || []
+    recentLogs.value = logsRes.data?.data || logsRes.data || []
+    console.log('Recent logs loaded:', recentLogs.value)
   } catch (error) {
     console.error('Failed to load dashboard data:', error)
   }
@@ -1439,7 +1438,11 @@ onMounted(async () => {
   color: var(--nb-primary-dark);
 }
 
-/* ==================== List ==================== */
+.view-all-btn {
+  margin-left: auto;
+}
+
+/* ==================== Timeline ==================== */
 .list {
   padding: var(--nb-space-3);
 }
@@ -1563,6 +1566,9 @@ onMounted(async () => {
   padding: 10px 16px;
   border-radius: var(--nb-radius-md);
   transition: background 0.2s;
+}
+.timeline-item.clickable {
+  cursor: pointer;
 }
 .timeline-item:hover {
   background: var(--nb-bg-hover);
@@ -1761,6 +1767,31 @@ onMounted(async () => {
   margin-bottom: 0;
 }
 
+.team-member.clickable {
+  cursor: pointer;
+}
+
+.team-member.clickable:hover {
+  background: var(--nb-primary-lighter);
+  border-color: var(--nb-primary-lighter);
+  transform: translateX(4px);
+}
+
+.member-arrow {
+  width: 20px;
+  height: 20px;
+  color: var(--nb-text-tertiary);
+  flex-shrink: 0;
+  transition: all var(--nb-transition-fast);
+  opacity: 0;
+}
+
+.team-member.clickable:hover .member-arrow {
+  opacity: 1;
+  color: var(--nb-primary);
+  transform: translateX(3px);
+}
+
 .member-avatar {
   width: 36px;
   height: 36px;
@@ -1791,21 +1822,35 @@ onMounted(async () => {
   color: var(--nb-text-secondary);
 }
 
-.member-badge {
+.member-stats {
   display: flex;
-  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+
+.stat-item {
+  font-size: 11px;
+  font-weight: var(--nb-font-weight-medium);
+}
+
+.member-progress {
+  display: flex;
   align-items: center;
+  gap: 8px;
+  margin-top: 6px;
 }
 
-.badge-num {
-  font-size: var(--nb-font-size-lg);
-  color: var(--nb-warning);
-  font-weight: var(--nb-font-weight-bold);
+.member-progress .progress-bar {
+  flex: 1;
+  height: 4px;
 }
 
-.badge-label {
-  font-size: 10px;
-  color: var(--nb-text-secondary);
+.progress-text {
+  font-size: 11px;
+  font-weight: var(--nb-font-weight-semibold);
+  min-width: 35px;
+  text-align: right;
 }
 
 /* ==================== Member Completion Grid (PM view) ==================== */

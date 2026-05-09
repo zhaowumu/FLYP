@@ -40,7 +40,14 @@ export const getOperationLogs = async (req: Request, res: Response) => {
     const data = logs.map(log => {
       const { remark, ...rest } = log as any;
       const title = log.targetType === "task" ? taskMap[log.targetId] : bugMap[log.targetId];
-      return { ...rest, title };
+      // 确保 user 对象始终有值，避免前端显示"未知"
+      const user = log.user ? {
+        id: log.user.id,
+        username: log.user.username,
+        realName: log.user.realName || '未知用户',
+        role: log.user.role || 'unknown'
+      } : { id: 0, username: 'unknown', realName: '未知用户', role: 'unknown' };
+      return { ...rest, user, title };
     });
 
     res.json({ data });
