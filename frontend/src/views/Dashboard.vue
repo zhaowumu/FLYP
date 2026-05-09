@@ -22,7 +22,8 @@
       <div class="banner-content">
         <div class="banner-left">
           <div class="avatar">
-            <span>{{ userStore.user?.realName?.charAt(0) || 'U' }}</span>
+            <img v-if="userStore.user?.avatar" :src="userStore.user.avatar" class="avatar-img" />
+            <span v-else>{{ userStore.user?.realName?.charAt(0) || 'U' }}</span>
           </div>
           <div class="welcome-text">
             <h2>{{ greeting }}，{{ userStore.user?.realName || '用户' }}</h2>
@@ -137,7 +138,10 @@
             <div class="team-list">
               <div v-for="user in teamMembers" :key="user.id" class="team-member">
                 <div class="member-accent" :style="{ background: getRoleGradient(user.role) }"></div>
-                <div class="member-avatar" :style="{ background: getRoleGradient(user.role) }">{{ user.name?.charAt(0) || '?' }}</div>
+                <div class="member-avatar" :style="{ background: getRoleGradient(user.role) }">
+                  <img v-if="user.avatar" :src="user.avatar" class="member-avatar-img" />
+                  <span v-else>{{ user.name?.charAt(0) || '?' }}</span>
+                </div>
                 <div class="member-info">
                   <div class="member-name">{{ user.name }}
                     <span class="member-role-pill" :style="{ background: getRoleGradient(user.role) }">{{ getRoleText(user.role) }}</span>
@@ -278,7 +282,10 @@
             <div class="team-list">
               <div v-for="member in teamMembers" :key="member.id" class="team-member clickable" :class="getRoleBadgeClass(member.role)" @click="router.push({ path: '/tasks', query: { assigneeId: member.id } })">
                 <div class="member-accent" :style="{ background: getRoleGradient(member.role) }"></div>
-                <div class="member-avatar" :style="{ background: getRoleGradient(member.role) }">{{ member.name.charAt(0) }}</div>
+                <div class="member-avatar" :style="{ background: getRoleGradient(member.role) }">
+                  <img v-if="member.avatar" :src="member.avatar" class="member-avatar-img" />
+                  <span v-else>{{ member.name.charAt(0) }}</span>
+                </div>
                 <div class="member-info">
                   <div class="member-name">{{ member.name }}
                     <span class="member-role-pill" :style="{ background: getRoleGradient(member.role) }">{{ getRoleText(member.role) }}</span>
@@ -1423,6 +1430,13 @@ onMounted(async () => {
   box-shadow: 0 0 20px rgba(255, 255, 255, 0.15);
 }
 
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
 @keyframes avatarPulse {
   0%, 100% { box-shadow: 0 0 20px rgba(255, 255, 255, 0.15); border-color: rgba(255, 255, 255, 0.4); }
   50% { box-shadow: 0 0 30px rgba(255, 255, 255, 0.3); border-color: rgba(255, 255, 255, 0.7); }
@@ -2238,6 +2252,14 @@ onMounted(async () => {
   font-weight: var(--nb-font-weight-semibold);
   flex-shrink: 0;
   box-shadow: 0 2px 8px rgba(91, 109, 239, 0.25);
+  overflow: hidden;
+}
+
+.member-avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 .member-info {

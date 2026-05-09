@@ -92,7 +92,7 @@
         <el-table-column label="负责人" width="120">
           <template #default="{ row }">
             <div v-if="row.assignee" class="assignee-cell">
-              <el-avatar :size="24">{{ row.assignee.realName?.charAt(0) }}</el-avatar>
+              <el-avatar :size="24" :src="row.assignee.avatar || undefined">{{ row.assignee.realName?.charAt(0) }}</el-avatar>
               <span>{{ row.assignee.realName }}</span>
             </div>
             <span v-else class="text-muted">未分配</span>

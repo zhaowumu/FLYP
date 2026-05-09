@@ -92,7 +92,7 @@
           <div class="activity-list">
             <div class="activity-item" v-for="log in operationLogs" :key="log.id">
               <div class="activity-avatar">
-                <el-avatar :size="32">{{ log.user?.realName?.charAt(0) || 'U' }}</el-avatar>
+                <el-avatar :size="32" :src="log.user?.avatar || undefined">{{ log.user?.realName?.charAt(0) || 'U' }}</el-avatar>
               </div>
               <div class="activity-content">
                 <div class="activity-info">
@@ -149,7 +149,7 @@
             <div class="info-item">
               <span class="label">当前负责人</span>
               <div class="assignee-display" v-if="bug.assignee">
-                <el-avatar :size="24">{{ bug.assignee.realName?.charAt(0) }}</el-avatar>
+                <el-avatar :size="24" :src="bug.assignee.avatar || undefined">{{ bug.assignee.realName?.charAt(0) }}</el-avatar>
                 <span>{{ bug.assignee.realName }}</span>
               </div>
               <span v-else class="text-muted">未处理</span>
@@ -157,7 +157,7 @@
             <div class="info-item">
               <span class="label">创建人</span>
               <div class="assignee-display">
-                <el-avatar :size="24">{{ bug.creator?.realName?.charAt(0) || bug.reporter?.realName?.charAt(0) || '-' }}</el-avatar>
+                <el-avatar :size="24" :src="bug.creator?.avatar || bug.reporter?.avatar || undefined">{{ bug.creator?.realName?.charAt(0) || bug.reporter?.realName?.charAt(0) || '-' }}</el-avatar>
                 <span>{{ bug.creator?.realName || bug.reporter?.realName || '-' }}</span>
               </div>
             </div>

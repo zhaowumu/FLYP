@@ -127,7 +127,7 @@
         <el-table-column label="负责人" width="200">
           <template #default="{ row }">
             <div v-if="row.assignees && row.assignees.length > 0" class="assignee-cell">
-              <el-avatar v-for="a in row.assignees" :key="a.id" :size="24" class="assignee-avatar">{{ a.realName?.charAt(0) }}</el-avatar>
+              <el-avatar v-for="a in row.assignees" :key="a.id" :size="24" :src="a.avatar || undefined" class="assignee-avatar">{{ a.realName?.charAt(0) }}</el-avatar>
               <span>{{ row.assignees.map((a: any) => a.realName).join('、') }}</span>
             </div>
             <span v-else class="text-muted">未分配</span>

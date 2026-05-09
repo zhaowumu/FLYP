@@ -16,7 +16,7 @@
         <el-table-column label="成员" min-width="200">
           <template #default="{ row }">
             <div class="user-cell">
-              <el-avatar :size="36" class="user-avatar">
+              <el-avatar :size="36" :src="row.avatar || undefined" class="user-avatar">
                 {{ row.realName?.charAt(0) || 'U' }}
               </el-avatar>
               <div class="user-info">

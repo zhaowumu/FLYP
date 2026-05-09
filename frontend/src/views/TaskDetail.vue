@@ -100,7 +100,7 @@
           <div class="activity-list">
             <div class="activity-item" v-for="log in operationLogs" :key="log.id">
               <div class="activity-avatar">
-                <el-avatar :size="32">{{ log.user?.realName?.charAt(0) || 'U' }}</el-avatar>
+                <el-avatar :size="32" :src="log.user?.avatar || undefined">{{ log.user?.realName?.charAt(0) || 'U' }}</el-avatar>
               </div>
               <div class="activity-content">
                 <div class="activity-info">
@@ -158,7 +158,7 @@
               <span class="label">当前负责人</span>
               <div class="info-value-row">
                 <div class="assignee-display" v-if="task.assignees && task.assignees.length > 0">
-                  <el-avatar v-for="a in task.assignees" :key="a.id" :size="24" class="assignee-avatar">{{ a.realName?.charAt(0) }}</el-avatar>
+                  <el-avatar v-for="a in task.assignees" :key="a.id" :size="24" :src="a.avatar || undefined" class="assignee-avatar">{{ a.realName?.charAt(0) }}</el-avatar>
                   <span>{{ task.assignees.map((a: any) => a.realName).join('、') }}</span>
                 </div>
                 <span v-else class="text-muted">未分配</span>
@@ -176,7 +176,7 @@
               <span class="label">创建人</span>
               <div class="info-value-row">
                 <div class="assignee-display">
-                  <el-avatar :size="24">{{ task.creator?.realName?.charAt(0) || '-' }}</el-avatar>
+                  <el-avatar :size="24" :src="task.creator?.avatar || undefined">{{ task.creator?.realName?.charAt(0) || '-' }}</el-avatar>
                   <span>{{ task.creator?.realName || '-' }}</span>
                 </div>
                 <el-button
