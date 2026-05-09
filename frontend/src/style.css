@@ -29,6 +29,7 @@
   --nb-text-primary: #1e293b;
   --nb-text-regular: #475569;
   --nb-text-secondary: #94a3b8;
+  --nb-text-tertiary: #cbd5e1;
   --nb-text-placeholder: #cbd5e1;
 
   --nb-bg-page: #f1f5f9;
@@ -122,6 +123,9 @@
   --nb-gradient-banner-pm: linear-gradient(135deg, #ec4899 0%, #f59e0b 100%);
   --nb-gradient-banner-dev: linear-gradient(135deg, #64748b 0%, #94a3b8 100%);
   --nb-gradient-login: linear-gradient(135deg, #5b6def 0%, #8b5cf6 100%);
+  --nb-gradient-artist: linear-gradient(135deg, #22c55e 0%, #4ade80 100%);
+  --nb-gradient-designer: linear-gradient(135deg, #a78bfa 0%, #c4b5fd 100%);
+  --nb-gradient-tester: linear-gradient(135deg, #f97316 0%, #fb923c 100%);
 
   /* ---- Component: Tag ---- */
   --nb-tag-font-size: 11px;

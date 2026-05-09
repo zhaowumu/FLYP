@@ -52,7 +52,9 @@
           <div class="quest-title">{{ quest.title }}</div>
           <div class="quest-desc">{{ quest.desc }}</div>
         </div>
-        <div class="quest-arrow">→</div>
+        <div class="quest-arrow">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
       </div>
     </div>
 
@@ -90,7 +92,7 @@
                 <path d="M3 7V17C3 18.1 3.9 19 5 19H19C20.1 19 21 18.1 21 17V9C21 7.9 20.1 7 19 7H13L11 5H5C3.9 5 3 5.9 3 7Z" stroke="#667eea" stroke-width="1.5" fill="none"/>
               </svg>
               <span>项目进度</span>
-              <el-button class="btn-link" @click="$router.push('/projects')">查看全部 →</el-button>
+              <el-button class="btn-link" @click="$router.push('/projects')">查看全部<svg class="btn-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></el-button>
             </div>
             <div class="list">
               <div v-for="project in recentProjects" :key="project.id" class="list-item" @click="$router.push(`/projects/${project.id}`)">
@@ -134,10 +136,12 @@
             </div>
             <div class="team-list">
               <div v-for="user in teamMembers" :key="user.id" class="team-member">
-                <div class="member-avatar">{{ user.realName?.charAt(0) }}</div>
+                <div class="member-accent" :style="{ background: getRoleGradient(user.role) }"></div>
+                <div class="member-avatar" :style="{ background: getRoleGradient(user.role) }">{{ user.name?.charAt(0) || '?' }}</div>
                 <div class="member-info">
-                  <div class="member-name">{{ user.realName }}</div>
-                  <div class="member-role">{{ getRoleText(user.role) }}</div>
+                  <div class="member-name">{{ user.name }}
+                    <span class="member-role-pill" :style="{ background: getRoleGradient(user.role) }">{{ getRoleText(user.role) }}</span>
+                  </div>
                 </div>
                 <div class="member-badge">
                   <span class="badge-num">{{ getUserTaskCount(user.id) }}</span>
@@ -158,7 +162,7 @@
                 <path d="M12 10V14M12 16V16.5" stroke="#e74c3c" stroke-width="2" stroke-linecap="round"/>
               </svg>
               <span>待处理缺陷 TOP5</span>
-              <el-button class="btn-link" @click="$router.push('/bugs')">查看全部 →</el-button>
+              <el-button class="btn-link" @click="$router.push('/bugs')">查看全部<svg class="btn-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></el-button>
             </div>
             <div class="list">
               <div v-for="bug in urgentBugs" :key="bug.id" class="list-item" @click="$router.push(`/bugs/${bug.id}`)">
@@ -185,7 +189,7 @@
                 <path d="M12 7V12L15 15" stroke="#f39c12" stroke-width="1.5" stroke-linecap="round"/>
               </svg>
               <span>即将到期 TOP5</span>
-              <el-button class="btn-link" @click="$router.push('/tasks')">查看全部 →</el-button>
+              <el-button class="btn-link" @click="$router.push('/tasks')">查看全部<svg class="btn-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></el-button>
             </div>
             <div class="list">
               <div v-for="task in dueSoonTasks" :key="task.id" class="list-item" @click="$router.push(`/tasks/${task.id}`)">
@@ -272,21 +276,22 @@
               <span>团队概览</span>
             </div>
             <div class="team-list">
-              <div v-for="member in teamMembers" :key="member.id" class="team-member clickable" @click="router.push({ path: '/tasks', query: { assigneeId: member.id } })">
-                <div class="member-avatar">{{ member.name.charAt(0) }}</div>
+              <div v-for="member in teamMembers" :key="member.id" class="team-member clickable" :class="getRoleBadgeClass(member.role)" @click="router.push({ path: '/tasks', query: { assigneeId: member.id } })">
+                <div class="member-accent" :style="{ background: getRoleGradient(member.role) }"></div>
+                <div class="member-avatar" :style="{ background: getRoleGradient(member.role) }">{{ member.name.charAt(0) }}</div>
                 <div class="member-info">
                   <div class="member-name">{{ member.name }}
-                    <span class="member-role">{{ getRoleText(member.role) }}</span>
+                    <span class="member-role-pill" :style="{ background: getRoleGradient(member.role) }">{{ getRoleText(member.role) }}</span>
                   </div>
                   <div class="member-stats">
-                    <span class="stat-item text-warning">{{ member.pendingCount }}待处理</span>
-                    <span class="stat-item text-blue">{{ member.inProgressCount }}进行中</span>
-                    <span class="stat-item text-success">{{ member.completedCount }}已完成</span>
-                    <span class="stat-item text-danger">{{ member.openBugCount }}缺陷</span>
+                    <span class="stat-item"><span class="stat-dot dot-warning"></span>{{ member.pendingCount }}待处理</span>
+                    <span class="stat-item"><span class="stat-dot dot-blue"></span>{{ member.inProgressCount }}进行中</span>
+                    <span class="stat-item"><span class="stat-dot dot-success"></span>{{ member.completedCount }}已完成</span>
+                    <span class="stat-item"><span class="stat-dot dot-danger"></span>{{ member.openBugCount }}缺陷</span>
                   </div>
                   <div class="member-progress">
                     <div class="progress-bar">
-                      <div class="progress-fill fill-success" :style="{ width: member.completionRate + '%' }"></div>
+                      <div class="progress-fill" :class="member.completionRate >= 60 ? 'fill-success' : member.completionRate >= 30 ? 'fill-warning' : 'fill-danger'" :style="{ width: member.completionRate + '%' }"></div>
                     </div>
                     <span class="progress-text" :class="member.completionRate >= 60 ? 'text-success' : member.completionRate >= 30 ? 'text-warning' : 'text-danger'">{{ member.completionRate }}%</span>
                   </div>
@@ -335,7 +340,7 @@
                 <path d="M8 10H16M8 14H12" stroke="#667eea" stroke-width="1.5" stroke-linecap="round"/>
               </svg>
               <span>待办任务</span>
-              <el-button class="btn-link" @click="$router.push('/tasks')">查看全部 →</el-button>
+              <el-button class="btn-link" @click="$router.push('/tasks')">查看全部<svg class="btn-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></el-button>
             </div>
             <div class="list">
               <div v-for="task in myPendingTasks" :key="task.id" class="list-item" @click="$router.push(`/tasks/${task.id}`)">
@@ -364,7 +369,7 @@
                 <path d="M10 14L11 15L14 12" stroke="#e74c3c" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
               <span>待处理缺陷</span>
-              <el-button class="btn-link" @click="$router.push('/bugs')">查看全部 →</el-button>
+              <el-button class="btn-link" @click="$router.push('/bugs')">查看全部<svg class="btn-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></el-button>
             </div>
             <div class="list">
               <div v-for="bug in myPendingBugs" :key="bug.id" class="list-item" @click="$router.push(`/bugs/${bug.id}`)">
@@ -455,7 +460,7 @@
               <div class="card-header">
                 <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none" v-html="section.headerSvg"></svg>
                 <span>{{ section.title }}</span>
-                <el-button class="btn-link" @click="section.click">查看全部 →</el-button>
+                <el-button class="btn-link" @click="section.click">查看全部<svg class="btn-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></el-button>
               </div>
               <div class="list">
                 <div v-for="item in section.items" :key="item.id" class="list-item" @click="section.itemClick(item)">
@@ -546,21 +551,21 @@ const quickQuests = computed(() => {
         title: '项目概览',
         desc: `${recentProjects.value.length} 个活跃项目`,
         click: () => router.push('/projects'),
-        svg: '<rect x="8" y="6" width="32" height="36" rx="4" stroke="#667eea" stroke-width="2.5" fill="none"/><path d="M16 18H32M16 26H28M16 34H24" stroke="#667eea" stroke-width="2" stroke-linecap="round"/><circle cx="36" cy="36" r="10" fill="#667eea"/>'
+        svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect x="8" y="6" width="32" height="36" rx="4" stroke="#667eea" stroke-width="2.5" fill="none"/><path d="M16 18H32M16 26H28M16 34H24" stroke="#667eea" stroke-width="2" stroke-linecap="round"/><circle cx="36" cy="36" r="10" fill="#667eea"/></svg>'
       },
       {
         key: 'pending',
         title: '待处理项',
         desc: `${allTasks.value.filter((t: any) => t.status === 'pending').length + allBugs.value.filter((b: any) => b.status === 'pending').length} 个待处理`,
         click: () => router.push('/tasks'),
-        svg: '<circle cx="24" cy="24" r="18" stroke="#ff6b6b" stroke-width="2.5" fill="none"/><path d="M24 12V24L32 30" stroke="#ff6b6b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>'
+        svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><circle cx="24" cy="24" r="18" stroke="#ff6b6b" stroke-width="2.5" fill="none"/><path d="M24 12V24L32 30" stroke="#ff6b6b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'
       },
       {
         key: 'team',
         title: '团队管理',
         desc: `${allUsers.value.filter((u: any) => u.role !== 'admin').length} 位成员`,
         click: () => router.push('/users'),
-        svg: '<circle cx="24" cy="14" r="7" stroke="#43e97b" stroke-width="2.5" fill="none"/><path d="M8 42C8 34.27 15.16 28 24 28C32.84 28 40 34.27 40 42" stroke="#43e97b" stroke-width="2.5" fill="none"/>'
+        svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><circle cx="24" cy="14" r="7" stroke="#43e97b" stroke-width="2.5" fill="none"/><path d="M8 42C8 34.27 15.16 28 24 28C32.84 28 40 34.27 40 42" stroke="#43e97b" stroke-width="2.5" fill="none"/></svg>'
       }
     ]
   }
@@ -572,21 +577,21 @@ const quickQuests = computed(() => {
         title: '我的项目',
         desc: `${myProjects.value.length} 个项目`,
         click: () => router.push('/projects'),
-        svg: '<rect x="8" y="6" width="32" height="36" rx="4" stroke="#667eea" stroke-width="2.5" fill="none"/><path d="M16 18H32M16 26H28M16 34H24" stroke="#667eea" stroke-width="2" stroke-linecap="round"/><circle cx="36" cy="36" r="10" fill="#667eea"/>'
+        svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect x="8" y="6" width="32" height="36" rx="4" stroke="#667eea" stroke-width="2.5" fill="none"/><path d="M16 18H32M16 26H28M16 34H24" stroke="#667eea" stroke-width="2" stroke-linecap="round"/><circle cx="36" cy="36" r="10" fill="#667eea"/></svg>'
       },
       {
         key: 'teamPending',
         title: '团队待办',
         desc: `${pmPendingCount.value} 个待处理任务`,
         click: () => router.push('/tasks'),
-        svg: '<rect x="8" y="6" width="32" height="36" rx="4" stroke="#f39c12" stroke-width="2.5" fill="none"/><path d="M16 18H32M16 26H28" stroke="#f39c12" stroke-width="2" stroke-linecap="round"/><circle cx="36" cy="36" r="10" fill="#f39c12"/>'
+        svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect x="8" y="6" width="32" height="36" rx="4" stroke="#f39c12" stroke-width="2.5" fill="none"/><path d="M16 18H32M16 26H28" stroke="#f39c12" stroke-width="2" stroke-linecap="round"/><circle cx="36" cy="36" r="10" fill="#f39c12"/></svg>'
       },
       {
         key: 'openBugs',
         title: '需关注',
         desc: `${pmOpenBugCount.value} 个未关闭缺陷`,
         click: () => router.push('/bugs'),
-        svg: '<path d="M24 8L12 16V32L24 40L36 32V16L24 8Z" stroke="#f5576c" stroke-width="2.5" fill="none"/><path d="M20 24L23 27L28 21" stroke="#f5576c" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>'
+        svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path d="M24 8L12 16V32L24 40L36 32V16L24 8Z" stroke="#f5576c" stroke-width="2.5" fill="none"/><path d="M20 24L23 27L28 21" stroke="#f5576c" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'
       }
     ]
   }
@@ -598,14 +603,14 @@ const quickQuests = computed(() => {
       title: '我的任务',
       desc: `${myPendingTasks.value.length} 个待办任务`,
       click: () => router.push('/tasks'),
-      svg: '<rect x="8" y="6" width="32" height="36" rx="4" stroke="#667eea" stroke-width="2.5" fill="none"/><path d="M16 18H32M16 26H28M16 34H24" stroke="#667eea" stroke-width="2" stroke-linecap="round"/><circle cx="36" cy="36" r="10" fill="#667eea"/>'
+      svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect x="8" y="6" width="32" height="36" rx="4" stroke="#667eea" stroke-width="2.5" fill="none"/><path d="M16 18H32M16 26H28M16 34H24" stroke="#667eea" stroke-width="2" stroke-linecap="round"/><circle cx="36" cy="36" r="10" fill="#667eea"/></svg>'
     },
     {
       key: 'myBugs',
       title: '我的缺陷',
       desc: `${myPendingBugs.value.length} 个待处理缺陷`,
       click: () => router.push('/bugs'),
-      svg: '<path d="M24 8L12 16V32L24 40L36 32V16L24 8Z" stroke="#f5576c" stroke-width="2.5" fill="none"/><path d="M20 24L23 27L28 21" stroke="#f5576c" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>'
+      svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path d="M24 8L12 16V32L24 40L36 32V16L24 8Z" stroke="#f5576c" stroke-width="2.5" fill="none"/><path d="M20 24L23 27L28 21" stroke="#f5576c" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'
     }
   ]
 
@@ -616,7 +621,7 @@ const quickQuests = computed(() => {
       title: '待验证',
       desc: `${bugsToVerify.value.length} 个待验证缺陷`,
       click: () => router.push('/bugs'),
-      svg: '<circle cx="24" cy="24" r="18" stroke="#27ae60" stroke-width="2.5" fill="none"/><path d="M18 24L22 28L30 19" stroke="#27ae60" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>'
+      svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><circle cx="24" cy="24" r="18" stroke="#27ae60" stroke-width="2.5" fill="none"/><path d="M18 24L22 28L30 19" stroke="#27ae60" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>'
     })
   } else {
     quests.push({
@@ -624,7 +629,7 @@ const quickQuests = computed(() => {
       title: '即将到期',
       desc: `${dueSoonItems.value.length} 个待处理`,
       click: () => router.push('/tasks'),
-      svg: '<circle cx="24" cy="24" r="18" stroke="#f39c12" stroke-width="2.5" fill="none"/><path d="M24 12V24L32 30" stroke="#f39c12" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>'
+      svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><circle cx="24" cy="24" r="18" stroke="#f39c12" stroke-width="2.5" fill="none"/><path d="M24 12V24L32 30" stroke="#f39c12" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'
     })
   }
 
@@ -852,6 +857,29 @@ const getRoleText = (role: string) => {
   return map[role] || role
 }
 
+const getRoleGradient = (role: string) => {
+  const map: Record<string, string> = {
+    admin: 'var(--nb-gradient-primary)',
+    project_manager: 'linear-gradient(135deg, #ec4899, #f59e0b)',
+    developer: 'var(--nb-gradient-primary)',
+    artist: 'var(--nb-gradient-artist)',
+    designer: 'var(--nb-gradient-designer)',
+    tester: 'var(--nb-gradient-tester)'
+  }
+  return map[role] || 'var(--nb-gradient-info)'
+}
+
+const getRoleBadgeClass = (role: string) => {
+  const map: Record<string, string> = {
+    developer: 'badge-dev',
+    artist: 'badge-artist',
+    designer: 'badge-designer',
+    tester: 'badge-tester',
+    project_manager: 'badge-pm'
+  }
+  return map[role] || ''
+}
+
 const getPriorityText = (p: string) => {
   const map: Record<string, string> = { low: '低', medium: '中', high: '高', urgent: '紧急' }
   return map[p] || p
@@ -1065,6 +1093,32 @@ onMounted(async () => {
   font-family: var(--nb-font-family);
 }
 
+/* Stagger entry animations */
+.quick-quests {
+  animation: fadeInUp 0.4s ease both;
+}
+
+.section {
+  margin-bottom: var(--nb-space-6);
+  animation: fadeInUp 0.5s ease 0.1s both;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--nb-space-5);
+  margin-bottom: var(--nb-space-5);
+  animation: fadeInUp 0.5s ease 0.2s both;
+}
+
+.row:nth-of-type(2) { animation-delay: 0.25s; }
+.row:nth-of-type(3) { animation-delay: 0.3s; }
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* ==================== Banner ==================== */
 .banner {
   position: relative;
@@ -1073,6 +1127,7 @@ onMounted(async () => {
   overflow: hidden;
   background: var(--nb-gradient-banner);
   color: white;
+  animation: fadeInUp 0.4s ease both;
 }
 
 .banner.role-admin { background: var(--nb-gradient-banner-admin); }
@@ -1090,12 +1145,13 @@ onMounted(async () => {
   position: absolute;
   opacity: 0.6;
   animation: float 6s ease-in-out infinite;
+  filter: blur(0.5px);
 }
 
-.float-1 { top: 10%; left: 5%; width: 48px; height: 48px; animation-delay: 0s; }
-.float-2 { top: 60%; left: 15%; width: 36px; height: 36px; animation-delay: 1.5s; }
-.float-3 { top: 20%; right: 25%; width: 40px; height: 40px; animation-delay: 3s; }
-.float-4 { top: 65%; right: 10%; width: 32px; height: 32px; animation-delay: 4.5s; }
+.float-1 { top: 10%; left: 5%; width: 48px; height: 48px; animation-delay: 0s; animation-duration: 6s; }
+.float-2 { top: 60%; left: 15%; width: 36px; height: 36px; animation-delay: 0.8s; animation-duration: 8s; opacity: 0.4; }
+.float-3 { top: 20%; right: 25%; width: 40px; height: 40px; animation-delay: 2s; animation-duration: 5.5s; }
+.float-4 { top: 65%; right: 10%; width: 32px; height: 32px; animation-delay: 3.5s; animation-duration: 7s; opacity: 0.35; }
 
 @keyframes float {
   0%, 100% { transform: translateY(0) rotate(0deg); }
@@ -1108,18 +1164,18 @@ onMounted(async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--nb-space-7) var(--nb-space-8);
+  padding: var(--nb-space-8) var(--nb-space-8);
 }
 
 .banner-left {
   display: flex;
   align-items: center;
-  gap: var(--nb-space-4);
+  gap: var(--nb-space-5);
 }
 
 .avatar {
-  width: 52px;
-  height: 52px;
+  width: 56px;
+  height: 56px;
   border-radius: var(--nb-radius-full);
   background: rgba(255, 255, 255, 0.25);
   backdrop-filter: blur(8px);
@@ -1130,6 +1186,13 @@ onMounted(async () => {
   font-weight: var(--nb-font-weight-semibold);
   color: white;
   border: 2px solid rgba(255, 255, 255, 0.4);
+  animation: avatarPulse 3s ease-in-out infinite;
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.15);
+}
+
+@keyframes avatarPulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(255, 255, 255, 0.15); border-color: rgba(255, 255, 255, 0.4); }
+  50% { box-shadow: 0 0 30px rgba(255, 255, 255, 0.3); border-color: rgba(255, 255, 255, 0.7); }
 }
 
 .welcome-text h2 {
@@ -1164,12 +1227,18 @@ onMounted(async () => {
   overflow: hidden;
   border: 2px solid rgba(255, 255, 255, 0.3);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  animation: heroFloat 3s ease-in-out infinite;
 }
 
 .hero-image img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+@keyframes heroFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
 }
 
 .role-badge {
@@ -1179,10 +1248,17 @@ onMounted(async () => {
   padding: 6px var(--nb-space-4);
   background: rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border-radius: var(--nb-radius-full);
   font-size: var(--nb-font-size-sm);
   font-weight: var(--nb-font-weight-medium);
   border: 1px solid rgba(255, 255, 255, 0.3);
+  transition: all var(--nb-transition-normal);
+}
+
+.role-badge:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
 }
 
 .badge-star {
@@ -1204,16 +1280,34 @@ onMounted(async () => {
   align-items: center;
   gap: 14px;
   padding: var(--nb-space-4) var(--nb-space-5);
-  background: var(--nb-bg-card);
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9ff 100%);
   border-radius: var(--nb-radius-lg);
   border: 1px solid var(--nb-border-light);
   cursor: pointer;
   transition: all var(--nb-transition-normal);
+  position: relative;
+  overflow: hidden;
+}
+
+.quest-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--nb-gradient-primary);
+  opacity: 0;
+  transition: opacity var(--nb-transition-normal);
+}
+
+.quest-card:hover::after {
+  opacity: 1;
 }
 
 .quest-card:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--nb-shadow-primary);
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 8px 24px rgba(91, 109, 239, 0.18);
   border-color: var(--nb-primary-lighter);
 }
 
@@ -1221,11 +1315,22 @@ onMounted(async () => {
   width: 48px;
   height: 48px;
   flex-shrink: 0;
+  background: var(--nb-primary-lighter);
+  border-radius: var(--nb-radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--nb-transition-normal);
+}
+
+.quest-card:hover .quest-icon {
+  background: var(--nb-primary-lighter);
+  transform: scale(1.08);
 }
 
 .quest-icon :deep(svg) {
-  width: 100%;
-  height: 100%;
+  width: 28px;
+  height: 28px;
 }
 
 .quest-info {
@@ -1295,13 +1400,19 @@ onMounted(async () => {
 }
 
 .stat-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--nb-shadow-md);
+  transform: translateY(-4px) scale(1.03);
+  box-shadow: var(--nb-shadow-lg);
+  border-color: var(--nb-primary-lighter);
 }
 
 .stat-accent {
-  height: 3px;
+  height: 4px;
   width: 100%;
+  transition: height var(--nb-transition-fast);
+}
+
+.stat-card:hover .stat-accent {
+  height: 4px;
 }
 
 .stat-blue .stat-accent { background: var(--nb-gradient-primary); }
@@ -1326,6 +1437,7 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   color: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .stat-blue .stat-icon-box { background: var(--nb-gradient-primary); }
@@ -1340,10 +1452,12 @@ onMounted(async () => {
 }
 
 .stat-value {
-  font-size: var(--nb-font-size-3xl);
+  font-size: 28px;
   font-weight: var(--nb-font-weight-bold);
   color: var(--nb-text-primary);
   margin-bottom: 2px;
+  letter-spacing: -0.5px;
+  line-height: 1.2;
 }
 
 .stat-label {
@@ -1400,9 +1514,12 @@ onMounted(async () => {
 }
 
 .card-icon-svg {
-  width: 22px;
-  height: 22px;
+  width: 28px;
+  height: 28px;
   flex-shrink: 0;
+  padding: 4px;
+  background: var(--nb-primary-lighter);
+  border-radius: var(--nb-radius-sm);
 }
 
 .card-header .btn-link {
@@ -1438,6 +1555,16 @@ onMounted(async () => {
   color: var(--nb-primary-dark);
 }
 
+.btn-arrow {
+  vertical-align: middle;
+  margin-left: 2px;
+  transition: transform var(--nb-transition-fast);
+}
+
+.btn-link:hover .btn-arrow {
+  transform: translateX(3px);
+}
+
 .view-all-btn {
   margin-left: auto;
 }
@@ -1458,12 +1585,15 @@ onMounted(async () => {
   cursor: pointer;
   transition: all var(--nb-transition-fast);
   border: 1px solid transparent;
+  position: relative;
+  overflow: hidden;
 }
 
 .list-item:hover {
   background: var(--nb-primary-lighter);
   border-color: var(--nb-primary-lighter);
   transform: translateX(4px);
+  box-shadow: 0 2px 8px rgba(91, 109, 239, 0.1);
 }
 
 .list-item:last-child {
@@ -1505,9 +1635,14 @@ onMounted(async () => {
 .severity-low { background: var(--nb-gradient-info); }
 
 .item-priority {
-  width: 4px;
+  width: 5px;
   height: 44px;
-  border-radius: 2px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.list-item:hover .item-priority {
+  width: 6px;
 }
 
 .priority-urgent { background: var(--nb-danger); }
@@ -1671,7 +1806,25 @@ onMounted(async () => {
   height: 100%;
   background: var(--nb-gradient-primary);
   border-radius: 3px;
-  transition: width 0.4s ease;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -50%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% { left: -50%; }
+  100% { left: 150%; }
 }
 
 .progress-fill.fill-danger {
@@ -1751,11 +1904,13 @@ onMounted(async () => {
   align-items: center;
   gap: var(--nb-space-3);
   padding: 10px 14px;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
   background: var(--nb-bg-muted);
   border-radius: 10px;
   border: 1px solid transparent;
   transition: all var(--nb-transition-fast);
+  position: relative;
+  overflow: hidden;
 }
 
 .team-member:hover {
@@ -1772,9 +1927,22 @@ onMounted(async () => {
 }
 
 .team-member.clickable:hover {
-  background: var(--nb-primary-lighter);
-  border-color: var(--nb-primary-lighter);
   transform: translateX(4px);
+}
+
+.member-accent {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  opacity: 0.4;
+  transition: opacity var(--nb-transition-fast);
+}
+
+.team-member:hover .member-accent {
+  opacity: 1;
 }
 
 .member-arrow {
@@ -1804,10 +1972,12 @@ onMounted(async () => {
   color: white;
   font-weight: var(--nb-font-weight-semibold);
   flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(91, 109, 239, 0.25);
 }
 
 .member-info {
   flex: 1;
+  min-width: 0;
 }
 
 .member-name {
@@ -1815,16 +1985,24 @@ onMounted(async () => {
   font-weight: var(--nb-font-weight-medium);
   color: var(--nb-text-primary);
   margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.member-role {
-  font-size: var(--nb-font-size-xs);
-  color: var(--nb-text-secondary);
+.member-role-pill {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: var(--nb-font-weight-medium);
+  color: white;
+  padding: 1px 8px;
+  border-radius: var(--nb-radius-full);
+  line-height: 16px;
 }
 
 .member-stats {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   margin-top: 4px;
   flex-wrap: wrap;
 }
@@ -1832,7 +2010,23 @@ onMounted(async () => {
 .stat-item {
   font-size: 11px;
   font-weight: var(--nb-font-weight-medium);
+  color: var(--nb-text-regular);
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
+
+.stat-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--nb-radius-full);
+  flex-shrink: 0;
+}
+
+.dot-warning { background: var(--nb-warning); }
+.dot-blue { background: var(--nb-primary); }
+.dot-success { background: var(--nb-success); }
+.dot-danger { background: var(--nb-danger); }
 
 .member-progress {
   display: flex;
@@ -1844,6 +2038,18 @@ onMounted(async () => {
 .member-progress .progress-bar {
   flex: 1;
   height: 4px;
+  border-radius: 2px;
+  background: var(--nb-border-light);
+}
+
+.member-progress .progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.6s ease;
+}
+
+.member-progress .progress-fill::after {
+  display: none;
 }
 
 .progress-text {
@@ -2014,7 +2220,7 @@ onMounted(async () => {
 /* ==================== Empty State ==================== */
 .empty {
   text-align: center;
-  padding: var(--nb-space-8);
+  padding: var(--nb-space-8) var(--nb-space-4);
   font-size: var(--nb-font-size-sm);
   color: var(--nb-text-secondary);
   background: var(--nb-bg-muted);
@@ -2027,9 +2233,9 @@ onMounted(async () => {
 }
 
 .empty-icon {
-  width: 64px;
-  height: 64px;
-  opacity: 0.6;
+  width: 48px;
+  height: 48px;
+  opacity: 0.4;
 }
 
 /* ==================== Responsive ==================== */
