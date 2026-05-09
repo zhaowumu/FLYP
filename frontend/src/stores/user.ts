@@ -1,12 +1,13 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { login, register, getUserInfo } from '../api/user'
+import { login, register, getUserInfo, updateProfile } from '../api/user'
 import { getPermissions } from '../api/permission'
 
 export interface User {
   id: number
   username: string
   realName: string
+  avatar: string | null
   phone: string
   role: string
 }
@@ -115,6 +116,17 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
+  async function updateProfileAction(data: { realName?: string; avatar?: string }) {
+    try {
+      const res = await updateProfile(data)
+      user.value = res.data
+      localStorage.setItem('user', JSON.stringify(user.value))
+      return res.data
+    } catch (error) {
+      throw error
+    }
+  }
+
   function logout() {
     token.value = ''
     user.value = null
@@ -137,6 +149,7 @@ export const useUserStore = defineStore('user', () => {
     loginAction,
     registerAction,
     fetchUserInfo,
+    updateProfileAction,
     logout
   }
 })

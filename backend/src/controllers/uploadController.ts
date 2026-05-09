@@ -14,6 +14,12 @@ if (!fs.existsSync(videoUploadDir)) {
   fs.mkdirSync(videoUploadDir, { recursive: true });
 }
 
+// 头像上传目录
+const avatarUploadDir = path.join(process.cwd(), "uploads", "avatars");
+if (!fs.existsSync(avatarUploadDir)) {
+  fs.mkdirSync(avatarUploadDir, { recursive: true });
+}
+
 // 图片存储配置
 const imageStorage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -73,6 +79,27 @@ export const uploadVideo = multer({
   fileFilter: videoFileFilter,
   limits: {
     fileSize: 100 * 1024 * 1024, // 100MB
+  },
+});
+
+// 头像存储配置
+const avatarStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, avatarUploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = "avatar_" + Date.now() + "_" + Math.round(Math.random() * 1e9);
+    const ext = path.extname(file.originalname);
+    cb(null, uniqueSuffix + ext);
+  },
+});
+
+// 头像上传 multer 实例（仅允许图片）
+export const uploadAvatar = multer({
+  storage: avatarStorage,
+  fileFilter: imageFileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB
   },
 });
 
@@ -162,6 +189,21 @@ export const uploadController = {
         errno: 1,
         message: "上传失败",
       });
+    }
+  },
+
+  // 上传头像
+  async uploadAvatar(req: Request, res: Response) {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "没有上传文件" });
+      }
+
+      const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+      res.json({ url: avatarUrl });
+    } catch (error) {
+      console.error("Upload avatar error:", error);
+      res.status(500).json({ error: "头像上传失败" });
     }
   },
 };

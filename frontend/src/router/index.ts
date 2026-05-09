@@ -77,6 +77,12 @@ const routes: RouteRecordRaw[] = [
     name: 'OperationLogs',
     component: () => import('../views/OperationLogs.vue'),
     meta: { requiresAuth: true, title: '操作历史' }
+  },
+  {
+    path: '/profile',
+    name: 'Profile',
+    component: () => import('../views/Profile.vue'),
+    meta: { requiresAuth: true }
   }
 ]
 

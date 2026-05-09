@@ -72,6 +72,7 @@ export const userController = {
           id: user.id,
           username: user.username,
           realName: user.realName,
+          avatar: user.avatar,
           phone: user.phone,
           role: user.role,
         },
@@ -148,6 +149,95 @@ export const userController = {
     } catch (error) {
       console.error("Error deleting user:", error);
       res.status(500).json({ error: "Failed to delete user" });
+    }
+  },
+
+  // 获取当前登录用户信息
+  async getCurrentUser(req: Request, res: Response) {
+    try {
+      const userId = (req as any).user.id;
+      const user = await userRepository.findOne({
+        where: { id: userId },
+        select: ["id", "username", "realName", "avatar", "phone", "role", "isActive", "createdAt"],
+      });
+
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      res.json(user);
+    } catch (error) {
+      console.error("Error getting current user:", error);
+      res.status(500).json({ error: "Failed to get user info" });
+    }
+  },
+
+  // 更新当前用户个人资料（姓名、头像）
+  async updateProfile(req: Request, res: Response) {
+    try {
+      const userId = (req as any).user.id;
+      const { realName, avatar, phone } = req.body;
+
+      const updateData: any = {};
+      if (realName !== undefined) updateData.realName = realName;
+      if (avatar !== undefined) updateData.avatar = avatar;
+      if (phone !== undefined) updateData.phone = phone;
+
+      if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({ error: "没有需要更新的字段" });
+      }
+
+      await userRepository.update(userId, updateData);
+
+      const updatedUser = await userRepository.findOne({
+        where: { id: userId },
+        select: ["id", "username", "realName", "avatar", "phone", "role", "isActive", "createdAt"],
+      });
+
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      res.status(500).json({ error: "Failed to update profile" });
+    }
+  },
+
+  // 修改密码
+  async changePassword(req: Request, res: Response) {
+    try {
+      const userId = (req as any).user.id;
+      const { currentPassword, newPassword } = req.body;
+
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ error: "当前密码和新密码不能为空" });
+      }
+
+      if (newPassword.length < 6) {
+        return res.status(400).json({ error: "新密码长度不能少于6位" });
+      }
+
+      // 获取用户（需要密码字段）
+      const user = await userRepository.findOne({
+        where: { id: userId },
+      });
+
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // 验证当前密码
+      const isValidPassword = await bcrypt.compare(currentPassword, user.password);
+      if (!isValidPassword) {
+        return res.status(401).json({ error: "当前密码错误" });
+      }
+
+      // 加密新密码并更新
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      await userRepository.update(userId, { password: hashedPassword });
+
+      res.json({ message: "密码修改成功" });
+    } catch (error) {
+      console.error("Error changing password:", error);
+      res.status(500).json({ error: "Failed to change password" });
     }
   },
 };

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { uploadController, upload, uploadVideo } from "../controllers/uploadController";
+import { uploadController, upload, uploadVideo, uploadAvatar } from "../controllers/uploadController";
 import { authMiddleware } from "../middleware/authMiddleware";
 
 const router = Router();
@@ -12,5 +12,8 @@ router.post("/images", authMiddleware, upload.array("files", 10), uploadControll
 
 // 上传视频
 router.post("/video", authMiddleware, uploadVideo.single("file"), uploadController.uploadVideo);
+
+// 上传头像
+router.post("/avatar", authMiddleware, uploadAvatar.single("file"), uploadController.uploadAvatar);
 
 export default router;

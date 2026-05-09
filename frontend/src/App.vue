@@ -73,7 +73,8 @@
             </div>
             <el-dropdown trigger="click">
               <div class="user-dropdown">
-                <el-avatar :size="32" class="user-avatar">
+                <el-avatar :size="32" class="user-avatar" v-if="userStore.user?.avatar" :src="userStore.user.avatar" />
+                <el-avatar :size="32" class="user-avatar" v-else>
                   {{ userStore.user?.realName?.charAt(0) || 'U' }}
                 </el-avatar>
                 <span class="user-name">{{ userStore.user?.realName || '用户' }}</span>
@@ -81,7 +82,11 @@
               </div>
               <template #dropdown>
                 <el-dropdown-menu>
-                  <el-dropdown-item @click="handleLogout">
+                  <el-dropdown-item @click="router.push('/profile')">
+                    <el-icon><User /></el-icon>
+                    个人设置
+                  </el-dropdown-item>
+                  <el-dropdown-item divided @click="handleLogout">
                     <el-icon><SwitchButton /></el-icon>
                     退出登录
                   </el-dropdown-item>
@@ -119,6 +124,7 @@ import {
   ChatDotRound,
   FolderOpened,
   Search,
+  User,
 } from '@element-plus/icons-vue'
 
 const iconMap: Record<string, any> = {
@@ -149,7 +155,8 @@ const currentRoute = computed(() => {
     '/bugs': '缺陷管理',
     '/users': '成员管理',
     '/settings': '系统设置',
-    '/operation-logs': '操作历史'
+    '/operation-logs': '操作历史',
+    '/profile': '个人设置'
   }
   if (routeMap[route.path]) return routeMap[route.path]
   if (route.path.startsWith('/tasks/')) return '任务详情'
