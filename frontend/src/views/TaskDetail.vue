@@ -108,7 +108,7 @@
                   <span class="activity-action">{{ formatLogAction(log) }}</span>
                   <span class="activity-time">{{ formatTime(log.createdAt) }}</span>
                 </div>
-                <div class="activity-remark" v-if="log.remark">
+                <div class="activity-remark" v-if="hasRemarkContent(log.remark)">
                   <div v-html="renderRemark(log.remark)"></div>
                 </div>
               </div>
@@ -816,6 +816,14 @@ const renderRemark = (remark: string) => {
     return remark
   }
   return remark.replace(/\[图片\]/g, '<span style="color:var(--nb-primary)">[图片]</span>')
+}
+
+/** 检查备注是否有可见内容（过滤空 HTML 标签） */
+function hasRemarkContent(remark: string): boolean {
+  if (!remark) return false
+  if (remark.includes('<img') || remark.includes('<video')) return true
+  const text = remark.replace(/<[^>]*>/g, '').trim()
+  return text.length > 0
 }
 
 const goBack = () => {

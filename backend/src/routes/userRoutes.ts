@@ -1,13 +1,13 @@
 import { Router } from "express";
 import { userController } from "../controllers/userController";
-import { authMiddleware } from "../middleware/authMiddleware";
+import { authMiddleware, roleMiddleware } from "../middleware/authMiddleware";
 
 const router = Router();
 
-// 用户注册
+// 用户注册（公开）
 router.post("/register", userController.register);
 
-// 用户登录
+// 用户登录（公开）
 router.post("/login", userController.login);
 
 // 获取当前用户信息（需认证）
@@ -19,16 +19,16 @@ router.put("/profile", authMiddleware, userController.updateProfile);
 // 修改密码（需认证）
 router.put("/password", authMiddleware, userController.changePassword);
 
-// 获取所有用户
-router.get("/", userController.getAllUsers);
+// 获取所有用户（需认证）
+router.get("/", authMiddleware, userController.getAllUsers);
 
-// 获取用户详情
-router.get("/:id", userController.getUserById);
+// 获取用户详情（需认证）
+router.get("/:id", authMiddleware, userController.getUserById);
 
-// 更新用户信息
-router.put("/:id", userController.updateUser);
+// 更新用户信息（需管理员权限）
+router.put("/:id", authMiddleware, roleMiddleware(["admin"]), userController.updateUser);
 
-// 删除用户
-router.delete("/:id", userController.deleteUser);
+// 删除用户（需管理员权限）
+router.delete("/:id", authMiddleware, roleMiddleware(["admin"]), userController.deleteUser);
 
 export default router;

@@ -100,7 +100,7 @@
                   <span class="activity-action">{{ formatLogAction(log) }}</span>
                   <span class="activity-time">{{ formatTime(log.createdAt) }}</span>
                 </div>
-                <div class="activity-remark" v-if="log.remark">
+                <div class="activity-remark" v-if="hasRemarkContent(log.remark)">
                   <div v-html="renderRemark(log.remark)"></div>
                 </div>
               </div>
@@ -155,10 +155,10 @@
               <span v-else class="text-muted">未处理</span>
             </div>
             <div class="info-item">
-              <span class="label">创建人</span>
+              <span class="label">报告人</span>
               <div class="assignee-display">
-                <el-avatar :size="24" :src="bug.creator?.avatar || bug.reporter?.avatar || undefined">{{ bug.creator?.realName?.charAt(0) || bug.reporter?.realName?.charAt(0) || '-' }}</el-avatar>
-                <span>{{ bug.creator?.realName || bug.reporter?.realName || '-' }}</span>
+                <el-avatar :size="24" :src="bug.reporter?.avatar || undefined">{{ bug.reporter?.realName?.charAt(0) || '-' }}</el-avatar>
+                <span>{{ bug.reporter?.realName || '-' }}</span>
               </div>
             </div>
             <div class="info-item">
@@ -444,8 +444,7 @@
               style="width: 100%"
             >
               <el-option label="待处理" value="pending" :disabled="bug?.status === 'pending'" />
-              <el-option label="已分配" value="assigned" :disabled="bug?.status === 'assigned'" />
-              <el-option label="修复中" value="fixing" :disabled="bug?.status === 'fixing'" />
+              <el-option label="处理中" value="in_progress" :disabled="bug?.status === 'in_progress'" />
               <el-option label="已修复" value="fixed" :disabled="bug?.status === 'fixed'" />
               <el-option label="已验证" value="verified" :disabled="bug?.status === 'verified'" />
               <el-option label="已关闭" value="closed" :disabled="bug?.status === 'closed'" />
@@ -512,7 +511,7 @@
 import { ref, computed, watch, onMounted, nextTick, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getBug, updateBugStatus, addComment as addBugComment, updateBug, assignBug, extendDueDate as extendBugDueDate, rejectBug, restartBug } from '../api/bug'
+import { getBug, updateBugStatus, addComment as addBugComment, updateBug, assignBug, extendDueDate as extendBugDueDate, rejectBug, restartBug, deleteBug } from '../api/bug'
 import { getUsers } from '../api/user'
 import { useUserStore } from '../stores/user'
 import RichEditor from '../components/RichEditor.vue'
@@ -551,7 +550,7 @@ const operationLogs = computed(() => {
 // 角色判断
 const currentUserId = computed(() => userStore.user?.id)
 const isReporter = computed(() => {
-  return bug.value?.creator?.id === currentUserId.value || bug.value?.reporter?.id === currentUserId.value
+  return bug.value?.reporter?.id === currentUserId.value
 })
 const isAssignee = computed(() => bug.value?.assignee?.id === currentUserId.value)
 const isParticipant = computed(() => isReporter.value || isAssignee.value)
@@ -575,7 +574,7 @@ const canVerify = computed(() => userStore.getBugPermission('verify', { isReport
 const canReject = computed(() => userStore.getBugPermission('rejectBug', { isReporter: isReporter.value }) && isReporter.value && isFixed.value)
 const canClose = computed(() => userStore.getBugPermission('close', { isReporter: isReporter.value }) && isReporter.value && isVerified.value)
 const canRestart = computed(() => userStore.getBugPermission('restartBug') && bug.value?.status === 'closed')
-const canTransfer = computed(() => userStore.getBugPermission('transfer', { isAssignee: isAssignee.value }) && isAssignee.value && isActive.value && !isFixed.value && !isVerified.value)
+const canTransfer = computed(() => userStore.getBugPermission('transfer', { isAssignee: isAssignee.value }) && isAssignee.value && isActive.value)
 const canChangeSeverity = computed(() => userStore.getBugPermission('changeSeverity', { isReporter: isReporter.value }) && !isClosed.value && !isVerified.value)
 const canChangeStatus = computed(() => userStore.getBugPermission('changeStatus', { isReporter: isReporter.value }) && !isClosed.value && !isVerified.value)
 const canComment = computed(() => userStore.getBugPermission('comment'))
@@ -719,6 +718,16 @@ const renderRemark = (remark: string) => {
   return remark.replace(/\[图片\]/g, '<span style="color:var(--nb-primary)">[图片]</span>')
 }
 
+/** 检查备注是否有可见内容（过滤空 HTML 标签） */
+function hasRemarkContent(remark: string): boolean {
+  if (!remark) return false
+  // 包含图片或视频标签 → 有可见内容
+  if (remark.includes('<img') || remark.includes('<video')) return true
+  // 去掉 HTML 标签后检查是否有非空白的文本
+  const text = remark.replace(/<[^>]*>/g, '').trim()
+  return text.length > 0
+}
+
 const goBack = () => {
   router.push('/bugs')
 }
@@ -850,7 +859,7 @@ const onDrawerClosed = () => {
 }
 
 const executeAction = async () => {
-  if ((currentAction.value === 'assign' || currentAction.value === 'transfer') && !assignUserId.value && currentAction.value === 'assign') {
+  if (currentAction.value === 'assign' && !assignUserId.value) {
     ElMessage.warning('请选择负责人')
     return
   }
@@ -1012,8 +1021,7 @@ const confirmDelete = async () => {
       cancelButtonText: '取消',
       type: 'warning'
     })
-    // 这里需要调用删除 bug 的 API，假设后端有这个接口
-    // await deleteBug(bug.value.id)
+    await deleteBug(bug.value.id)
     ElMessage.success('缺陷已删除')
     router.push('/bugs')
   } catch (error) {
@@ -1022,35 +1030,6 @@ const confirmDelete = async () => {
       ElMessage.error('删除缺陷失败')
     }
   }
-}
-
-const showExtendDialog = () => {
-  extendForm.days = 7
-  extendForm.remark = ''
-  extendDialogVisible.value = true
-}
-
-const submitExtend = async () => {
-  if (!extendFormRef.value) return
-  
-  await extendFormRef.value.validate(async (valid: boolean) => {
-    if (valid) {
-      submitting.value = true
-      try {
-        await extendBugDueDate(bug.value.id, {
-          days: extendForm.days,
-          remark: extendForm.remark
-        })
-        ElMessage.success('延期成功')
-        extendDialogVisible.value = false
-        await loadBug()
-      } catch (error) {
-        ElMessage.error('延期失败')
-      } finally {
-        submitting.value = false
-      }
-    }
-  })
 }
 
 onMounted(() => {

@@ -26,7 +26,7 @@ router.delete("/:id", bugPermissionMiddleware("delete"), bugController.deleteBug
 
 router.patch("/:id/extend", bugController.extendDueDate);
 
-router.patch("/:id/reject", bugController.rejectBug);
+router.patch("/:id/reject", bugPermissionMiddleware("rejectBug"), bugController.rejectBug);
 
 router.patch("/:id/restart", bugController.restartBug);
 

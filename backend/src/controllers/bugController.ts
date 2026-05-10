@@ -192,7 +192,7 @@ export const bugController = {
         delete updateData.assigneeId;
       }
 
-      // 状态变更联动校验
+      // 状态变更处理（校验 + 日志 + 钉钉通知）
       if (updateData.status && updateData.status !== bug.status) {
         const targetStatus = updateData.status;
 
@@ -206,19 +206,17 @@ export const bugController = {
             bug.assignee = bug.reporter;
           }
         }
-      }
 
-      if (updateData.status && updateData.status !== bug.status) {
         await createOperationLog(
           bug.id,
           userId,
           userName,
-          updateData.status === "closed" ? "close" : "status_change",
+          targetStatus === "closed" ? "close" : "status_change",
           {
             oldStatus: bug.status,
-            newStatus: updateData.status,
-            oldAssignee: updateData.status === "closed" ? bug.assignee?.realName : undefined,
-            newAssignee: updateData.status === "closed" ? "无" : undefined,
+            newStatus: targetStatus,
+            oldAssignee: targetStatus === "closed" ? bug.assignee?.realName : undefined,
+            newAssignee: targetStatus === "closed" ? "无" : undefined,
             remark: updateData.log?.remark || "",
           }
         );
@@ -228,14 +226,14 @@ export const bugController = {
           id: String(bug.id),
           title: bug.title,
           oldStatus: bug.status,
-          newStatus: updateData.status,
+          newStatus: targetStatus,
           operator: userName,
           time: new Date().toLocaleString("zh-CN")
         });
 
         // 关闭时清空负责人
-        if (updateData.status === "closed") {
-          (bug.assignee as any) = null;
+        if (targetStatus === "closed") {
+          Object.assign(bug, { assignee: null });
         }
       }
 
@@ -296,13 +294,14 @@ export const bugController = {
       if (log?.oldSeverity) extraFields.oldSeverity = log.oldSeverity;
       if (log?.newSeverity) extraFields.newSeverity = log.newSeverity;
 
+      const prevStatus = bug.status;
       bug.status = status;
 
       // 关闭时清空负责人
       if (status === "closed") {
         extraFields.oldAssignee = bug.assignee?.realName || "未知";
         extraFields.newAssignee = "无";
-        (bug.assignee as any) = null;
+        Object.assign(bug, { assignee: null });
       }
 
       // 修复完成时负责人改为报告人
@@ -328,7 +327,7 @@ export const bugController = {
         type: "BUG",
         id: String(bug.id),
         title: bug.title,
-        oldStatus: bug.status,
+        oldStatus: prevStatus,
         newStatus: status,
         operator: userName,
         time: new Date().toLocaleString("zh-CN")
@@ -529,7 +528,11 @@ export const bugController = {
       const newAssignee = assigneeId ? await userRepository.findOne({ where: { id: assigneeId } }) : null;
       const newAssigneeName = newAssignee?.realName || "未分配";
 
-      bug.assignee = newAssignee || (null as any);
+      if (newAssignee) {
+        bug.assignee = newAssignee;
+      } else {
+        Object.assign(bug, { assignee: null });
+      }
       bug.status = "in_progress";
 
       await bugRepository.save(bug);
@@ -588,7 +591,11 @@ export const bugController = {
       const newAssigneeName = newAssignee?.realName || "未分配";
       const newStatus = newAssignee ? "in_progress" : "pending";
 
-      bug.assignee = newAssignee || (null as any);
+      if (newAssignee) {
+        bug.assignee = newAssignee;
+      } else {
+        Object.assign(bug, { assignee: null });
+      }
       bug.status = newStatus;
 
       await bugRepository.save(bug);

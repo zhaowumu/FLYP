@@ -340,7 +340,7 @@ const filterPriority = ref('')
 const filterUser = ref<number | null>(null)
 const filterCategory = ref('')
 const parentTask = ref<any>(null)
-const activeTab = ref('my')
+const activeTab = ref(userStore.isPM ? 'all' : 'assigned')
 
 const taskForm = reactive({
   projectId: null as number | null,
@@ -392,9 +392,9 @@ const filteredTasks = computed(() => {
 const tabs = computed(() => {
   const userId = userStore.user?.id
   return [
-    { key: 'my', label: '我参与的', count: tasks.value.filter((t: any) => t.assignees?.some((a: any) => a.id === userId) || t.creator?.id === userId).length },
-    { key: 'created', label: '我创建的', count: tasks.value.filter((t: any) => t.creator?.id === userId).length },
     { key: 'assigned', label: '我负责的', count: tasks.value.filter((t: any) => t.assignees?.some((a: any) => a.id === userId)).length },
+    { key: 'created', label: '我创建的', count: tasks.value.filter((t: any) => t.creator?.id === userId).length },
+    { key: 'my', label: '我参与的', count: tasks.value.filter((t: any) => t.assignees?.some((a: any) => a.id === userId) || t.creator?.id === userId).length },
     { key: 'all', label: '全部', count: tasks.value.length },
   ]
 })
@@ -604,7 +604,6 @@ const submitTask = async () => {
         ElMessage.success('创建成功')
         dialogVisible.value = false
         loadTasks()
-        loadCategories()
       } catch (error) {
         ElMessage.error('创建失败')
       } finally {

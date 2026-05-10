@@ -232,6 +232,21 @@ export const taskController = {
         if (newAssignees.length === 0 && (task.status === "in_progress" || task.status === "completed")) {
           const oldStatus = task.status;
           task.status = "pending";
+          // 防止后续 Object.assign 覆盖此状态
+          updateData.status = "pending";
+
+          // 同步记录状态变更日志
+          await createOperationLog(
+            task.id,
+            userId,
+            userName,
+            "status_change",
+            {
+              oldStatus: oldStatus,
+              newStatus: "pending",
+              remark: "清空负责人，状态自动变更为待处理",
+            }
+          );
         }
 
         delete updateData.assigneeIds;
