@@ -44,11 +44,13 @@ export const bugController = {
 
       const reporter = await userRepository.findOne({ where: { id: reportedBy } });
 
+      const initialStatus = assigneeId ? "in_progress" : "pending";
+
       const bug = bugRepository.create({
         title,
         description,
         severity: severity || "medium",
-        status: "pending",
+        status: initialStatus,
         reproduceSteps,
         category: category || null,
         project: projectId ? { id: projectId } : undefined,
@@ -181,7 +183,29 @@ export const bugController = {
         });
         
         bug.assignee = newAssignee!;
+
+        // 待处理 → 分配后自动升级为处理中
+        if (bug.status === "pending") {
+          bug.status = "in_progress";
+        }
+
         delete updateData.assigneeId;
+      }
+
+      // 状态变更联动校验
+      if (updateData.status && updateData.status !== bug.status) {
+        const targetStatus = updateData.status;
+
+        if (targetStatus === "in_progress" && !bug.assignee) {
+          return res.status(400).json({ error: "处理中的缺陷必须设置负责人" });
+        }
+
+        if (targetStatus === "verified" && !bug.assignee) {
+          // 无负责人时自动将报告人设为负责人
+          if (bug.reporter) {
+            bug.assignee = bug.reporter;
+          }
+        }
       }
 
       if (updateData.status && updateData.status !== bug.status) {
@@ -189,10 +213,12 @@ export const bugController = {
           bug.id,
           userId,
           userName,
-          "status_change",
+          updateData.status === "closed" ? "close" : "status_change",
           {
             oldStatus: bug.status,
             newStatus: updateData.status,
+            oldAssignee: updateData.status === "closed" ? bug.assignee?.realName : undefined,
+            newAssignee: updateData.status === "closed" ? "无" : undefined,
             remark: updateData.log?.remark || "",
           }
         );
@@ -206,6 +232,11 @@ export const bugController = {
           operator: userName,
           time: new Date().toLocaleString("zh-CN")
         });
+
+        // 关闭时清空负责人
+        if (updateData.status === "closed") {
+          (bug.assignee as any) = null;
+        }
       }
 
       if (updateData.severity && updateData.severity !== bug.severity) {
@@ -266,6 +297,23 @@ export const bugController = {
       if (log?.newSeverity) extraFields.newSeverity = log.newSeverity;
 
       bug.status = status;
+
+      // 关闭时清空负责人
+      if (status === "closed") {
+        extraFields.oldAssignee = bug.assignee?.realName || "未知";
+        extraFields.newAssignee = "无";
+        (bug.assignee as any) = null;
+      }
+
+      // 修复完成时负责人改为报告人
+      if (status === "fixed") {
+        if (bug.reporter) {
+          extraFields.oldAssignee = bug.assignee?.realName || "未知";
+          extraFields.newAssignee = bug.reporter.realName;
+          bug.assignee = bug.reporter;
+        }
+      }
+
       await bugRepository.save(bug);
 
       await createOperationLog(
@@ -325,7 +373,7 @@ export const bugController = {
         extraFields.oldAssignee = bug.assignee?.realName || "未处理";
         extraFields.newAssignee = newAssignee?.realName || "未知";
         bug.assignee = newAssignee!;
-        bug.status = "assigned";
+        bug.status = "in_progress";
 
         dingTalkService.sendNotification("assignee_change", {
           type: "BUG",
@@ -390,6 +438,7 @@ export const bugController = {
 
       const bug = await bugRepository.findOne({
         where: { id: parseInt(id as string) },
+        relations: ["assignee"],
       });
 
       if (!bug) {
@@ -403,8 +452,10 @@ export const bugController = {
 
       const user = await userRepository.findOne({ where: { id: userId } });
 
+      const oldAssigneeName = bug.assignee?.realName || "未分配";
+
       bug.assignee = assignee;
-      bug.status = "assigned";
+      bug.status = "in_progress";
       await bugRepository.save(bug);
 
       await createOperationLog(
@@ -413,6 +464,8 @@ export const bugController = {
         user?.realName || "未知用户",
         "assign",
         {
+          oldAssignee: oldAssigneeName,
+          newAssignee: assignee.realName,
           remark: `分配给 ${assignee.realName}`,
         }
       );
@@ -450,6 +503,123 @@ export const bugController = {
     }
   },
 
+  async rejectBug(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { assigneeId, remark } = req.body;
+      const userId = (req as any).user.id;
+
+      const bug = await bugRepository.findOne({
+        where: { id: parseInt(id as string) },
+        relations: ["assignee", "reporter"],
+      });
+
+      if (!bug) {
+        return res.status(404).json({ error: "Bug not found" });
+      }
+
+      if (bug.status !== "fixed") {
+        return res.status(400).json({ error: "只有已修复的缺陷才能打回" });
+      }
+
+      const user = await userRepository.findOne({ where: { id: userId } });
+      const userName = user?.realName || "未知用户";
+
+      const oldAssigneeName = bug.assignee?.realName || "未分配";
+      const newAssignee = assigneeId ? await userRepository.findOne({ where: { id: assigneeId } }) : null;
+      const newAssigneeName = newAssignee?.realName || "未分配";
+
+      bug.assignee = newAssignee || (null as any);
+      bug.status = "in_progress";
+
+      await bugRepository.save(bug);
+
+      await createOperationLog(
+        bug.id, userId, userName, "reject",
+        {
+          oldStatus: "fixed", newStatus: "in_progress",
+          oldAssignee: oldAssigneeName, newAssignee: newAssigneeName,
+          remark: remark || "",
+        }
+      );
+
+      dingTalkService.sendNotification("status_change", {
+        type: "BUG", id: String(bug.id), title: bug.title,
+        oldStatus: "fixed", newStatus: "in_progress",
+        operator: userName, time: new Date().toLocaleString("zh-CN")
+      });
+
+      const updatedBug = await bugRepository.findOne({
+        where: { id: parseInt(id as string) },
+        relations: ["project", "project.manager", "assignee", "reporter"],
+      });
+
+      res.json(updatedBug);
+    } catch (error) {
+      console.error("Error rejecting bug:", error);
+      res.status(500).json({ error: "Failed to reject bug" });
+    }
+  },
+
+  async restartBug(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { assigneeId, remark } = req.body;
+      const userId = (req as any).user.id;
+
+      const bug = await bugRepository.findOne({
+        where: { id: parseInt(id as string) },
+        relations: ["assignee", "reporter"],
+      });
+
+      if (!bug) {
+        return res.status(404).json({ error: "Bug not found" });
+      }
+
+      if (bug.status !== "closed") {
+        return res.status(400).json({ error: "只有已关闭的缺陷才能重启" });
+      }
+
+      const user = await userRepository.findOne({ where: { id: userId } });
+      const userName = user?.realName || "未知用户";
+
+      const oldAssigneeName = bug.assignee?.realName || "未分配";
+      const newAssignee = assigneeId ? await userRepository.findOne({ where: { id: assigneeId } }) : null;
+      const newAssigneeName = newAssignee?.realName || "未分配";
+      const newStatus = newAssignee ? "in_progress" : "pending";
+
+      bug.assignee = newAssignee || (null as any);
+      bug.status = newStatus;
+
+      await bugRepository.save(bug);
+
+      await createOperationLog(
+        bug.id, userId, userName, "restart",
+        {
+          oldStatus: "closed", newStatus,
+          oldAssignee: oldAssigneeName, newAssignee: newAssigneeName,
+          remark: remark || "",
+        }
+      );
+
+      dingTalkService.sendNotification("status_change", {
+        type: "BUG", id: String(bug.id), title: bug.title,
+        oldStatus: "closed", newStatus,
+        operator: userName, time: new Date().toLocaleString("zh-CN")
+      });
+
+      const updatedBug = await bugRepository.findOne({
+        where: { id: parseInt(id as string) },
+        relations: ["project", "project.manager", "assignee", "reporter"],
+      });
+
+      res.json(updatedBug);
+    } catch (error) {
+      console.error("Error restarting bug:", error);
+      res.status(500).json({ error: "Failed to restart bug" });
+    }
+  },
+
   async getBugStats(req: Request, res: Response) {
     try {
       const { projectId } = req.query;
@@ -461,8 +631,7 @@ export const bugController = {
       const stats = {
         total: bugs.length,
         pending: bugs.filter(b => b.status === "pending").length,
-        assigned: bugs.filter(b => b.status === "assigned").length,
-        fixing: bugs.filter(b => b.status === "fixing").length,
+        in_progress: bugs.filter(b => b.status === "in_progress").length,
         fixed: bugs.filter(b => b.status === "fixed").length,
         verified: bugs.filter(b => b.status === "verified").length,
         closed: bugs.filter(b => b.status === "closed").length,

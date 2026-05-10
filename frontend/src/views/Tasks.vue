@@ -64,10 +64,16 @@
         :default-expand-all="true"
         :indent="32"
         class="task-tree-table"
+        @row-click="handleRowClick"
       >
-        <el-table-column prop="title" label="任务名称" min-width="280">
+        <el-table-column label="#" width="60">
           <template #default="{ row }">
-            <div class="task-cell" @click.stop="viewTask(row)">
+            <span class="text-muted">#{{ row.id }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="title" label="任务名称" min-width="300">
+          <template #default="{ row }">
+            <div class="task-cell">
               <span class="task-name">{{ row.title }}</span>
               <el-tag 
                 v-if="row.level === 0 && row.subtasks && row.subtasks.length > 0" 
@@ -97,11 +103,6 @@
                 三级任务
               </el-tag>
             </div>
-          </template>
-        </el-table-column>
-        <el-table-column label="所属项目" width="150">
-          <template #default="{ row }">
-            {{ row.project?.name || '-' }}
           </template>
         </el-table-column>
         <el-table-column label="分类" width="120">
@@ -146,27 +147,16 @@
             {{ new Date(row.createdAt).toLocaleString() }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column label="" width="50" fixed="right">
           <template #default="{ row }">
-            <template v-if="row.level < 2 && userStore.getTaskPermission('create')">
-              <el-button
-                type="primary"
-                link
-                size="small"
-                @click="showSubtaskDialog(row)"
-                :disabled="row.status === 'closed'"
-              >
-                <el-icon><Plus /></el-icon>
-                子任务
-              </el-button>
-            </template>
-            <el-button 
-              type="info" 
-              link 
-              size="small" 
-              @click="viewTask(row)"
+            <el-button
+              v-if="row.level < 2 && userStore.getTaskPermission('create') && row.status !== 'closed'"
+              text
+              size="small"
+              class="subtask-dots"
+              @click.stop="showSubtaskDialog(row)"
             >
-              详情
+              <el-icon><MoreFilled /></el-icon>
             </el-button>
           </template>
         </el-table-column>
@@ -552,6 +542,10 @@ const showCreateDialog = () => {
   dialogVisible.value = true
 }
 
+const handleRowClick = (row: any) => {
+  router.push(`/tasks/${row.id}`)
+}
+
 const viewTask = (task: any) => {
   router.push(`/tasks/${task.id}`)
 }
@@ -764,6 +758,20 @@ onMounted(() => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.subtask-dots {
+  flex-shrink: 0;
+  margin-left: auto;
+  color: var(--nb-text-tertiary);
+  padding: 2px 4px;
+  border-radius: var(--nb-radius-sm);
+  transition: all var(--nb-transition-fast);
+}
+
+.subtask-dots:hover {
+  color: var(--nb-primary);
+  background: var(--nb-primary-lighter);
 }
 
 .main-task-tag {

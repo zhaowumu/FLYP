@@ -14,7 +14,7 @@
         <div class="content-card">
           <div class="task-header">
             <div class="task-title-area" v-if="!isEditingTitle">
-              <h1>{{ task.title }}</h1>
+              <h1><span class="id-badge">#{{ task.id }}</span> {{ task.title }}</h1>
               <el-button v-if="canEdit" text size="small" @click="startEditTitle" class="edit-btn">
                 <el-icon><Edit /></el-icon>
               </el-button>
@@ -1231,6 +1231,19 @@ watch(() => route.params.id, (newId) => {
   margin: 0;
   flex: 1;
   line-height: var(--nb-line-height-tight);
+  display: flex;
+  align-items: center;
+}
+
+.id-badge {
+  font-size: var(--nb-font-size-md);
+  color: var(--nb-text-secondary);
+  font-weight: var(--nb-font-weight-medium);
+  background: var(--nb-bg-muted);
+  padding: 2px 8px;
+  border-radius: var(--nb-radius-sm);
+  margin-right: 8px;
+  flex-shrink: 0;
 }
 
 .edit-btn {
@@ -1581,10 +1594,12 @@ watch(() => route.params.id, (newId) => {
 }
 
 .inline-edit-btn {
-  color: var(--nb-text-placeholder);
-  padding: 2px;
+  color: var(--nb-text-tertiary);
+  padding: 4px;
   border-radius: var(--nb-radius-sm);
   transition: all var(--nb-transition-fast);
+  background: var(--nb-bg-muted);
+  margin-left: 4px;
 }
 
 .inline-edit-btn:hover {

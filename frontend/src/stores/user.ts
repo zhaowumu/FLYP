@@ -59,9 +59,12 @@ export const useUserStore = defineStore('user', () => {
     const relationPerms: Record<string, boolean> = {
       fix: extra.isAssignee || false,
       reopen: extra.isReporter || false,
+      assign: extra.isReporter || false,
+      rejectBug: extra.isReporter || false,
+      restartBug: true,
       verify: extra.isReporter || false,
       close: extra.isReporter || false,
-      transfer: (extra.isReporter || false) || (extra.isAssignee || false),
+      transfer: extra.isAssignee || false,
       changeSeverity: isAdminOrPM || (extra.isReporter || false),
       changeStatus: isAdminOrPM || (extra.isReporter || false),
       comment: true,

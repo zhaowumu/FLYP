@@ -291,9 +291,8 @@ function getSeverityLabel(severity: string) {
 
 function getBugStatusType(status: string) {
   const map: Record<string, any> = {
-    pending: 'info',
-    assigned: 'warning',
-    fixing: 'warning',
+    pending: 'primary',
+    in_progress: 'warning',
     fixed: 'success',
     verified: '',
     closed: 'info'
@@ -304,8 +303,7 @@ function getBugStatusType(status: string) {
 function getBugStatusLabel(status: string) {
   const map: Record<string, string> = {
     pending: '待处理',
-    assigned: '已分配',
-    fixing: '修复中',
+    in_progress: '处理中',
     fixed: '已修复',
     verified: '已验证',
     closed: '已关闭'

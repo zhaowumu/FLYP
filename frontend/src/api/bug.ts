@@ -43,3 +43,11 @@ export const extendDueDate = (id: number, data: { newDueDate: string; remark?: s
 export const getBugCategories = () => {
   return api.get('/bugs/categories')
 }
+
+export const rejectBug = (id: number, data: { assigneeId: number | null; remark?: string }) => {
+  return api.patch(`/bugs/${id}/reject`, data)
+}
+
+export const restartBug = (id: number, data: { assigneeId: number | null; remark?: string }) => {
+  return api.patch(`/bugs/${id}/restart`, data)
+}

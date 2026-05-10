@@ -28,8 +28,7 @@
       <div class="table-toolbar">
         <el-select v-model="filterStatus" placeholder="状态筛选" clearable style="width: 150px">
           <el-option label="待处理" value="pending" />
-          <el-option label="已分配" value="assigned" />
-          <el-option label="修复中" value="fixing" />
+          <el-option label="处理中" value="in_progress" />
           <el-option label="已修复" value="fixed" />
           <el-option label="已验证" value="verified" />
           <el-option label="已关闭" value="closed" />
@@ -59,14 +58,14 @@
       </div>
 
       <el-table :data="filteredBugs" style="width: 100%">
+        <el-table-column label="#" width="60">
+          <template #default="{ row }">
+            <span class="text-muted">#{{ row.id }}</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="title" label="缺陷标题" min-width="250">
           <template #default="{ row }">
             <div class="bug-title" @click="viewBug(row)">{{ row.title }}</div>
-          </template>
-        </el-table-column>
-        <el-table-column label="所属项目" width="150">
-          <template #default="{ row }">
-            {{ row.project?.name || '-' }}
           </template>
         </el-table-column>
         <el-table-column label="分类" width="120">
@@ -295,7 +294,7 @@ const getSeverityText = (severity: string) => {
 
 const getStatusType = (status: string) => {
   const map: Record<string, string> = {
-    pending: 'info', assigned: 'warning', fixing: 'warning',
+    pending: 'primary', in_progress: 'warning',
     fixed: 'success', verified: 'success', closed: 'info'
   }
   return map[status] || 'info'
@@ -303,7 +302,7 @@ const getStatusType = (status: string) => {
 
 const getStatusText = (status: string) => {
   const map: Record<string, string> = {
-    pending: '待处理', assigned: '已分配', fixing: '修复中',
+    pending: '待处理', in_progress: '处理中',
     fixed: '已修复', verified: '已验证', closed: '已关闭'
   }
   return map[status] || status

@@ -228,6 +228,12 @@ export const taskController = {
           task.status = "in_progress";
         }
 
+        // 清空负责人联动：in_progress/completed → pending
+        if (newAssignees.length === 0 && (task.status === "in_progress" || task.status === "completed")) {
+          const oldStatus = task.status;
+          task.status = "pending";
+        }
+
         delete updateData.assigneeIds;
       }
 
@@ -294,6 +300,22 @@ export const taskController = {
 
         task.category = newCategory;
         delete updateData.category;
+      }
+
+      // 状态变更联动校验
+      if (updateData.status && updateData.status !== task.status) {
+        const targetStatus = updateData.status;
+
+        if (targetStatus === "in_progress" && (!task.assignees || task.assignees.length === 0)) {
+          return res.status(400).json({ error: "进行中的任务必须至少有一位负责人" });
+        }
+
+        if (targetStatus === "completed" && (!task.assignees || task.assignees.length === 0)) {
+          // 无负责人时自动将创建人设为负责人
+          if (task.creator) {
+            task.assignees = [task.creator];
+          }
+        }
       }
 
       if (updateData.status && updateData.status !== task.status) {

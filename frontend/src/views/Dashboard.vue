@@ -889,7 +889,7 @@ const bugsToVerify = computed(() => allBugs.value.filter((b: any) => b.status ==
 const recentProjects = computed(() => allProjects.value.filter((p: any) => p.status === 'active').slice(0, 8))
 const myProjects = computed(() => allProjects.value.filter((p: any) => p.manager?.id === userId.value))
 
-const urgentBugs = computed(() => allBugs.value.filter((b: any) => b.status === 'pending' || b.status === 'assigned').sort((a: any, b: any) => {
+const urgentBugs = computed(() => allBugs.value.filter((b: any) => b.status === 'pending' || b.status === 'in_progress').sort((a: any, b: any) => {
   const order: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 }
   return (order[a.severity] || 2) - (order[b.severity] || 2)
 }).slice(0, 5))
@@ -1131,7 +1131,7 @@ const getStatusText = (s: string) => {
 }
 
 const getBugStatusText = (s: string) => {
-  const map: Record<string, string> = { pending: '待处理', assigned: '已分配', fixing: '修复中', fixed: '已修复', verified: '已验证', closed: '已关闭' }
+  const map: Record<string, string> = { pending: '待处理', in_progress: '处理中', fixed: '已修复', verified: '已验证', closed: '已关闭' }
   return map[s] || s
 }
 
@@ -1171,7 +1171,7 @@ const getStatusTagClass = (s: string) => {
 }
 
 const getBugStatusTagClass = (s: string) => {
-  const map: Record<string, string> = { pending: 'tag-default', assigned: 'tag-warning', fixing: 'tag-warning', fixed: 'tag-success', verified: 'tag-success', closed: 'tag-default' }
+  const map: Record<string, string> = { pending: 'tag-primary', in_progress: 'tag-warning', fixed: 'tag-success', verified: 'tag-success', closed: 'tag-default' }
   return map[s] || 'tag-default'
 }
 
@@ -1214,7 +1214,7 @@ const getDueDays = (dueDate: Date | string) => {
 
 const statusTextMap: Record<string, string> = {
   pending: '待处理', in_progress: '进行中', completed: '已完成', closed: '已关闭',
-  assigned: '已分配', fixing: '修复中', fixed: '已修复', verified: '已验证'
+  fixed: '已修复', verified: '已验证'
 }
 const priorityTextMap: Record<string, string> = { low: '低', medium: '中', high: '高', urgent: '紧急' }
 const severityTextMap: Record<string, string> = { low: '低', medium: '中', high: '高', critical: '严重' }

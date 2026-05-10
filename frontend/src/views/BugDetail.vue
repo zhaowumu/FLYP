@@ -14,7 +14,7 @@
         <div class="content-card">
           <div class="bug-header">
             <div class="bug-title-area" v-if="!isEditingTitle">
-              <h1>{{ bug.title }}</h1>
+              <h1><span class="id-badge">#{{ bug.id }}</span> {{ bug.title }}</h1>
               <el-button v-if="canEdit" text size="small" @click="startEditTitle" class="edit-btn">
                 <el-icon><Edit /></el-icon>
               </el-button>
@@ -185,27 +185,37 @@
 
     <!-- 悬浮操作栏 -->
     <div class="floating-action-bar">
-      <!-- 已修复按钮：只有负责人才能标记为已修复 -->
+      <!-- 分配按钮：报告人+admin+PM可见（非 fixed/verified/closed 状态） -->
+      <el-button 
+        v-if="canAssign"
+        type="primary" 
+        @click="showActionPanel('assign')"
+      >
+        <el-icon><User /></el-icon>
+        分配
+      </el-button>
+      
+      <!-- 修复完成按钮：负责人可见（in_progress 状态） -->
       <el-button 
         v-if="canFix"
         type="primary" 
         @click="showActionPanel('fix')"
       >
         <el-icon><Check /></el-icon>
-        已修复
+        修复完成
       </el-button>
       
-      <!-- 重新打开修复：报告人可以重新打开已修复的bug -->
+      <!-- 转交按钮：负责人可见 -->
       <el-button 
-        v-if="canReopenFix"
+        v-if="canTransfer"
         type="warning" 
-        @click="showActionPanel('reopen')"
+        @click="showActionPanel('transfer')"
       >
-        <el-icon><RefreshRight /></el-icon>
-        重新打开
+        <el-icon><Switch /></el-icon>
+        转交
       </el-button>
       
-      <!-- 验证通过：只有报告人才能验证 -->
+      <!-- 验证通过按钮：报告人可见（fixed 状态） -->
       <el-button 
         v-if="canVerify"
         type="success" 
@@ -215,7 +225,17 @@
         验证通过
       </el-button>
       
-      <!-- 关闭按钮：只有报告人才能关闭 -->
+      <!-- 打回按钮：报告人可见（fixed 状态） -->
+      <el-button 
+        v-if="canReject"
+        type="warning" 
+        @click="showActionPanel('reject')"
+      >
+        <el-icon><RefreshRight /></el-icon>
+        打回
+      </el-button>
+      
+      <!-- 关闭按钮：报告人可见（verified 状态） -->
       <el-button 
         v-if="canClose"
         type="info" 
@@ -225,34 +245,14 @@
         关闭
       </el-button>
       
-      <!-- 重新打开已关闭的bug -->
+      <!-- 重启按钮：任何人可见（closed 状态） -->
       <el-button 
-        v-if="canReopen"
-        type="warning" 
-        @click="showActionPanel('reopen')"
+        v-if="canRestart"
+        type="primary" 
+        @click="showActionPanel('restart')"
       >
-        <el-icon><RefreshRight /></el-icon>
-        重新打开
-      </el-button>
-      
-      <!-- 分配按钮：只有报告人才能分配 -->
-      <el-button 
-        v-if="canAssign"
-        type="warning" 
-        @click="showActionPanel('assign')"
-      >
-        <el-icon><User /></el-icon>
-        分配
-      </el-button>
-      
-      <!-- 转交 -->
-      <el-button 
-        v-if="canTransfer"
-        type="warning"
-        @click="showActionPanel('transfer')"
-      >
-        <el-icon><Switch /></el-icon>
-        转交
+        <el-icon><Refresh /></el-icon>
+        重启
       </el-button>
       
       <!-- 备注按钮：任何人都可以添加 -->
@@ -277,7 +277,7 @@
         延期
       </el-button>
       
-      <!-- 删除按钮：只有报告人才能删除 -->
+      <!-- 删除按钮：仅项目经理和管理员可见 -->
       <el-button 
         v-if="canDelete"
         type="danger" 
@@ -300,6 +300,35 @@
     >
       <div class="drawer-content">
         <div class="drawer-body-scroll">
+          <!-- 分配：选择负责人 -->
+          <div class="form-section" v-if="currentAction === 'assign'">
+            <el-alert 
+              title="分配缺陷" 
+              type="primary" 
+              :closable="false"
+              show-icon
+            >
+              <template #default>
+                选择负责人后，缺陷状态将变为"处理中"
+              </template>
+            </el-alert>
+            <div style="margin-top: var(--nb-space-4);">
+              <span class="label">选择负责人</span>
+              <el-select 
+                v-model="assignUserId" 
+                placeholder="请选择负责人" 
+                style="width: 100%"
+              >
+                <el-option
+                  v-for="user in users"
+                  :key="user.id"
+                  :label="user.realName"
+                  :value="user.id"
+                />
+              </el-select>
+            </div>
+          </div>
+
           <!-- 转交：选择负责人 -->
           <div class="form-section" v-if="currentAction === 'transfer'">
             <span class="label">转交给</span>
@@ -315,6 +344,80 @@
                 :value="user.id"
               />
             </el-select>
+          </div>
+
+          <!-- 打回：重选负责人 → in_progress -->
+          <div class="form-section" v-if="currentAction === 'reject'">
+            <el-alert 
+              title="确认打回缺陷" 
+              type="warning" 
+              :closable="false"
+              show-icon
+            >
+              <template #default>
+                缺陷将被重新打开处理，状态将变为"处理中"，请选择新的负责人
+              </template>
+            </el-alert>
+            <div style="margin-top: var(--nb-space-4);">
+              <span class="label">选择负责人（可选）</span>
+              <el-select 
+                v-model="rejectAssignUserId" 
+                placeholder="请选择负责人" 
+                clearable
+                style="width: 100%"
+              >
+                <el-option
+                  v-for="user in users"
+                  :key="user.id"
+                  :label="user.realName"
+                  :value="user.id"
+                />
+              </el-select>
+            </div>
+          </div>
+
+          <!-- 关闭：确认关闭 → closed（清空负责人） -->
+          <div class="form-section" v-if="currentAction === 'close'">
+            <el-alert 
+              title="确认关闭缺陷" 
+              type="info" 
+              :closable="false"
+              show-icon
+            >
+              <template #default>
+                缺陷将被关闭，状态将变为"已关闭"，负责人将被清空
+              </template>
+            </el-alert>
+          </div>
+
+          <!-- 重启：重选负责人 → in_progress/pending -->
+          <div class="form-section" v-if="currentAction === 'restart'">
+            <el-alert 
+              title="确认重启缺陷" 
+              type="primary" 
+              :closable="false"
+              show-icon
+            >
+              <template #default>
+                缺陷将重新激活，请指定新的负责人（若指定则状态为"处理中"，否则为"待处理"）
+              </template>
+            </el-alert>
+            <div style="margin-top: var(--nb-space-4);">
+              <span class="label">选择负责人（可选）</span>
+              <el-select 
+                v-model="restartAssignUserId" 
+                placeholder="请选择负责人" 
+                clearable
+                style="width: 100%"
+              >
+                <el-option
+                  v-for="user in users"
+                  :key="user.id"
+                  :label="user.realName"
+                  :value="user.id"
+                />
+              </el-select>
+            </div>
           </div>
 
           <!-- 更改严重程度 -->
@@ -409,7 +512,7 @@
 import { ref, computed, watch, onMounted, nextTick, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getBug, updateBugStatus, addComment as addBugComment, updateBug, extendDueDate as extendBugDueDate } from '../api/bug'
+import { getBug, updateBugStatus, addComment as addBugComment, updateBug, assignBug, extendDueDate as extendBugDueDate, rejectBug, restartBug } from '../api/bug'
 import { getUsers } from '../api/user'
 import { useUserStore } from '../stores/user'
 import RichEditor from '../components/RichEditor.vue'
@@ -427,6 +530,8 @@ const currentAction = ref<string | null>(null)
 const showPanel = ref(false)
 const assignUserId = ref<number | null>(null)
 const transferUserId = ref<number | null>(null)
+const rejectAssignUserId = ref<number | null>(null)
+const restartAssignUserId = ref<number | null>(null)
 const newSeverity = ref('')
 const newStatus = ref('')
 const isEditingTitle = ref(false)
@@ -460,21 +565,21 @@ const canEdit = computed(() => isAssignee.value || isReporter.value || isProject
 const isClosed = computed(() => bug.value?.status === 'closed')
 const isVerified = computed(() => bug.value?.status === 'verified')
 const isFixed = computed(() => bug.value?.status === 'fixed')
-const isActive = computed(() => !isClosed.value && !isVerified.value)
+const isInProgress = computed(() => bug.value?.status === 'in_progress')
+const isActive = computed(() => !isClosed.value && !isVerified.value && !isFixed.value)
 
 // 按钮权限配置（角色权限 + 关系权限）
-// extra 需传入实际关系布尔值，不能用字面量 true
-const canFix = computed(() => userStore.getBugPermission('fix', { isAssignee: isAssignee.value }) && isAssignee.value && isActive.value && !isFixed.value)
-const canReopenFix = computed(() => userStore.getBugPermission('reopen', { isReporter: isReporter.value }) && isFixed.value)
-const canVerify = computed(() => userStore.getBugPermission('verify', { isReporter: isReporter.value }) && isFixed.value)
-const canClose = computed(() => userStore.getBugPermission('close', { isReporter: isReporter.value }) && (isVerified.value || isFixed.value))
-const canReopen = computed(() => userStore.getBugPermission('reopen', { isReporter: isReporter.value }) && isClosed.value)
-const canAssign = computed(() => userStore.getBugPermission('assign', { isReporter: isReporter.value }) && !isClosed.value && !isVerified.value)
+const canAssign = computed(() => userStore.getBugPermission('assign', { isReporter: isReporter.value }) && (isReporter.value || isAdmin.value || isProjectManager.value) && (isActive.value || isInProgress.value))
+const canFix = computed(() => userStore.getBugPermission('fix', { isAssignee: isAssignee.value }) && isAssignee.value && isInProgress.value)
+const canVerify = computed(() => userStore.getBugPermission('verify', { isReporter: isReporter.value }) && isReporter.value && isFixed.value)
+const canReject = computed(() => userStore.getBugPermission('rejectBug', { isReporter: isReporter.value }) && isReporter.value && isFixed.value)
+const canClose = computed(() => userStore.getBugPermission('close', { isReporter: isReporter.value }) && isReporter.value && isVerified.value)
+const canRestart = computed(() => userStore.getBugPermission('restartBug') && bug.value?.status === 'closed')
+const canTransfer = computed(() => userStore.getBugPermission('transfer', { isAssignee: isAssignee.value }) && isAssignee.value && isActive.value && !isFixed.value && !isVerified.value)
 const canChangeSeverity = computed(() => userStore.getBugPermission('changeSeverity', { isReporter: isReporter.value }) && !isClosed.value && !isVerified.value)
-const canTransfer = computed(() => userStore.getBugPermission('transfer', { isReporter: isReporter.value, isAssignee: isAssignee.value }) && !isClosed.value && !isVerified.value)
 const canChangeStatus = computed(() => userStore.getBugPermission('changeStatus', { isReporter: isReporter.value }) && !isClosed.value && !isVerified.value)
 const canComment = computed(() => userStore.getBugPermission('comment'))
-const canDelete = computed(() => userStore.getBugPermission('delete'))
+const canDelete = computed(() => (isAdmin.value || userStore.user?.role === 'project_manager'))
 const canExtend = computed(() => userStore.getBugPermission('extendDueDate') && !isClosed.value)
 
 const getSeverityType = (severity: string) => {
@@ -493,7 +598,7 @@ const getSeverityText = (severity: string) => {
 
 const getStatusType = (status: string) => {
   const map: Record<string, string> = {
-    pending: 'info', assigned: 'warning', fixing: 'warning',
+    pending: 'primary', in_progress: 'warning',
     fixed: 'success', verified: 'success', closed: 'info'
   }
   return map[status] || 'info'
@@ -501,7 +606,7 @@ const getStatusType = (status: string) => {
 
 const getStatusText = (status: string) => {
   const map: Record<string, string> = {
-    pending: '待处理', assigned: '已分配', fixing: '修复中',
+    pending: '待处理', in_progress: '处理中',
     fixed: '已修复', verified: '已验证', closed: '已关闭'
   }
   return map[status] || status
@@ -525,13 +630,41 @@ const formatLogAction = (log: any) => {
     case 'severity_change':
       return `将严重程度从「${getSeverityText(oldSeverity || 'medium')}」调整为「${getSeverityText(newSeverity)}」`
     case 'assign':
-      return `将负责人从「${oldAssignee || '未处理'}」变更为「${newAssignee}」`
-    case 'fix':
-      return '标记缺陷为已修复'
+      return newAssignee
+        ? `将负责人从「${oldAssignee || '未处理'}」变更为「${newAssignee}」`
+        : `分配给 ${oldAssignee || '未知用户'}`
+    case 'fix': {
+      let text = '标记缺陷为已修复'
+      if (oldAssignee && newAssignee && oldAssignee !== newAssignee) {
+        text += `，负责人从「${oldAssignee}」变更为「${newAssignee}」`
+      }
+      return text
+    }
     case 'verify':
       return '验证通过'
-    case 'close':
-      return '关闭了缺陷'
+    case 'reject': {
+      let text = '打回了缺陷'
+      if (oldAssignee && newAssignee && oldAssignee !== newAssignee) {
+        text += `，负责人从「${oldAssignee}」变更为「${newAssignee}」`
+      }
+      text += '，状态改为处理中'
+      return text
+    }
+    case 'restart': {
+      let text = '重启了缺陷'
+      if (oldAssignee && newAssignee && oldAssignee !== newAssignee) {
+        text += `，负责人从「${oldAssignee}」变更为「${newAssignee}」`
+      }
+      text += `，状态改为${getStatusText(newStatus || '')}`
+      return text
+    }
+    case 'close': {
+      let text = '关闭了缺陷'
+      if (oldAssignee && oldAssignee !== '无') {
+        text += `，清空了负责人「${oldAssignee}」`
+      }
+      return text
+    }
     case 'comment':
       return '添加了备注'
     case 'extend_due_date':
@@ -543,10 +676,11 @@ const formatLogAction = (log: any) => {
 
 const getActionTitle = (action: string) => {
   const map: Record<string, string> = {
+    assign: '分配缺陷',
     fix: '标记为已修复',
-    reopen: '重新打开缺陷',
-    verify: '验证通过',
+    reject: '打回缺陷',
     close: '关闭缺陷',
+    restart: '重启缺陷',
     transfer: '转交缺陷',
     severity: '更改严重程度',
     changeStatus: '更改状态',
@@ -558,10 +692,11 @@ const getActionTitle = (action: string) => {
 
 const getActionConfirmText = (action: string) => {
   const map: Record<string, string> = {
+    assign: '确认分配',
     fix: '确认已修复',
-    reopen: '确认重新打开',
-    verify: '确认通过',
+    reject: '确认打回',
     close: '确认关闭',
+    restart: '确认重启',
     transfer: '确认转交',
     severity: '确认修改',
     changeStatus: '确认修改',
@@ -685,7 +820,10 @@ const saveDescription = async (field: string) => {
 
 const showActionPanel = (action: string) => {
   commentText.value = ''
+  assignUserId.value = null
   transferUserId.value = null
+  rejectAssignUserId.value = null
+  restartAssignUserId.value = null
   newSeverity.value = bug.value?.severity || 'medium'
   newStatus.value = bug.value?.status || ''
   newDueDate.value = bug.value?.dueDate ? new Date(bug.value.dueDate) : null
@@ -702,13 +840,21 @@ const closeActionPanel = () => {
 const onDrawerClosed = () => {
   currentAction.value = null
   commentText.value = ''
+  assignUserId.value = null
   transferUserId.value = null
+  rejectAssignUserId.value = null
+  restartAssignUserId.value = null
   newSeverity.value = ''
   newStatus.value = ''
   newDueDate.value = null
 }
 
 const executeAction = async () => {
+  if ((currentAction.value === 'assign' || currentAction.value === 'transfer') && !assignUserId.value && currentAction.value === 'assign') {
+    ElMessage.warning('请选择负责人')
+    return
+  }
+
   if (currentAction.value === 'transfer' && !transferUserId.value) {
     ElMessage.warning('请选择负责人')
     return
@@ -733,6 +879,17 @@ const executeAction = async () => {
   submitting.value = true
   try {
     switch (currentAction.value) {
+      case 'assign': {
+        if (!assignUserId.value) {
+          ElMessage.warning('请选择负责人')
+          submitting.value = false
+          return
+        }
+        await assignBug(bug.value.id, assignUserId.value)
+        ElMessage.success('分配成功')
+        break
+      }
+
       case 'fix': {
         await updateBugStatus(bug.value.id, 'fixed', {
           action: 'fix',
@@ -751,12 +908,30 @@ const executeAction = async () => {
         break
       }
 
+      case 'reject': {
+        await rejectBug(bug.value.id, {
+          assigneeId: rejectAssignUserId.value,
+          remark: commentText.value || ''
+        })
+        ElMessage.success('缺陷已打回')
+        break
+      }
+
       case 'close': {
         await updateBugStatus(bug.value.id, 'closed', {
           action: 'close',
           remark: commentText.value || ''
         })
         ElMessage.success('缺陷已关闭')
+        break
+      }
+
+      case 'restart': {
+        await restartBug(bug.value.id, {
+          assigneeId: restartAssignUserId.value,
+          remark: commentText.value || ''
+        })
+        ElMessage.success('缺陷已重启')
         break
       }
 
@@ -806,15 +981,6 @@ const executeAction = async () => {
           remark: commentText.value
         })
         ElMessage.success('备注添加成功')
-        break
-      }
-
-      case 'reopen': {
-        await updateBugStatus(bug.value.id, 'pending', {
-          action: 'status_change',
-          remark: commentText.value || ''
-        })
-        ElMessage.success('缺陷已重新打开')
         break
       }
 
@@ -943,6 +1109,19 @@ onMounted(() => {
   color: var(--nb-text-primary);
   margin: 0;
   flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.id-badge {
+  font-size: var(--nb-font-size-md);
+  color: var(--nb-text-secondary);
+  font-weight: var(--nb-font-weight-medium);
+  background: var(--nb-bg-muted);
+  padding: 2px 8px;
+  border-radius: var(--nb-radius-sm);
+  margin-right: 8px;
+  flex-shrink: 0;
 }
 
 .bug-title-edit {
