@@ -27,7 +27,7 @@
             <div class="permission-section">
               <div class="section-header">
                 <h3>任务权限</h3>
-                <span class="section-tip">创建人自动获得：转交、关闭、重新打开 | 负责人自动获得：转交、完成 | 更改状态、更改优先级仅管理员、项目经理、创建人可操作</span>
+                <span class="section-tip">以下操作由关系权限控制，不在系统设置中显示：完成、转交（仅负责人）、打回、关闭（仅创建人）</span>
               </div>
               <el-table :data="taskActions" border size="default" style="width: 100%">
                 <el-table-column prop="label" label="操作" width="150" align="center" />
@@ -47,7 +47,7 @@
             <div class="permission-section">
               <div class="section-header">
                 <h3>缺陷权限</h3>
-                <span class="section-tip">报告人自动获得：转交、验证通过、关闭、重新打开 | 负责人自动获得：转交、已修复 | 更改状态、更改严重程度仅管理员、项目经理、报告人可操作</span>
+                <span class="section-tip">以下操作由关系权限控制，不在系统设置中显示：修复（仅负责人）、验证通过/打回/关闭（仅报告人）、转交（仅负责人）</span>
               </div>
               <el-table :data="bugActions" border size="default" style="width: 100%">
                 <el-table-column prop="label" label="操作" width="150" align="center" />
@@ -564,10 +564,8 @@ const roleKeys = Object.keys(ROLE_LABELS)
 
 const taskActions = [
   { key: 'create', label: '创建任务' },
-  { key: 'complete', label: '完成' },
-  { key: 'reopen', label: '重新打开' },
-  { key: 'close', label: '关闭' },
-  { key: 'transfer', label: '转交' },
+  { key: 'assign', label: '指派' },
+  { key: 'restart', label: '重启' },
   { key: 'comment', label: '备注' },
   { key: 'delete', label: '删除' },
   { key: 'extendDueDate', label: '延期' },
@@ -580,44 +578,42 @@ const projectActions = [
 
 const bugActions = [
   { key: 'create', label: '创建BUG' },
-  { key: 'fix', label: '已修复' },
-  { key: 'reopen', label: '重新打开' },
-  { key: 'verify', label: '验证通过' },
-  { key: 'close', label: '关闭' },
-  { key: 'transfer', label: '转交' },
+  { key: 'assign', label: '分配' },
+  { key: 'restartBug', label: '重启' },
   { key: 'comment', label: '备注' },
   { key: 'delete', label: '删除' },
+  { key: 'extendDueDate', label: '延期' },
 ]
 
 const DEFAULT_PERMISSIONS = {
   admin: {
-    task: { create: true, complete: true, reopen: true, close: true, transfer: true, comment: true, delete: true, extendDueDate: true },
-    bug: { create: true, fix: true, reopen: true, verify: true, close: true, transfer: true, comment: true, delete: true, extendDueDate: true },
+    task: { create: true, assign: true, restart: true, comment: true, delete: true, extendDueDate: true },
+    bug: { create: true, assign: true, restartBug: true, comment: true, delete: true, extendDueDate: true },
     project: { create: true, delete: true },
   },
   project_manager: {
-    task: { create: true, complete: true, reopen: true, close: true, transfer: true, comment: true, delete: true, extendDueDate: true },
-    bug: { create: true, fix: true, reopen: true, verify: true, close: true, transfer: true, comment: true, delete: true, extendDueDate: true },
+    task: { create: true, assign: true, restart: true, comment: true, delete: true, extendDueDate: true },
+    bug: { create: true, assign: true, restartBug: true, comment: true, delete: true, extendDueDate: true },
     project: { create: true, delete: false },
   },
   developer: {
-    task: { create: true, complete: false, reopen: false, close: false, transfer: false, comment: true, delete: false, extendDueDate: false },
-    bug: { create: true, fix: false, reopen: false, verify: false, close: false, transfer: false, comment: true, delete: false, extendDueDate: false },
+    task: { create: true, assign: false, restart: true, comment: true, delete: false, extendDueDate: false },
+    bug: { create: true, assign: false, restartBug: true, comment: true, delete: false, extendDueDate: false },
     project: { create: false, delete: false },
   },
   artist: {
-    task: { create: true, complete: false, reopen: false, close: false, transfer: false, comment: true, delete: false, extendDueDate: false },
-    bug: { create: true, fix: false, reopen: false, verify: false, close: false, transfer: false, comment: true, delete: false, extendDueDate: false },
+    task: { create: true, assign: false, restart: true, comment: true, delete: false, extendDueDate: false },
+    bug: { create: true, assign: false, restartBug: true, comment: true, delete: false, extendDueDate: false },
     project: { create: false, delete: false },
   },
   designer: {
-    task: { create: true, complete: false, reopen: false, close: false, transfer: false, comment: true, delete: false, extendDueDate: false },
-    bug: { create: true, fix: false, reopen: false, verify: false, close: false, transfer: false, comment: true, delete: false, extendDueDate: false },
+    task: { create: true, assign: false, restart: true, comment: true, delete: false, extendDueDate: false },
+    bug: { create: true, assign: false, restartBug: true, comment: true, delete: false, extendDueDate: false },
     project: { create: false, delete: false },
   },
   tester: {
-    task: { create: true, complete: false, reopen: false, close: false, transfer: false, comment: true, delete: false, extendDueDate: false },
-    bug: { create: true, fix: false, reopen: false, verify: false, close: false, transfer: false, comment: true, delete: false, extendDueDate: false },
+    task: { create: true, assign: false, restart: true, comment: true, delete: false, extendDueDate: false },
+    bug: { create: true, assign: false, restartBug: true, comment: true, delete: false, extendDueDate: false },
     project: { create: false, delete: false },
   },
 }
