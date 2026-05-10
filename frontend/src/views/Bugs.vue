@@ -27,11 +27,10 @@
 
       <div class="table-toolbar">
         <el-select v-model="filterStatus" placeholder="状态筛选" clearable style="width: 150px">
-          <el-option label="待处理" value="pending" />
-          <el-option label="处理中" value="in_progress" />
-          <el-option label="已修复" value="fixed" />
-          <el-option label="已验证" value="verified" />
-          <el-option label="已关闭" value="closed" />
+          <el-option v-for="opt in statusOptions" :key="opt.value" :label="opt.label" :value="opt.value">
+            <span class="status-dot" :style="{ backgroundColor: statusColorMap[opt.value] }"></span>
+            {{ opt.label }}
+          </el-option>
         </el-select>
         <el-select v-model="filterSeverity" placeholder="严重程度" clearable style="width: 150px">
           <el-option label="低" value="low" />
@@ -295,7 +294,7 @@ const getSeverityText = (severity: string) => {
 const getStatusType = (status: string) => {
   const map: Record<string, string> = {
     pending: 'primary', in_progress: 'warning',
-    fixed: 'success', verified: 'success', closed: 'info'
+    fixed: 'warning', verified: 'success', closed: 'info'
   }
   return map[status] || 'info'
 }
@@ -306,6 +305,22 @@ const getStatusText = (status: string) => {
     fixed: '已修复', verified: '已验证', closed: '已关闭'
   }
   return map[status] || status
+}
+
+const statusOptions = [
+  { label: '待处理', value: 'pending' },
+  { label: '处理中', value: 'in_progress' },
+  { label: '已修复', value: 'fixed' },
+  { label: '已验证', value: 'verified' },
+  { label: '已关闭', value: 'closed' }
+]
+
+const statusColorMap: Record<string, string> = {
+  pending: 'var(--el-color-primary)',
+  in_progress: 'var(--el-color-warning)',
+  fixed: 'var(--el-color-warning)',
+  verified: 'var(--el-color-success)',
+  closed: 'var(--el-color-info)'
 }
 
 const getRemainingTime = (dueDate: Date | string) => {
@@ -414,6 +429,14 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 8px;
+  vertical-align: middle;
+}
 .bugs-page {
   padding: 0;
 }

@@ -27,10 +27,10 @@
 
       <div class="table-toolbar">
         <el-select v-model="filterStatus" placeholder="状态筛选" clearable style="width: 150px">
-          <el-option label="待处理" value="pending" />
-          <el-option label="进行中" value="in_progress" />
-          <el-option label="已完成" value="completed" />
-          <el-option label="已关闭" value="closed" />
+          <el-option v-for="opt in statusOptions" :key="opt.value" :label="opt.label" :value="opt.value">
+            <span class="status-dot" :style="{ backgroundColor: statusColorMap[opt.value] }"></span>
+            {{ opt.label }}
+          </el-option>
         </el-select>
         <el-select v-model="filterPriority" placeholder="优先级筛选" clearable style="width: 150px">
           <el-option label="低" value="low" />
@@ -470,6 +470,20 @@ const getStatusText = (status: string) => {
   return map[status] || status
 }
 
+const statusOptions = [
+  { label: '待处理', value: 'pending' },
+  { label: '进行中', value: 'in_progress' },
+  { label: '已完成', value: 'completed' },
+  { label: '已关闭', value: 'closed' }
+]
+
+const statusColorMap: Record<string, string> = {
+  pending: 'var(--el-color-primary)',
+  in_progress: 'var(--el-color-warning)',
+  completed: 'var(--el-color-success)',
+  closed: 'var(--el-color-info)'
+}
+
 const getRemainingTime = (dueDate: Date | string) => {
   const now = new Date()
   const due = new Date(dueDate)
@@ -627,6 +641,14 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 8px;
+  vertical-align: middle;
+}
 .tasks-page {
   padding: var(--nb-space-6);
   background: var(--nb-bg-page);

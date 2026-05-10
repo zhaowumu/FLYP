@@ -443,11 +443,21 @@
               placeholder="请选择状态" 
               style="width: 100%"
             >
-              <el-option label="待处理" value="pending" :disabled="bug?.status === 'pending'" />
-              <el-option label="处理中" value="in_progress" :disabled="bug?.status === 'in_progress'" />
-              <el-option label="已修复" value="fixed" :disabled="bug?.status === 'fixed'" />
-              <el-option label="已验证" value="verified" :disabled="bug?.status === 'verified'" />
-              <el-option label="已关闭" value="closed" :disabled="bug?.status === 'closed'" />
+              <el-option label="待处理" value="pending" :disabled="bug?.status === 'pending'">
+                <span class="status-dot" :style="{ backgroundColor: getStatusColor('pending') }"></span>待处理
+              </el-option>
+              <el-option label="处理中" value="in_progress" :disabled="bug?.status === 'in_progress'">
+                <span class="status-dot" :style="{ backgroundColor: getStatusColor('in_progress') }"></span>处理中
+              </el-option>
+              <el-option label="已修复" value="fixed" :disabled="bug?.status === 'fixed'">
+                <span class="status-dot" :style="{ backgroundColor: getStatusColor('fixed') }"></span>已修复
+              </el-option>
+              <el-option label="已验证" value="verified" :disabled="bug?.status === 'verified'">
+                <span class="status-dot" :style="{ backgroundColor: getStatusColor('verified') }"></span>已验证
+              </el-option>
+              <el-option label="已关闭" value="closed" :disabled="bug?.status === 'closed'">
+                <span class="status-dot" :style="{ backgroundColor: getStatusColor('closed') }"></span>已关闭
+              </el-option>
             </el-select>
           </div>
 
@@ -598,7 +608,7 @@ const getSeverityText = (severity: string) => {
 const getStatusType = (status: string) => {
   const map: Record<string, string> = {
     pending: 'primary', in_progress: 'warning',
-    fixed: 'success', verified: 'success', closed: 'info'
+    fixed: 'warning', verified: 'success', closed: 'info'
   }
   return map[status] || 'info'
 }
@@ -609,6 +619,17 @@ const getStatusText = (status: string) => {
     fixed: '已修复', verified: '已验证', closed: '已关闭'
   }
   return map[status] || status
+}
+
+const getStatusColor = (status: string) => {
+  const map: Record<string, string> = {
+    pending: 'var(--el-color-primary)',
+    in_progress: 'var(--el-color-warning)',
+    fixed: 'var(--el-color-warning)',
+    verified: 'var(--el-color-success)',
+    closed: 'var(--el-color-info)'
+  }
+  return map[status] || 'var(--el-color-info)'
 }
 
 const formatLogAction = (log: any) => {
@@ -1039,6 +1060,14 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 8px;
+  vertical-align: middle;
+}
 .bug-detail-page {
   padding: 0;
 }

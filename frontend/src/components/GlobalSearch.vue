@@ -293,7 +293,7 @@ function getBugStatusType(status: string) {
   const map: Record<string, any> = {
     pending: 'primary',
     in_progress: 'warning',
-    fixed: 'success',
+    fixed: 'warning',
     verified: '',
     closed: 'info'
   }

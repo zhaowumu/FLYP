@@ -1171,7 +1171,7 @@ const getStatusTagClass = (s: string) => {
 }
 
 const getBugStatusTagClass = (s: string) => {
-  const map: Record<string, string> = { pending: 'tag-primary', in_progress: 'tag-warning', fixed: 'tag-success', verified: 'tag-success', closed: 'tag-default' }
+  const map: Record<string, string> = { pending: 'tag-primary', in_progress: 'tag-warning', fixed: 'tag-warning', verified: 'tag-success', closed: 'tag-default' }
   return map[s] || 'tag-default'
 }
 
