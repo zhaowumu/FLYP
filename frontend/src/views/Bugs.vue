@@ -82,7 +82,7 @@
         </el-table-column>
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="getStatusType(row.status)" size="small">
+            <el-tag :type="getStatusType(row.status)" :style="getTagStyle(row.status)" size="small">
               {{ getStatusText(row.status) }}
             </el-tag>
           </template>
@@ -294,9 +294,19 @@ const getSeverityText = (severity: string) => {
 const getStatusType = (status: string) => {
   const map: Record<string, string> = {
     pending: 'primary', in_progress: 'warning',
-    fixed: 'warning', verified: 'success', closed: 'info'
+    fixed: '', verified: 'success', closed: 'info'
   }
   return map[status] || 'info'
+}
+
+const pinkTagStyle = {
+  '--el-tag-bg-color': '#fff0f6',
+  '--el-tag-border-color': '#ffd6e7',
+  '--el-tag-text-color': '#eb2f96'
+}
+
+const getTagStyle = (status: string) => {
+  return status === 'fixed' ? pinkTagStyle : {}
 }
 
 const getStatusText = (status: string) => {
@@ -318,7 +328,7 @@ const statusOptions = [
 const statusColorMap: Record<string, string> = {
   pending: 'var(--el-color-primary)',
   in_progress: 'var(--el-color-warning)',
-  fixed: 'var(--el-color-warning)',
+  fixed: '#eb2f96',
   verified: 'var(--el-color-success)',
   closed: 'var(--el-color-info)'
 }

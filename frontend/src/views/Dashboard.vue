@@ -1171,7 +1171,7 @@ const getStatusTagClass = (s: string) => {
 }
 
 const getBugStatusTagClass = (s: string) => {
-  const map: Record<string, string> = { pending: 'tag-primary', in_progress: 'tag-warning', fixed: 'tag-warning', verified: 'tag-success', closed: 'tag-default' }
+  const map: Record<string, string> = { pending: 'tag-primary', in_progress: 'tag-warning', fixed: 'tag-pink', verified: 'tag-success', closed: 'tag-default' }
   return map[s] || 'tag-default'
 }
 
@@ -2063,6 +2063,7 @@ onMounted(async () => {
 .tag-success { background: var(--nb-success-light); color: var(--nb-success-dark); }
 .tag-warning { background: var(--nb-warning-light); color: var(--nb-warning-dark); }
 .tag-danger { background: var(--nb-danger-light); color: var(--nb-danger-dark); }
+.tag-pink { background: #fff0f6; color: #eb2f96; }
 .tag-default { background: var(--nb-bg-muted); color: var(--nb-info); }
 
 /* ==================== Progress ==================== */

@@ -125,6 +125,14 @@
             </el-tag>
           </template>
         </el-table-column>
+        <el-table-column label="创建人" width="160">
+          <template #default="{ row }">
+            <div class="assignee-cell">
+              <el-avatar v-if="row.creator" :size="24" :src="row.creator.avatar || undefined" class="assignee-avatar">{{ row.creator.realName?.charAt(0) }}</el-avatar>
+              <span>{{ row.creator?.realName || '-' }}</span>
+            </div>
+          </template>
+        </el-table-column>
         <el-table-column label="负责人" width="200">
           <template #default="{ row }">
             <div v-if="row.assignees && row.assignees.length > 0" class="assignee-cell">

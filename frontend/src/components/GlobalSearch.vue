@@ -104,7 +104,7 @@
                   <span class="result-separator">·</span>
                   <el-tag :type="getSeverityType(bug.severity)" size="small" class="severity-tag">{{ getSeverityLabel(bug.severity) }}</el-tag>
                   <span class="result-separator">·</span>
-                  <el-tag :type="getBugStatusType(bug.status)" size="small" class="status-tag">{{ getBugStatusLabel(bug.status) }}</el-tag>
+                  <el-tag :type="getBugStatusType(bug.status)" size="small" class="status-tag" :style="bug.status === 'fixed' ? { '--el-tag-bg-color': '#fff0f6', '--el-tag-border-color': '#ffd6e7', '--el-tag-text-color': '#eb2f96' } : {}">{{ getBugStatusLabel(bug.status) }}</el-tag>
                   <span v-if="bug.project" class="result-separator">·</span>
                   <span v-if="bug.project" class="result-project">{{ bug.project.name }}</span>
                 </div>
@@ -293,7 +293,7 @@ function getBugStatusType(status: string) {
   const map: Record<string, any> = {
     pending: 'primary',
     in_progress: 'warning',
-    fixed: 'warning',
+    fixed: '',
     verified: '',
     closed: 'info'
   }

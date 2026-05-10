@@ -30,7 +30,7 @@
               <el-tag :type="getSeverityType(bug.severity)" size="small">
                 {{ getSeverityText(bug.severity) }}
               </el-tag>
-              <el-tag :type="getStatusType(bug.status)" size="small">
+              <el-tag :type="getStatusType(bug.status)" :style="getTagStyle(bug.status)" size="small">
                 {{ getStatusText(bug.status) }}
               </el-tag>
             </div>
@@ -117,10 +117,10 @@
             <div class="info-item">
               <span class="label">状态</span>
               <div class="info-value-row">
-                <el-tag :type="getStatusType(bug.status)" size="small">
-                  {{ getStatusText(bug.status) }}
-                </el-tag>
-                <el-button
+              <el-tag :type="getStatusType(bug.status)" :style="getTagStyle(bug.status)" size="small">
+                {{ getStatusText(bug.status) }}
+              </el-tag>
+              <el-button
                   v-if="canChangeStatus"
                   text size="small"
                   class="inline-edit-btn"
@@ -608,9 +608,19 @@ const getSeverityText = (severity: string) => {
 const getStatusType = (status: string) => {
   const map: Record<string, string> = {
     pending: 'primary', in_progress: 'warning',
-    fixed: 'warning', verified: 'success', closed: 'info'
+    fixed: '', verified: 'success', closed: 'info'
   }
   return map[status] || 'info'
+}
+
+const pinkTagStyle = {
+  '--el-tag-bg-color': '#fff0f6',
+  '--el-tag-border-color': '#ffd6e7',
+  '--el-tag-text-color': '#eb2f96'
+}
+
+const getTagStyle = (status: string) => {
+  return status === 'fixed' ? pinkTagStyle : {}
 }
 
 const getStatusText = (status: string) => {
@@ -625,7 +635,7 @@ const getStatusColor = (status: string) => {
   const map: Record<string, string> = {
     pending: 'var(--el-color-primary)',
     in_progress: 'var(--el-color-warning)',
-    fixed: 'var(--el-color-warning)',
+    fixed: '#eb2f96',
     verified: 'var(--el-color-success)',
     closed: 'var(--el-color-info)'
   }
