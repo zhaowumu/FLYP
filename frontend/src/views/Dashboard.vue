@@ -1166,7 +1166,7 @@ const getSeverityTagClass = (s: string) => {
 }
 
 const getStatusTagClass = (s: string) => {
-  const map: Record<string, string> = { pending: 'tag-default', in_progress: 'tag-warning', completed: 'tag-success', closed: 'tag-default' }
+  const map: Record<string, string> = { pending: 'tag-primary', in_progress: 'tag-warning', completed: 'tag-success', closed: 'tag-default' }
   return map[s] || 'tag-default'
 }
 

@@ -24,4 +24,8 @@ router.post("/:id/subtasks", taskController.addSubtask);
 
 router.patch("/:id/extend", taskController.extendDueDate);
 
+router.patch("/:id/reject", taskController.rejectTask);
+
+router.patch("/:id/restart", taskController.restartTask);
+
 export default router;

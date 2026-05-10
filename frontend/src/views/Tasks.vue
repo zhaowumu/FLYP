@@ -468,7 +468,7 @@ const getPriorityText = (priority: string) => {
 
 const getStatusType = (status: string) => {
   const map: Record<string, string> = {
-    pending: 'info', in_progress: 'warning', completed: 'success', closed: 'info'
+    pending: 'primary', in_progress: 'warning', completed: 'success', closed: 'info'
   }
   return map[status] || 'info'
 }
@@ -541,7 +541,7 @@ const loadUsers = async () => {
 
 const showCreateDialog = () => {
   Object.assign(taskForm, {
-    projectId: null,
+    projectId: projects.value[0]?.id || null,
     title: '',
     description: '',
     priority: 'medium',

@@ -237,7 +237,7 @@
 
     <!-- 悬浮操作栏 -->
     <div class="floating-action-bar">
-      <!-- 完成按钮：只有负责人才能完成 -->
+      <!-- 完成按钮：只有负责人可见（pending/in_progress 状态） -->
       <el-button 
         v-if="canComplete"
         type="success" 
@@ -247,17 +247,37 @@
         完成
       </el-button>
       
-      <!-- 重新打开按钮：已完成的任务可以重新打开 -->
+      <!-- 转交按钮：只有负责人可见（pending/in_progress 状态） -->
       <el-button 
-        v-if="canReopen"
+        v-if="canTransfer"
         type="warning" 
-        @click="showActionPanel('reopen')"
+        @click="showActionPanel('transfer')"
       >
-        <el-icon><RefreshRight /></el-icon>
-        重新打开
+        <el-icon><Switch /></el-icon>
+        转交
       </el-button>
       
-      <!-- 关闭按钮：只有创建人才能关闭 -->
+      <!-- 指派按钮：管理员/项目经理/创建人可见（pending/in_progress 状态） -->
+      <el-button 
+        v-if="canAssign"
+        type="primary" 
+        @click="showActionPanel('assign')"
+      >
+        <el-icon><User /></el-icon>
+        指派
+      </el-button>
+      
+      <!-- 打回按钮：只有创建人可见（completed 状态） -->
+      <el-button 
+        v-if="canReject"
+        type="warning" 
+        @click="showActionPanel('reject')"
+      >
+        <el-icon><RefreshRight /></el-icon>
+        打回
+      </el-button>
+      
+      <!-- 关闭按钮：只有创建人可见（completed 状态） -->
       <el-button 
         v-if="canClose"
         type="info" 
@@ -267,14 +287,14 @@
         关闭
       </el-button>
       
-      <!-- 转交按钮：创建人和负责人都可以转交 -->
+      <!-- 重启按钮：任何有配置权限的人可见（closed 状态） -->
       <el-button 
-        v-if="canTransfer"
-        type="warning" 
-        @click="showActionPanel('transfer')"
+        v-if="canRestart"
+        type="primary" 
+        @click="showActionPanel('restart')"
       >
-        <el-icon><Switch /></el-icon>
-        转交
+        <el-icon><Refresh /></el-icon>
+        重启
       </el-button>
       
       <!-- 备注按钮：任何人都可以添加 -->
@@ -299,7 +319,7 @@
         延期
       </el-button>
       
-      <!-- 删除按钮：只有创建人才能删除 -->
+      <!-- 删除按钮：仅项目经理和管理员可见 -->
       <el-button 
         v-if="canDelete"
         type="danger" 
@@ -322,12 +342,13 @@
     >
       <div class="drawer-content">
         <div class="drawer-body-scroll">
-          <!-- 转交：选择负责人 -->
+          <!-- 转交：选择负责人（多选） -->
           <div class="form-section" v-if="currentAction === 'transfer'">
             <span class="label">转交给</span>
             <el-select 
-              v-model="transferUserId" 
+              v-model="transferUserIds" 
               placeholder="请选择负责人" 
+              multiple
               style="width: 100%"
             >
               <el-option
@@ -452,18 +473,97 @@
             </el-select>
           </div>
 
-          <!-- 重新打开 -->
-          <div class="form-section" v-if="currentAction === 'reopen'">
+          <!-- 指派：选择负责人（多选）——管理员/项目经理/创建人 -->
+          <div class="form-section" v-if="currentAction === 'assign'">
+            <span class="label">指派给</span>
+            <el-select 
+              v-model="assignUserIds" 
+              placeholder="请选择负责人" 
+              multiple
+              style="width: 100%"
+            >
+              <el-option
+                v-for="user in users"
+                :key="user.id"
+                :label="user.realName"
+                :value="user.id"
+              />
+            </el-select>
+          </div>
+
+          <!-- 打回：重设负责人（多选）→ in_progress -->
+          <div class="form-section" v-if="currentAction === 'reject'">
             <el-alert 
-              title="确认重新打开任务" 
+              title="确认打回任务" 
               type="warning" 
               :closable="false"
               show-icon
             >
               <template #default>
-                任务将被重新打开，状态将变为"进行中"
+                任务将被打回，状态将变为"进行中"，请指定新的负责人
               </template>
             </el-alert>
+            <div style="margin-top: var(--nb-space-4);">
+              <span class="label">选择新负责人</span>
+              <el-select 
+                v-model="rejectAssigneeIds" 
+                placeholder="请选择负责人" 
+                multiple
+                style="width: 100%"
+              >
+                <el-option
+                  v-for="user in users"
+                  :key="user.id"
+                  :label="user.realName"
+                  :value="user.id"
+                />
+              </el-select>
+            </div>
+          </div>
+
+          <!-- 关闭：确认关闭 → closed（清空负责人） -->
+          <div class="form-section" v-if="currentAction === 'close'">
+            <el-alert 
+              title="确认关闭任务" 
+              type="info" 
+              :closable="false"
+              show-icon
+            >
+              <template #default>
+                任务将被关闭，状态将变为"已关闭"，负责人将被清空
+              </template>
+            </el-alert>
+          </div>
+
+          <!-- 重启：重设负责人（多选）→ in_progress/pending -->
+          <div class="form-section" v-if="currentAction === 'restart'">
+            <el-alert 
+              title="确认重启任务" 
+              type="primary" 
+              :closable="false"
+              show-icon
+            >
+              <template #default>
+                任务将重新激活，请指定新的负责人（若指定则状态为"进行中"，否则为"待处理"）
+              </template>
+            </el-alert>
+            <div style="margin-top: var(--nb-space-4);">
+              <span class="label">选择负责人（可选）</span>
+              <el-select 
+                v-model="restartAssigneeIds" 
+                placeholder="请选择负责人（可选）" 
+                multiple
+                clearable
+                style="width: 100%"
+              >
+                <el-option
+                  v-for="user in users"
+                  :key="user.id"
+                  :label="user.realName"
+                  :value="user.id"
+                />
+              </el-select>
+            </div>
           </div>
           
           <!-- 备注编辑器 -->
@@ -496,7 +596,7 @@
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getTask, updateTaskStatus, addComment as addTaskComment, updateTask, deleteTask, extendDueDate as extendTaskDueDate, getTaskCategories } from '../api/task'
+import { getTask, updateTaskStatus, addComment as addTaskComment, updateTask, deleteTask, extendDueDate as extendTaskDueDate, getTaskCategories, rejectTask, restartTask } from '../api/task'
 import { getUsers } from '../api/user'
 import { useUserStore } from '../stores/user'
 import RichEditor from '../components/RichEditor.vue'
@@ -512,7 +612,10 @@ const editorKey = ref(0)
 const submitting = ref(false)
 const currentAction = ref<string | null>(null)
 const showPanel = ref(false)
-const transferUserId = ref<number | null>(null)
+const transferUserIds = ref<number[]>([])
+const assignUserIds = ref<number[]>([])
+const rejectAssigneeIds = ref<number[]>([])
+const restartAssigneeIds = ref<number[]>([])
 const newPriority = ref('')
 const newStatus = ref('')
 const isEditingTitle = ref(false)
@@ -550,15 +653,16 @@ const isCompleted = computed(() => task.value?.status === 'completed')
 const isActive = computed(() => !isClosed.value && !isCompleted.value)
 
 // 按钮权限配置（角色权限 + 关系权限）
-// extra 需传入实际关系布尔值，不能用字面量 true
+const canAssign = computed(() => (isAdmin.value || userStore.user?.role === 'project_manager' || isCreator.value) && isActive.value)
 const canComplete = computed(() => userStore.getTaskPermission('complete', { isAssignee: isAssignee.value }) && isAssignee.value && isActive.value)
-const canReopen = computed(() => userStore.getTaskPermission('reopen', { isCreator: isCreator.value }) && isCompleted.value)
-const canClose = computed(() => userStore.getTaskPermission('close', { isCreator: isCreator.value }) && !isClosed.value)
-const canTransfer = computed(() => userStore.getTaskPermission('transfer', { isAssignee: isAssignee.value, isCreator: isCreator.value }) && !isClosed.value)
+const canTransfer = computed(() => userStore.getTaskPermission('transfer', { isAssignee: isAssignee.value }) && isAssignee.value && isActive.value)
+const canReject = computed(() => userStore.getTaskPermission('reject', { isCreator: isCreator.value }) && isCreator.value && isCompleted.value)
+const canClose = computed(() => userStore.getTaskPermission('close', { isCreator: isCreator.value }) && isCreator.value && isCompleted.value)
+const canRestart = computed(() => userStore.getTaskPermission('restart') && task.value?.status === 'closed')
 const canChangePriority = computed(() => userStore.getTaskPermission('changePriority', { isCreator: isCreator.value }) && !isClosed.value)
 const canChangeStatus = computed(() => userStore.getTaskPermission('changeStatus', { isCreator: isCreator.value }) && !isClosed.value)
 const canComment = computed(() => userStore.getTaskPermission('comment'))
-const canDelete = computed(() => userStore.getTaskPermission('delete'))
+const canDelete = computed(() => (isAdmin.value || userStore.user?.role === 'project_manager'))
 const canExtend = computed(() => userStore.getTaskPermission('extendDueDate') && !isClosed.value)
 
 const getPriorityType = (priority: string) => {
@@ -577,7 +681,7 @@ const getPriorityText = (priority: string) => {
 
 const getStatusType = (status: string) => {
   const map: Record<string, string> = {
-    pending: 'info', in_progress: 'warning', completed: 'success', closed: 'info'
+    pending: 'primary', in_progress: 'warning', completed: 'success', closed: 'info'
   }
   return map[status] || 'info'
 }
@@ -624,8 +728,29 @@ const formatLogAction = (log: any) => {
       }
       return text
     }
-    case 'close':
-      return '关闭了任务'
+    case 'reject': {
+      let text = '打回了任务'
+      if (oldAssignee && newAssignee) {
+        text += `，负责人从「${oldAssignee}」变更为「${newAssignee}」`
+      }
+      text += '，状态改为进行中'
+      return text
+    }
+    case 'restart': {
+      let text = '重启了任务'
+      if (oldAssignee && newAssignee) {
+        text += `，负责人从「${oldAssignee}」变更为「${newAssignee}」`
+      }
+      text += `，状态改为${getStatusText(newStatus || '')}`
+      return text
+    }
+    case 'close': {
+      let text = '关闭了任务'
+      if (oldAssignee && oldAssignee !== '无') {
+        text += `，清空了负责人「${oldAssignee}」`
+      }
+      return text
+    }
     case 'comment':
       return '添加了备注'
     case 'extend_due_date':
@@ -642,9 +767,11 @@ const formatLogAction = (log: any) => {
 const getActionTitle = (action: string) => {
   const map: Record<string, string> = {
     complete: '完成任务',
-    reopen: '重新打开任务',
+    reject: '打回任务',
+    assign: '指派任务',
     close: '关闭任务',
     transfer: '转交任务',
+    restart: '重启任务',
     priority: '更改优先级',
     changeStatus: '更改状态',
     comment: '添加备注',
@@ -660,9 +787,11 @@ const getActionTitle = (action: string) => {
 const getActionConfirmText = (action: string) => {
   const map: Record<string, string> = {
     complete: '确认完成',
-    reopen: '确认重新打开',
+    reject: '确认打回',
+    assign: '确认指派',
     close: '确认关闭',
     transfer: '确认转交',
+    restart: '确认重启',
     priority: '确认修改',
     changeStatus: '确认修改',
     comment: '添加备注',
@@ -778,7 +907,10 @@ const saveDescription = async () => {
 
 const showActionPanel = (action: string) => {
   commentText.value = ''
-  transferUserId.value = null
+  transferUserIds.value = []
+  assignUserIds.value = []
+  rejectAssigneeIds.value = []
+  restartAssigneeIds.value = []
   newPriority.value = task.value?.priority || 'medium'
   newStatus.value = task.value?.status || ''
   newDueDate.value = task.value?.dueDate ? new Date(task.value.dueDate) : null
@@ -798,7 +930,10 @@ const closeActionPanel = () => {
 
 const onDrawerClosed = () => {
   currentAction.value = null
-  transferUserId.value = null
+  transferUserIds.value = []
+  assignUserIds.value = []
+  rejectAssigneeIds.value = []
+  restartAssigneeIds.value = []
   newPriority.value = ''
   newStatus.value = ''
   newDueDate.value = null
@@ -809,8 +944,13 @@ const onDrawerClosed = () => {
 }
 
 const executeAction = async () => {
-  if (currentAction.value === 'transfer' && !transferUserId.value) {
-    ElMessage.warning('请选择负责人')
+  if (currentAction.value === 'transfer' && transferUserIds.value.length === 0) {
+    ElMessage.warning('请选择至少一位负责人')
+    return
+  }
+
+  if (currentAction.value === 'reject' && rejectAssigneeIds.value.length === 0) {
+    ElMessage.warning('请选择至少一位负责人')
     return
   }
 
@@ -843,12 +983,35 @@ const executeAction = async () => {
         break
       }
 
-      case 'reopen': {
-        await updateTaskStatus(task.value.id, 'in_progress', {
-          action: 'status_change',
+      case 'transfer': {
+        await updateTask(task.value.id, {
+          assigneeIds: transferUserIds.value,
+          log: { remark: commentText.value || '' }
+        })
+        ElMessage.success('转交成功')
+        break
+      }
+
+      case 'assign': {
+        if (assignUserIds.value.length === 0) {
+          ElMessage.warning('请选择至少一位负责人')
+          submitting.value = false
+          return
+        }
+        await updateTask(task.value.id, {
+          assigneeIds: assignUserIds.value,
+          log: { remark: commentText.value || '' }
+        })
+        ElMessage.success('指派成功')
+        break
+      }
+
+      case 'reject': {
+        await rejectTask(task.value.id, {
+          assigneeIds: rejectAssigneeIds.value,
           remark: commentText.value || ''
         })
-        ElMessage.success('任务已重新打开')
+        ElMessage.success('任务已打回')
         break
       }
 
@@ -861,12 +1024,12 @@ const executeAction = async () => {
         break
       }
 
-      case 'transfer': {
-        await updateTask(task.value.id, {
-          assigneeIds: [transferUserId.value],
-          log: { remark: commentText.value || '' }
+      case 'restart': {
+        await restartTask(task.value.id, {
+          assigneeIds: restartAssigneeIds.value,
+          remark: commentText.value || ''
         })
-        ElMessage.success('转交成功')
+        ElMessage.success('任务已重启')
         break
       }
 

@@ -370,7 +370,7 @@ const loadUsers = async () => {
 
 const showCreateDialog = () => {
   Object.assign(bugForm, {
-    projectId: null,
+    projectId: projects.value[0]?.id || null,
     title: '',
     description: '',
     reproduceSteps: '',

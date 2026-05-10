@@ -39,3 +39,11 @@ export const extendDueDate = (id: number, data: { newDueDate: string; remark?: s
 export const getTaskCategories = () => {
   return api.get('/tasks/categories')
 }
+
+export const rejectTask = (id: number, data: { assigneeIds: number[]; remark?: string }) => {
+  return api.patch(`/tasks/${id}/reject`, data)
+}
+
+export const restartTask = (id: number, data: { assigneeIds: number[]; remark?: string }) => {
+  return api.patch(`/tasks/${id}/restart`, data)
+}

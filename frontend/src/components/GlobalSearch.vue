@@ -251,7 +251,7 @@ function getPriorityLabel(priority: string) {
 
 function getStatusType(status: string) {
   const map: Record<string, any> = {
-    pending: 'info',
+    pending: 'primary',
     in_progress: 'warning',
     completed: 'success',
     closed: ''
