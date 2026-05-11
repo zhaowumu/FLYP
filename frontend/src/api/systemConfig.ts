@@ -39,8 +39,9 @@ export const updateDingTalkConfig = (config: { webhook: string; secret: string; 
   api.put('/system-config/dingtalk', config)
 
 // 按类型测试钉钉通知（type: "create" | "status_change" | "assignee_change"，不传则发通用测试）
-export const testDingTalkByType = (type?: string) =>
-  api.post('/system-config/dingtalk/test', { type })
+// template: 用户自定义模板内容，为空则使用默认模板
+export const testDingTalkByType = (type?: string, template?: string) =>
+  api.post('/system-config/dingtalk/test', { type, template })
 
 // Gitee 云备份
 export const getGiteeBackupConfig = () => api.get('/system-config/gitee-backup')

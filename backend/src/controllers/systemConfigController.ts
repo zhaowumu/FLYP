@@ -163,7 +163,7 @@ export const systemConfigController = {
 
   async testDingTalkNotification(req: Request, res: Response) {
     try {
-      const { type } = req.body; // 可选: "create", "status_change", "assignee_change"
+      const { type, template } = req.body; // 可选: "create" | "status_change" | "assignee_change"
       const webhookConfig = await configRepository.findOne({ where: { key: "dingtalk_webhook" } });
       const secretConfig = await configRepository.findOne({ where: { key: "dingtalk_secret" } });
       const keywordConfig = await configRepository.findOne({ where: { key: "dingtalk_keyword" } });
@@ -179,31 +179,74 @@ export const systemConfigController = {
       }
 
       const now = new Date().toLocaleString("zh-CN");
+      const typeSegment = type === "assignee_change" || !type ? "tasks" : type === "status_change" ? "tasks" : "tasks";
+      const detailLink = `${baseUrl}/tasks/123`;
 
-      // 按类型生成测试内容
-      const testTemplates: Record<string, { title: string; text: string }> = {
-        create: {
-          title: "【测试】新建通知",
-          text: `### 🔔 测试 - 新建通知\n\n[🔗 **这是一个测试任务的标题**](${baseUrl}/tasks/123)\n\n**类型：** 任务\n**创建人：** 测试用户\n**优先级：** medium\n**负责人：** @13800138000\n**时间：** ${now}`,
-        },
-        status_change: {
-          title: "【测试】状态变更通知",
-          text: `### 🔔 测试 - 状态变更通知\n\n[🔗 **这是一个测试任务的标题**](${baseUrl}/tasks/123)\n\n**操作：** 状态变更\n**进行中** → **已完成**\n**操作人：** 测试用户\n**时间：** ${now}`,
-        },
-        assignee_change: {
-          title: "【测试】负责人变更通知",
-          text: `### 🔔 测试 - 负责人变更通知\n\n[🔗 **这是一个测试任务的标题**](${baseUrl}/tasks/123)\n\n**操作：** 负责人变更\n**张三** → **李四**\n**操作人：** 测试用户\n**时间：** ${now}\n\n@13800138000`,
-        },
+      // 测试用的变量
+      const testVariables: Record<string, string> = {
+        type: "任务",
+        id: "123",
+        title: "这是一个测试通知的标题",
+        priority: "medium",
+        creator: "测试用户",
+        assigneeName: "张三",
+        assigneePhones: "@13800138000",
+        time: now,
+        baseUrl,
+        detailLink,
+        oldStatus: "待处理",
+        newStatus: "已完成",
+        operator: "测试用户",
+        oldAssignee: "张三",
+        newAssignee: "李四",
+        oldPriority: "low",
+        newPriority: "high",
       };
 
-      const defaultTest = {
-        title: "【测试】钉钉通知",
-        text: `### 🔔 测试通知\n\n这是一条测试消息，配置成功！\n\n**发送时间：** ${now}\n\n**系统地址：** ${baseUrl}`,
+      // 简单的 renderTemplate 实现
+      const renderTemplate = (tmpl: string, vars: Record<string, string>): string => {
+        let result = tmpl;
+        for (const [key, value] of Object.entries(vars)) {
+          result = result.replace(new RegExp(`\\{${key}\\}`, "g"), value);
+        }
+        return result;
       };
 
-      const test = type && testTemplates[type] ? testTemplates[type] : defaultTest;
+      // 如果传了 template 就用它渲染，否则生成对应类型的固定测试内容
+      let title: string;
+      let text: string;
 
-      let text = test.text;
+      if (template) {
+        // 用户自定义模板 → 用测试变量渲染
+        text = renderTemplate(template, testVariables);
+        title = `【测试】${type === "create" ? "新建通知" : type === "status_change" ? "状态变更通知" : type === "assignee_change" ? "负责人变更通知" : "钉钉通知"}`;
+      } else {
+        // 无自定义模板 → 使用默认测试内容
+        const defaultTemplates: Record<string, { title: string; text: string }> = {
+          create: {
+            title: "【测试】新建通知",
+            text: `### 🔔 测试 - 新建通知\n\n[🔗 **这是一个测试任务的标题**](${baseUrl}/tasks/123)\n\n**类型：** 任务\n**创建人：** 测试用户\n**优先级：** medium\n**负责人：** @13800138000\n**时间：** ${now}`,
+          },
+          status_change: {
+            title: "【测试】状态变更通知",
+            text: `### 🔔 测试 - 状态变更通知\n\n[🔗 **这是一个测试任务的标题**](${baseUrl}/tasks/123)\n\n**操作：** 状态变更\n**进行中** → **已完成**\n**操作人：** 测试用户\n**时间：** ${now}`,
+          },
+          assignee_change: {
+            title: "【测试】负责人变更通知",
+            text: `### 🔔 测试 - 负责人变更通知\n\n[🔗 **这是一个测试任务的标题**](${baseUrl}/tasks/123)\n\n**操作：** 负责人变更\n**张三** → **李四**\n**操作人：** 测试用户\n**时间：** ${now}\n\n@13800138000`,
+          },
+        };
+
+        if (type && defaultTemplates[type]) {
+          const t = defaultTemplates[type];
+          title = t.title;
+          text = t.text;
+        } else {
+          title = "【测试】钉钉通知";
+          text = `### 🔔 测试通知\n\n这是一条测试消息，配置成功！\n\n**发送时间：** ${now}\n\n**系统地址：** ${baseUrl}`;
+        }
+      }
+
       if (keyword) {
         text = `${keyword}\n${text}`;
       }
@@ -223,7 +266,7 @@ export const systemConfigController = {
       const message: any = {
         msgtype: "markdown",
         markdown: {
-          title: keyword ? `${keyword} ${test.title}` : test.title,
+          title: keyword ? `${keyword} ${title}` : title,
           text,
         },
       };

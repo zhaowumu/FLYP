@@ -797,7 +797,9 @@ async function testDingTalkGeneral() {
 async function testDingTalkByTypeHandler(type: string) {
   testLoadingByType.value[type] = true
   try {
-    const res = await testDingTalkByType(type)
+    // 取当前编辑框里的模板内容，为空则发 undefined（后端用默认模板）
+    const template = notifyConfigs.value[type]?.template || undefined
+    const res = await testDingTalkByType(type, template)
     if (res.data.success) {
       ElMessage.success(`[${notifyConfigLabels[type as keyof typeof notifyConfigLabels]}] 测试通知已发送，请检查钉钉`)
     } else {
