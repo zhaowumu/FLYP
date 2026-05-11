@@ -35,7 +35,12 @@ api.interceptors.response.use(
 )
 
 export const getDingTalkConfig = () => api.get('/system-config/dingtalk')
-export const updateDingTalkConfig = (config: { webhook: string; secret: string; keyword: string }) => api.put('/system-config/dingtalk', config)
+export const updateDingTalkConfig = (config: { webhook: string; secret: string; keyword: string; baseUrl: string; notify: Record<string, { enabled: boolean; template: string }> }) =>
+  api.put('/system-config/dingtalk', config)
+
+// 按类型测试钉钉通知（type: "create" | "status_change" | "assignee_change"，不传则发通用测试）
+export const testDingTalkByType = (type?: string) =>
+  api.post('/system-config/dingtalk/test', { type })
 
 // Gitee 云备份
 export const getGiteeBackupConfig = () => api.get('/system-config/gitee-backup')

@@ -49,6 +49,18 @@ function getAssigneeNames(assignees: User[] | undefined): string {
   return assignees.map(u => u.realName).join("、");
 }
 
+/** 辅助：获取 assignees 的手机号列表（用于钉钉 @ 提及） */
+function getAssigneePhones(assignees: User[] | undefined): string[] {
+  if (!assignees || assignees.length === 0) return [];
+  return assignees.map(u => u.phone).filter(Boolean);
+}
+
+/** 辅助：将手机号列表转为 @ 格式文本（如 @138xxxx @139xxxx） */
+function phonesToAtText(phones: string[]): string {
+  if (!phones || phones.length === 0) return "";
+  return phones.map(p => `@${p}`).join(" ");
+}
+
 export const taskController = {
   async createTask(req: Request, res: Response) {
     try {
@@ -84,14 +96,20 @@ export const taskController = {
         "create"
       );
 
+      const assigneeNames = getAssigneeNames(assignees);
+      const assigneePhones = getAssigneePhones(assignees);
+      const assigneePhonesText = phonesToAtText(assigneePhones);
+
       dingTalkService.sendNotification("create", {
         type: "任务",
         id: String(task.id),
         title: task.title,
         priority: task.priority,
         creator: creator?.realName || "未知用户",
+        assigneeName: assigneeNames,
+        assigneePhones: assigneePhonesText,
         time: new Date().toLocaleString("zh-CN")
-      });
+      }, assigneePhones.length > 0 ? assigneePhones : undefined);
 
       const savedTask = await taskRepository.findOne({
         where: { id: task.id },
@@ -211,15 +229,19 @@ export const taskController = {
           }
         );
 
+        const newAssigneePhones = getAssigneePhones(newAssignees);
+        const phonesText = phonesToAtText(newAssigneePhones);
+
         dingTalkService.sendNotification("assignee_change", {
           type: "任务",
           id: String(task.id),
           title: task.title,
           oldAssignee: oldAssigneeNames,
           newAssignee: newAssigneeNames,
+          assigneePhones: phonesText,
           operator: userName,
           time: new Date().toLocaleString("zh-CN")
-        });
+        }, newAssigneePhones.length > 0 ? newAssigneePhones : undefined);
 
         task.assignees = newAssignees;
 
@@ -368,16 +390,6 @@ export const taskController = {
             newPriority: updateData.priority,
           }
         );
-
-        dingTalkService.sendNotification("priority_change", {
-          type: "任务",
-          id: String(task.id),
-          title: task.title,
-          oldPriority: task.priority,
-          newPriority: updateData.priority,
-          operator: userName,
-          time: new Date().toLocaleString("zh-CN")
-        });
       }
 
       Object.assign(task, updateData);
@@ -534,31 +546,25 @@ export const taskController = {
         extraFields.newAssignee = newAssigneeNames;
         task.assignees = newAssignees;
 
+        const newAssigneePhonesForComment = getAssigneePhones(newAssignees);
+        const phonesTextForComment = phonesToAtText(newAssigneePhonesForComment);
+
         dingTalkService.sendNotification("assignee_change", {
           type: "任务",
           id: String(task.id),
           title: task.title,
           oldAssignee: oldAssigneeNames,
           newAssignee: newAssigneeNames,
+          assigneePhones: phonesTextForComment,
           operator: userName,
           time: new Date().toLocaleString("zh-CN")
-        });
+        }, newAssigneePhonesForComment.length > 0 ? newAssigneePhonesForComment : undefined);
       }
 
       if (log.action === "priority_change" && log.newPriority) {
         extraFields.oldPriority = task.priority;
         extraFields.newPriority = log.newPriority;
         task.priority = log.newPriority;
-
-        dingTalkService.sendNotification("priority_change", {
-          type: "任务",
-          id: String(task.id),
-          title: task.title,
-          oldPriority: extraFields.oldPriority,
-          newPriority: log.newPriority,
-          operator: userName,
-          time: new Date().toLocaleString("zh-CN")
-        });
       }
 
       if (log.newStatus && log.action !== "status_change") {

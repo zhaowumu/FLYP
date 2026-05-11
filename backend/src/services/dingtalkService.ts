@@ -38,7 +38,8 @@ export class DingTalkService {
     const keywordConfig = await configRepo.findOne({ where: { key: "dingtalk_keyword" } });
     const baseUrlConfig = await configRepo.findOne({ where: { key: "dingtalk_base_url" } });
     
-    const notifyTypes = ["create", "status_change", "assignee_change", "priority_change"];
+    // 移除 priority_change
+    const notifyTypes = ["create", "status_change", "assignee_change"];
     const notify: Record<string, { enabled: boolean; template: string }> = {};
     for (const type of notifyTypes) {
       const cfg = await configRepo.findOne({ where: { key: `dingtalk_notify_${type}` } });
@@ -87,24 +88,63 @@ export class DingTalkService {
 
   private getDefaultTemplate(type: string, variables: Record<string, string>): string {
     const { baseUrl, id } = variables;
-    const link = baseUrl && id ? `\n\n[查看详情](${baseUrl}/${variables.type === "任务" ? "tasks" : "bugs"}/${id})` : "";
-    
+    const typeSegment = variables.type === "任务" ? "tasks" : "bugs";
+    const detailLink = baseUrl && id ? `${baseUrl}/${typeSegment}/${id}` : "";
+
+    // 所有模板统一在顶部显示标题链接，含 @ 提及
+    const assigneeLine = variables.assigneePhones || variables.assigneeName
+      ? `**负责人：** ${variables.assigneePhones || variables.assigneeName || "未分配"}\n`
+      : "";
+
     const defaults: Record<string, string> = {
-      create: `### 新建{type}通知\n\n**标题:** {title}\n**优先级:** {priority}\n**创建人:** {creator}\n**时间:** {time}${link}`,
-      status_change: `### {type}状态变更通知\n\n**标题:** {title}\n**原状态:** {oldStatus}\n**新状态:** {newStatus}\n**操作人:** {operator}\n**时间:** {time}${link}`,
-      assignee_change: `### {type}负责人变更通知\n\n**标题:** {title}\n**原负责人:** {oldAssignee}\n**新负责人:** {newAssignee}\n**操作人:** {operator}\n**时间:** {time}${link}`,
-      priority_change: `### {type}优先级变更通知\n\n**标题:** {title}\n**原优先级:** {oldPriority}\n**新优先级:** {newPriority}\n**操作人:** {operator}\n**时间:** {time}${link}`
+      create: [
+        detailLink ? `[🔗 **{title}**]({detailLink})` : `**{title}**`,
+        ``,
+        `**类型：** {type}`,
+        `**创建人：** {creator}`,
+        `**优先级：** {priority}`,
+        `**时间：** {time}`,
+        assigneeLine,
+      ].filter(Boolean).join("\n"),
+
+      status_change: [
+        detailLink ? `[🔗 **{title}**]({detailLink})` : `**{title}**`,
+        ``,
+        `**操作：** 状态变更`,
+        `**{oldStatus}** → **{newStatus}**`,
+        `**操作人：** {operator}`,
+        `**时间：** {time}`,
+      ].filter(Boolean).join("\n"),
+
+      assignee_change: [
+        detailLink ? `[🔗 **{title}**]({detailLink})` : `**{title}**`,
+        ``,
+        `**操作：** 负责人变更`,
+        `**{oldAssignee}** → **{newAssignee}**`,
+        `**操作人：** {operator}`,
+        `**时间：** {time}`,
+      ].filter(Boolean).join("\n"),
     };
     return this.renderTemplate(defaults[type] || "", variables);
   }
 
-  async sendNotification(type: string, variables: Record<string, string>): Promise<boolean> {
+  async sendNotification(
+    type: string,
+    variables: Record<string, string>,
+    atMobiles?: string[]
+  ): Promise<boolean> {
     try {
       const config = await this.getDingTalkConfig();
       if (!config.webhook) return false;
 
       if (!variables.baseUrl && config.baseUrl) {
         variables.baseUrl = config.baseUrl;
+      }
+
+      // 构建详情链接用于模板
+      if (variables.baseUrl && variables.id && variables.type) {
+        const typeSegment = variables.type === "任务" ? "tasks" : "bugs";
+        variables.detailLink = `${variables.baseUrl}/${typeSegment}/${variables.id}`;
       }
 
       const notifyConfig = config.notify[type];
@@ -123,6 +163,11 @@ export class DingTalkService {
           text: this.addKeyword(text, config.keyword),
         },
       };
+
+      // 如果有 @ 的手机号，添加到消息中
+      if (atMobiles && atMobiles.length > 0) {
+        message.at = { atMobiles };
+      }
 
       const url = await this.buildUrlWithSignature(config.webhook, config.secret);
       const response = await axios.post(url, message, {

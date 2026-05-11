@@ -67,14 +67,20 @@ export const bugController = {
         "create"
       );
 
+      // 构建钉钉通知用的负责人信息
+      const assigneePhone = bug.assignee?.phone || "";
+      const assigneeName = bug.assignee?.realName || "未分配";
+
       dingTalkService.sendNotification("create", {
         type: "BUG",
         id: String(bug.id),
         title: bug.title,
         priority: bug.severity,
         creator: reporter?.realName || "未知用户",
+        assigneeName: assigneeName,
+        assigneePhones: assigneePhone ? `@${assigneePhone}` : "",
         time: new Date().toLocaleString("zh-CN")
-      });
+      }, assigneePhone ? [assigneePhone] : undefined);
 
       const savedBug = await bugRepository.findOne({
         where: { id: bug.id },
@@ -172,15 +178,18 @@ export const bugController = {
           }
         );
 
+        const newAssigneePhone = newAssignee?.phone || "";
+
         dingTalkService.sendNotification("assignee_change", {
           type: "BUG",
           id: String(bug.id),
           title: bug.title,
           oldAssignee: oldAssignee?.realName || "未处理",
           newAssignee: newAssignee?.realName || "未知",
+          assigneePhones: newAssigneePhone ? `@${newAssigneePhone}` : "",
           operator: userName,
           time: new Date().toLocaleString("zh-CN")
-        });
+        }, newAssigneePhone ? [newAssigneePhone] : undefined);
         
         bug.assignee = newAssignee!;
 
@@ -374,15 +383,18 @@ export const bugController = {
         bug.assignee = newAssignee!;
         bug.status = "in_progress";
 
+        const newAssigneePhone = newAssignee?.phone || "";
+
         dingTalkService.sendNotification("assignee_change", {
           type: "BUG",
           id: String(bug.id),
           title: bug.title,
           oldAssignee: bug.assignee?.realName || "未处理",
           newAssignee: newAssignee?.realName || "未知",
+          assigneePhones: newAssigneePhone ? `@${newAssigneePhone}` : "",
           operator: userName,
           time: new Date().toLocaleString("zh-CN")
-        });
+        }, newAssigneePhone ? [newAssigneePhone] : undefined);
       }
 
       if (log.action === "severity_change" && log.newSeverity) {
@@ -469,15 +481,18 @@ export const bugController = {
         }
       );
 
+      const assigneePhone = assignee.phone || "";
+
       dingTalkService.sendNotification("assignee_change", {
         type: "BUG",
         id: String(bug.id),
         title: bug.title,
         oldAssignee: "未分配",
         newAssignee: assignee.realName,
+        assigneePhones: assigneePhone ? `@${assigneePhone}` : "",
         operator: user?.realName || "未知用户",
         time: new Date().toLocaleString("zh-CN")
-      });
+      }, assigneePhone ? [assigneePhone] : undefined);
 
       const savedBug = await bugRepository.findOne({
         where: { id: bug.id },

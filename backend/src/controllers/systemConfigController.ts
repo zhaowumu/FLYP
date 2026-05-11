@@ -66,7 +66,7 @@ export const systemConfigController = {
       const keywordConfig = await configRepository.findOne({ where: { key: "dingtalk_keyword" } });
       const baseUrlConfig = await configRepository.findOne({ where: { key: "dingtalk_base_url" } });
       
-      const notifyTypes = ["create", "status_change", "assignee_change", "priority_change"];
+      const notifyTypes = ["create", "status_change", "assignee_change"];
       const notifyConfigs: Record<string, any> = {};
       for (const type of notifyTypes) {
         const cfg = await configRepository.findOne({ where: { key: `dingtalk_notify_${type}` } });
@@ -163,19 +163,47 @@ export const systemConfigController = {
 
   async testDingTalkNotification(req: Request, res: Response) {
     try {
+      const { type } = req.body; // 可选: "create", "status_change", "assignee_change"
       const webhookConfig = await configRepository.findOne({ where: { key: "dingtalk_webhook" } });
       const secretConfig = await configRepository.findOne({ where: { key: "dingtalk_secret" } });
       const keywordConfig = await configRepository.findOne({ where: { key: "dingtalk_keyword" } });
+      const baseUrlConfig = await configRepository.findOne({ where: { key: "dingtalk_base_url" } });
       
       const webhookUrl = webhookConfig?.value;
       const secret = secretConfig?.value;
       const keyword = keywordConfig?.value;
+      const baseUrl = baseUrlConfig?.value || "http://localhost:3000";
 
       if (!webhookUrl) {
         return res.status(400).json({ success: false, error: "Webhook地址未配置" });
       }
 
-      let text = `### 测试通知\n\n这是一条测试消息，配置成功！\n\n**发送时间：** ${new Date().toLocaleString("zh-CN")}`;
+      const now = new Date().toLocaleString("zh-CN");
+
+      // 按类型生成测试内容
+      const testTemplates: Record<string, { title: string; text: string }> = {
+        create: {
+          title: "【测试】新建通知",
+          text: `### 🔔 测试 - 新建通知\n\n[🔗 **这是一个测试任务的标题**](${baseUrl}/tasks/123)\n\n**类型：** 任务\n**创建人：** 测试用户\n**优先级：** medium\n**负责人：** @13800138000\n**时间：** ${now}`,
+        },
+        status_change: {
+          title: "【测试】状态变更通知",
+          text: `### 🔔 测试 - 状态变更通知\n\n[🔗 **这是一个测试任务的标题**](${baseUrl}/tasks/123)\n\n**操作：** 状态变更\n**进行中** → **已完成**\n**操作人：** 测试用户\n**时间：** ${now}`,
+        },
+        assignee_change: {
+          title: "【测试】负责人变更通知",
+          text: `### 🔔 测试 - 负责人变更通知\n\n[🔗 **这是一个测试任务的标题**](${baseUrl}/tasks/123)\n\n**操作：** 负责人变更\n**张三** → **李四**\n**操作人：** 测试用户\n**时间：** ${now}\n\n@13800138000`,
+        },
+      };
+
+      const defaultTest = {
+        title: "【测试】钉钉通知",
+        text: `### 🔔 测试通知\n\n这是一条测试消息，配置成功！\n\n**发送时间：** ${now}\n\n**系统地址：** ${baseUrl}`,
+      };
+
+      const test = type && testTemplates[type] ? testTemplates[type] : defaultTest;
+
+      let text = test.text;
       if (keyword) {
         text = `${keyword}\n${text}`;
       }
@@ -191,13 +219,18 @@ export const systemConfigController = {
         url = `${webhookUrl}${separator}timestamp=${timestamp}&sign=${sign}`;
       }
 
-      const message = {
+      // 仅 create 和 assignee_change 类型附带 @ 手机号用于测试
+      const message: any = {
         msgtype: "markdown",
         markdown: {
-          title: keyword ? `${keyword} 测试通知` : "测试通知",
+          title: keyword ? `${keyword} ${test.title}` : test.title,
           text,
         },
       };
+
+      if (type === "create" || type === "assignee_change") {
+        message.at = { atMobiles: ["13800138000"] };
+      }
 
       const response = await axios.post(url, message, {
         headers: { "Content-Type": "application/json" },

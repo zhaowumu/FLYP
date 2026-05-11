@@ -456,32 +456,62 @@
             style="margin-bottom: 20px"
           >
             <template #default>
-              <p><strong>通用变量：</strong> {type}（任务/BUG）、{title}、{time}</p>
-              <p><strong>创建通知：</strong> {type}、{title}、{priority}、{creator}、{time}</p>
+              <p><strong>通用变量：</strong> {type}（任务/BUG）、{title}、{time}、{baseUrl}、{detailLink}</p>
+              <p><strong>创建通知：</strong> {type}、{title}、{priority}、{creator}、{assigneeName}、{assigneePhones}、{time}</p>
               <p><strong>状态变更：</strong> {type}、{title}、{oldStatus}、{newStatus}、{operator}、{time}</p>
-              <p><strong>负责人变更：</strong> {type}、{title}、{oldAssignee}、{newAssignee}、{operator}、{time}</p>
-              <p><strong>优先级变更：</strong> {type}、{title}、{oldPriority}、{newPriority}、{operator}、{time}</p>
-              <p style="margin-top: 8px;">留空则使用默认模板，支持Markdown格式</p>
+              <p><strong>负责人变更：</strong> {type}、{title}、{oldAssignee}、{newAssignee}、{assigneePhones}、{operator}、{time}</p>
+              <p style="margin-top: 8px;">
+                <strong>@ 提及说明：</strong>
+                模板中使用 <code>{assigneePhones}</code> 会自动渲染为 <code>@手机号</code> 格式，
+                同时系统会设置消息 @ 属性的手机号列表。该变量依赖用户的手机号字段。
+              </p>
+              <p style="margin-top: 4px;">
+                <strong>标题链接：</strong>
+                模板中使用 <code>{detailLink}</code> 即生成完整的详情页URL，
+                也可直接使用 Markdown 链接语法 <code>[标题文字]({detailLink})</code>。
+                未填写模板时使用系统默认模板（含标题链接和 @ 提及）。
+              </p>
+              <p>留空则使用默认模板，支持Markdown格式</p>
             </template>
           </el-alert>
 
           <div class="notify-config-list">
             <div v-for="(item, key) in notifyConfigs" :key="key" class="notify-config-item">
               <div class="notify-header">
-                <el-switch
-                  v-model="item.enabled"
-                  :active-text="item.label"
-                  style="--el-switch-on-color: #13ce66"
-                />
+                <div class="notify-header-left">
+                  <el-switch
+                    v-model="item.enabled"
+                    active-text=""
+                    style="--el-switch-on-color: #13ce66"
+                  />
+                  <span class="notify-type-label">{{ item.label }}</span>
+                </div>
+                <el-button
+                  size="small"
+                  type="primary"
+                  plain
+                  :loading="testLoadingByType[key]"
+                  :disabled="!dingtalkWebhook"
+                  @click="testDingTalkByTypeHandler(key)"
+                >
+                  <el-icon style="margin-right: 4px"><VideoPlay /></el-icon>
+                  测试发送
+                </el-button>
               </div>
+              <div class="template-preview" v-if="item.enabled">
+                <div class="template-preview-header">
+                  <span class="template-label">自定义模板</span>
+                  <span class="template-label-hint">留空使用默认模板</span>
+                </div>
               <el-input
                 v-if="item.enabled"
                 v-model="item.template"
                 type="textarea"
                 :rows="3"
                 :placeholder="'默认模板：' + item.defaultTemplate"
-                style="margin-top: 8px"
+                style="margin-top: 0"
               />
+              </div>
             </div>
           </div>
 
@@ -489,8 +519,8 @@
             <el-button type="primary" @click="saveDingTalkConfig" :loading="savingDingtalk">
               保存配置
             </el-button>
-            <el-button @click="testDingTalk" :loading="testingDingtalk" :disabled="!dingtalkWebhook">
-              测试通知
+            <el-button @click="testDingTalkGeneral" :loading="testingDingtalk" :disabled="!dingtalkWebhook">
+              发送通用测试
             </el-button>
           </div>
         </div>
@@ -502,11 +532,11 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Delete, Download, Upload, Refresh, RefreshRight } from '@element-plus/icons-vue'
+import { Plus, Delete, Download, Upload, Refresh, RefreshRight, VideoPlay } from '@element-plus/icons-vue'
 import { backupData as backupDataApi, restoreData as restoreDataApi, exportAll as exportAllApi, clearDatabase as clearDatabaseApi, clearAllDatabase as clearAllDatabaseApi, getBackupStatus as getBackupStatusApi, getBackupList as getBackupListApi, downloadBackup as downloadBackupApi, deleteBackupFile as deleteBackupFileApi, backupNow as backupNowApi } from '../api/excel'
 import { getPermissions, updatePermissions } from '../api/permission'
 import { getCustomLinks, updateCustomLinks, listMarkdownFiles } from '../api/customLink'
-import { getDingTalkConfig, updateDingTalkConfig, getGiteeBackupConfig, updateGiteeBackupConfig, testGiteeBackupConnection } from '../api/systemConfig'
+import { getDingTalkConfig, updateDingTalkConfig, testDingTalkByType, getGiteeBackupConfig, updateGiteeBackupConfig, testGiteeBackupConnection } from '../api/systemConfig'
 import api from '../api'
 
 const activeTab = ref('permissions')
@@ -522,6 +552,7 @@ const savingPermissions = ref(false)
 const savingCustomLinks = ref(false)
 const savingDingtalk = ref(false)
 const testingDingtalk = ref(false)
+const testLoadingByType = ref<Record<string, boolean>>({})
 const customLinks = ref<Array<{ name: string; url: string; icon: string; type: string }>>([])
 const markdownFiles = ref<Array<{ name: string; path: string }>>([])
 const dingtalkWebhook = ref('')
@@ -536,17 +567,15 @@ const testingGiteeConfig = ref(false)
 const giteeTestResult = ref<{ success: boolean; message: string } | null>(null)
 
 const defaultTemplates = {
-  create: '### 新建{type}通知\n\n**标题:** {title}\n**优先级:** {priority}\n**创建人:** {creator}\n**时间:** {time}\n\n[查看详情]({baseUrl}/{type === "任务" ? "tasks" : "bugs"}/{id})',
-  status_change: '### {type}状态变更通知\n\n**标题:** {title}\n**原状态:** {oldStatus}\n**新状态:** {newStatus}\n**操作人:** {operator}\n**时间:** {time}\n\n[查看详情]({baseUrl}/{type === "任务" ? "tasks" : "bugs"}/{id})',
-  assignee_change: '### {type}负责人变更通知\n\n**标题:** {title}\n**原负责人:** {oldAssignee}\n**新负责人:** {newAssignee}\n**操作人:** {operator}\n**时间:** {time}\n\n[查看详情]({baseUrl}/{type === "任务" ? "tasks" : "bugs"}/{id})',
-  priority_change: '### {type}优先级变更通知\n\n**标题:** {title}\n**原优先级:** {oldPriority}\n**新优先级:** {newPriority}\n**操作人:** {operator}\n**时间:** {time}\n\n[查看详情]({baseUrl}/{type === "任务" ? "tasks" : "bugs"}/{id})'
+  create: '🔗 **[{title}]({detailLink})**\n\n**类型：** {type}\n**创建人：** {creator}\n**优先级：** {priority}\n**时间：** {time}\n{assigneePhones}',
+  status_change: '🔗 **[{title}]({detailLink})**\n\n**操作：** 状态变更\n**{oldStatus}** → **{newStatus}**\n**操作人：** {operator}\n**时间：** {time}',
+  assignee_change: '🔗 **[{title}]({detailLink})**\n\n**操作：** 负责人变更\n**{oldAssignee}** → **{newAssignee}**\n**操作人：** {operator}\n**时间：** {time}\n{assigneePhones}'
 }
 
 const notifyConfigLabels = {
   create: '创建任务/BUG',
   status_change: '状态变更',
-  assignee_change: '负责人变更',
-  priority_change: '优先级变更'
+  assignee_change: '负责人变更'
 }
 
 const notifyConfigs = ref<Record<string, { enabled: boolean; template: string; label: string; defaultTemplate: string }>>({})
@@ -703,6 +732,7 @@ async function loadDingTalkConfig() {
       
       const notify = res.data.notify || {}
       const configs: Record<string, any> = {}
+      // 只加载有效的通知类型，跳过废弃的 priority_change
       for (const [key, label] of Object.entries(notifyConfigLabels)) {
         const cfg = notify[key] || { enabled: true, template: '' }
         configs[key] = {
@@ -748,12 +778,12 @@ async function saveDingTalkConfig() {
   }
 }
 
-async function testDingTalk() {
+async function testDingTalkGeneral() {
   testingDingtalk.value = true
   try {
-    const res = await api.post('/system-config/dingtalk/test', {})
+    const res = await testDingTalkByType()
     if (res.data.success) {
-      ElMessage.success('测试通知已发送，请检查钉钉')
+      ElMessage.success('通用测试通知已发送，请检查钉钉')
     } else {
       ElMessage.error('发送失败：' + (res.data.error || '未知错误'))
     }
@@ -761,6 +791,22 @@ async function testDingTalk() {
     ElMessage.error('发送失败：' + (err?.response?.data?.error || '网络错误'))
   } finally {
     testingDingtalk.value = false
+  }
+}
+
+async function testDingTalkByTypeHandler(type: string) {
+  testLoadingByType.value[type] = true
+  try {
+    const res = await testDingTalkByType(type)
+    if (res.data.success) {
+      ElMessage.success(`[${notifyConfigLabels[type as keyof typeof notifyConfigLabels]}] 测试通知已发送，请检查钉钉`)
+    } else {
+      ElMessage.error('发送失败：' + (res.data.error || '未知错误'))
+    }
+  } catch (err: any) {
+    ElMessage.error('发送失败：' + (err?.response?.data?.error || '网络错误'))
+  } finally {
+    testLoadingByType.value[type] = false
   }
 }
 
@@ -1316,6 +1362,40 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+.notify-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.notify-type-label {
+  font-size: var(--nb-font-size-md);
+  font-weight: var(--nb-font-weight-medium);
+  color: var(--nb-text-primary);
+}
+
+.template-preview {
+  margin-top: 12px;
+}
+
+.template-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.template-label {
+  font-size: var(--nb-font-size-sm);
+  color: var(--nb-text-primary);
+  font-weight: var(--nb-font-weight-medium);
+}
+
+.template-label-hint {
+  font-size: var(--nb-font-size-xs);
+  color: var(--nb-text-secondary);
 }
 
 .cloud-backup-section {
