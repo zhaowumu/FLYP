@@ -45,7 +45,7 @@ export const searchController = {
 
         projectRepository
           .createQueryBuilder("project")
-          .leftJoinAndSelect("project.manager", "manager")
+          .leftJoinAndSelect("project.managers", "manager")
           .where("project.name LIKE :term", { term: searchTerm })
           .orWhere("project.description LIKE :term", { term: searchTerm })
           .orderBy("project.createdAt", "DESC")

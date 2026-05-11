@@ -78,7 +78,7 @@ export const bugController = {
 
       const savedBug = await bugRepository.findOne({
         where: { id: bug.id },
-        relations: ["project", "project.manager", "assignee", "reporter"],
+        relations: ["project", "project.managers", "assignee", "reporter"],
       });
 
       res.status(201).json(savedBug);
@@ -106,7 +106,7 @@ export const bugController = {
 
       const bugs = await bugRepository.find({
         where,
-        relations: ["project", "project.manager", "assignee", "reporter"],
+        relations: ["project", "project.managers", "assignee", "reporter"],
         order: { [sortField]: order },
       });
 
@@ -122,7 +122,7 @@ export const bugController = {
       const { id } = req.params;
       const bug = await bugRepository.findOne({
         where: { id: parseInt(id as string) },
-        relations: ["project", "project.manager", "assignee", "reporter"],
+        relations: ["project", "project.managers", "assignee", "reporter"],
       });
 
       if (!bug) {
@@ -255,7 +255,7 @@ export const bugController = {
 
       const updatedBug = await bugRepository.findOne({
         where: { id: parseInt(id as string) },
-        relations: ["project", "project.manager", "assignee", "reporter"],
+        relations: ["project", "project.managers", "assignee", "reporter"],
       });
 
       res.json(updatedBug);
@@ -335,7 +335,7 @@ export const bugController = {
 
       const updatedBug = await bugRepository.findOne({
         where: { id: parseInt(id as string) },
-        relations: ["project", "project.manager", "assignee", "reporter"],
+        relations: ["project", "project.managers", "assignee", "reporter"],
       });
 
       res.json(updatedBug);
@@ -419,7 +419,7 @@ export const bugController = {
 
       const updatedBug = await bugRepository.findOne({
         where: { id: parseInt(id as string) },
-        relations: ["project", "project.manager", "assignee", "reporter"],
+        relations: ["project", "project.managers", "assignee", "reporter"],
       });
 
       res.json(updatedBug);
@@ -481,7 +481,7 @@ export const bugController = {
 
       const savedBug = await bugRepository.findOne({
         where: { id: bug.id },
-        relations: ["project", "project.manager", "assignee", "reporter"],
+        relations: ["project", "project.managers", "assignee", "reporter"],
       });
 
       res.json(savedBug);
@@ -554,7 +554,7 @@ export const bugController = {
 
       const updatedBug = await bugRepository.findOne({
         where: { id: parseInt(id as string) },
-        relations: ["project", "project.manager", "assignee", "reporter"],
+        relations: ["project", "project.managers", "assignee", "reporter"],
       });
 
       res.json(updatedBug);
@@ -617,7 +617,7 @@ export const bugController = {
 
       const updatedBug = await bugRepository.findOne({
         where: { id: parseInt(id as string) },
-        relations: ["project", "project.manager", "assignee", "reporter"],
+        relations: ["project", "project.managers", "assignee", "reporter"],
       });
 
       res.json(updatedBug);
@@ -688,7 +688,7 @@ export const bugController = {
 
       const updatedBug = await bugRepository.findOne({
         where: { id: parseInt(id as string) },
-        relations: ["project", "project.manager", "assignee", "reporter"],
+        relations: ["project", "project.managers", "assignee", "reporter"],
       });
 
       res.json(updatedBug);

@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, ManyToMany, JoinTable, OneToMany } from "typeorm";
 import { User } from "./User";
 import { Task } from "./Task";
 import { Bug } from "./Bug";
@@ -20,8 +20,9 @@ export class Project {
   @Column()
   createdBy: number;
 
-  @ManyToOne(() => User, { nullable: true })
-  manager: User;
+  @ManyToMany(() => User)
+  @JoinTable()
+  managers: User[];
 
   @OneToMany(() => Task, task => task.project)
   tasks: Task[];

@@ -124,13 +124,23 @@
               <div class="info-label">项目负责人</div>
               <div class="info-value">
                 <template v-if="!isChangingManager">
-                  {{ project?.manager?.realName || project?.manager?.username || '未设置' }}
+                  <template v-if="project?.managers?.length">
+                    <el-tag
+                      v-for="m in project.managers"
+                      :key="m.id"
+                      size="small"
+                      style="margin-right: 4px; margin-bottom: 2px"
+                    >
+                      {{ m.realName || m.username }}
+                    </el-tag>
+                  </template>
+                  <span v-else>未设置</span>
                   <el-button v-if="isAdmin" text size="small" @click="startChangeManager" class="edit-btn" style="margin-left: 4px">
                     <el-icon><Edit /></el-icon>
                   </el-button>
                 </template>
                 <template v-else>
-                  <el-select v-model="newManagerId" size="small" style="width: 150px" placeholder="选择负责人">
+                  <el-select v-model="newManagerIds" multiple size="small" style="width: 220px" placeholder="选择负责人">
                     <el-option
                       v-for="u in users"
                       :key="u.id"
@@ -166,7 +176,7 @@
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { getProject, updateProject, changeProjectManager } from '../api/project'
+import { getProject, updateProject, updateProjectManagers } from '../api/project'
 import { getUsers } from '../api/user'
 import { useUserStore } from '../stores/user'
 import RichEditor from '../components/RichEditor.vue'
@@ -183,11 +193,11 @@ const editDescription = ref('')
 const saving = ref(false)
 const nameInputRef = ref()
 const isChangingManager = ref(false)
-const newManagerId = ref<number | null>(null)
+const newManagerIds = ref<number[]>([])
 
 const currentUserId = computed(() => userStore.user?.id)
 const isCreator = computed(() => project.value?.createdBy === currentUserId.value)
-const isProjectManager = computed(() => project.value?.manager?.id === currentUserId.value)
+const isProjectManager = computed(() => project.value?.managers?.some((m: any) => m.id === currentUserId.value))
 const isAdmin = computed(() => userStore.user?.role === 'admin')
 const canEdit = computed(() => isCreator.value || isProjectManager.value || isAdmin.value)
 
@@ -297,23 +307,23 @@ const saveDescription = async () => {
 }
 
 const startChangeManager = () => {
-  newManagerId.value = project.value?.manager?.id || null
+  newManagerIds.value = project.value?.managers?.map((m: any) => m.id) || []
   isChangingManager.value = true
 }
 
 const cancelChangeManager = () => {
   isChangingManager.value = false
-  newManagerId.value = null
+  newManagerIds.value = []
 }
 
 const saveChangeManager = async () => {
-  if (!newManagerId.value) {
-    ElMessage.warning('请选择项目负责人')
+  if (newManagerIds.value.length === 0) {
+    ElMessage.warning('请至少选择一位项目负责人')
     return
   }
   saving.value = true
   try {
-    const res = await changeProjectManager(project.value.id, newManagerId.value)
+    const res = await updateProjectManagers(project.value.id, newManagerIds.value)
     project.value = res.data
     isChangingManager.value = false
     ElMessage.success('项目负责人已更新')

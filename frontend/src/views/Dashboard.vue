@@ -104,7 +104,7 @@
                     <span class="tag" :class="project.status === 'active' ? 'tag-success' : 'tag-default'">
                       {{ project.status === 'active' ? '进行中' : '已完成' }}
                     </span>
-                    <span><el-icon size="12"><Folder /></el-icon> {{ project.manager?.realName || '-' }}</span>
+                    <span><el-icon size="12"><Folder /></el-icon> {{ project.managers?.[0]?.realName || '-' }}</span>
                   </div>
                   <div class="progress">
                     <div class="progress-bar">
@@ -221,18 +221,46 @@
           <svg class="section-icon" viewBox="0 0 24 24" fill="none">
             <path d="M3 7V17C3 18.1 3.9 19 5 19H19C20.1 19 21 18.1 21 17V9C21 7.9 20.1 7 19 7H13L11 5H5C3.9 5 3 5.9 3 7Z" fill="#f59e0b"/>
           </svg>
-          项目管理面板
+          项目经理工作台
         </div>
         <div class="stats-grid">
-          <div v-for="stat in pmStats" :key="stat.key" class="stat-card" :class="stat.color" @click="stat.click">
+          <div class="stat-card stat-blue" @click="router.push('/tasks')">
             <div class="stat-accent"></div>
             <div class="stat-inner">
-              <div class="stat-icon-box">
-                <el-icon :size="22"><component :is="stat.icon" /></el-icon>
-              </div>
+              <div class="stat-icon-box"><el-icon :size="22"><User /></el-icon></div>
               <div class="stat-content">
-                <div class="stat-value">{{ stat.value }}</div>
-                <div class="stat-label">{{ stat.label }}</div>
+                <div class="stat-value">{{ pmUnassignedTasks.length }}</div>
+                <div class="stat-label">待指派的任务</div>
+              </div>
+            </div>
+          </div>
+          <div class="stat-card stat-green" @click="router.push('/tasks')">
+            <div class="stat-accent"></div>
+            <div class="stat-inner">
+              <div class="stat-icon-box"><el-icon :size="22"><CircleCheck /></el-icon></div>
+              <div class="stat-content">
+                <div class="stat-value">{{ pmCloseableTasks.length }}</div>
+                <div class="stat-label">待关闭的任务</div>
+              </div>
+            </div>
+          </div>
+          <div class="stat-card stat-orange" @click="router.push('/bugs')">
+            <div class="stat-accent"></div>
+            <div class="stat-inner">
+              <div class="stat-icon-box"><el-icon :size="22"><UserFilled /></el-icon></div>
+              <div class="stat-content">
+                <div class="stat-value">{{ pmUnassignedBugs.length }}</div>
+                <div class="stat-label">待指派的Bug</div>
+              </div>
+            </div>
+          </div>
+          <div class="stat-card stat-red" @click="router.push('/bugs')">
+            <div class="stat-accent"></div>
+            <div class="stat-inner">
+              <div class="stat-icon-box"><el-icon :size="22"><CircleCheckFilled /></el-icon></div>
+              <div class="stat-content">
+                <div class="stat-value">{{ pmCloseableBugs.length }}</div>
+                <div class="stat-label">待关闭的Bug</div>
               </div>
             </div>
           </div>
@@ -244,10 +272,49 @@
           <div class="card">
             <div class="card-header">
               <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none">
+                <path d="M17 21V19C17 17.9 16.1 17 15 17H9C7.9 17 7 17.9 7 19V21M12 13C14.76 13 17 10.76 17 8C17 5.24 14.76 3 12 3C9.24 3 7 5.24 7 8C7 10.76 9.24 13 12 13Z" stroke="#667eea" stroke-width="1.5" fill="none"/>
+              </svg>
+              <span>团队负载效率</span>
+            </div>
+            <div class="team-list">
+              <div v-for="member in teamMembers" :key="member.id" class="team-member clickable" @click="router.push({ path: '/tasks', query: { assigneeId: member.id } })">
+                <div class="member-accent" :style="{ background: getRoleGradient(member.role) }"></div>
+                <div class="member-avatar" :style="{ background: getRoleGradient(member.role) }">
+                  <img v-if="member.avatar" :src="member.avatar" class="member-avatar-img" />
+                  <span v-else>{{ member.name.charAt(0) }}</span>
+                </div>
+                <div class="member-info">
+                  <div class="member-name">{{ member.name }}
+                    <span class="member-role-pill" :style="{ background: getRoleGradient(member.role) }">{{ getRoleText(member.role) }}</span>
+                  </div>
+                  <div class="member-stats">
+                    <span class="stat-item"><span class="stat-dot dot-blue"></span>任务 {{ member.totalTasks }}</span>
+                    <span class="stat-item"><span class="stat-dot dot-warning"></span>进行中 {{ member.inProgressCount }}</span>
+                    <span class="stat-item"><span class="stat-dot dot-danger"></span>缺陷 {{ member.openBugCount }}</span>
+                  </div>
+                  <div class="member-progress">
+                    <div class="progress-bar">
+                      <div class="progress-fill" :class="member.completionRate >= 60 ? 'fill-success' : member.completionRate >= 30 ? 'fill-warning' : 'fill-danger'" :style="{ width: member.completionRate + '%' }"></div>
+                    </div>
+                    <span class="progress-text" :class="member.completionRate >= 60 ? 'text-success' : member.completionRate >= 30 ? 'text-warning' : 'text-danger'">负载 {{ member.taskCount }}/{{ member.completionRate }}%</span>
+                  </div>
+                </div>
+                <div class="member-arrow">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col side">
+          <div class="card">
+            <div class="card-header">
+              <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none">
                 <circle cx="12" cy="12" r="10" stroke="#667eea" stroke-width="1.5" fill="none"/>
                 <path d="M12 6V12L16 14" stroke="#667eea" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
-              <span>操作历史</span>
+              <span>团队操作历史</span>
               <el-button class="view-all-btn" text @click="viewAllLogs">
                 查看全部<el-icon><ArrowRight /></el-icon>
               </el-button>
@@ -270,72 +337,66 @@
             </div>
           </div>
         </div>
+      </div>
+    </template>
 
-        <div class="col side">
-          <div class="card">
-            <div class="card-header">
-              <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none">
-                <path d="M17 21V19C17 17.9 16.1 17 15 17H9C7.9 17 7 17.9 7 19V21M12 13C14.76 13 17 10.76 17 8C17 5.24 14.76 3 12 3C9.24 3 7 5.24 7 8C7 10.76 9.24 13 12 13Z" stroke="#667eea" stroke-width="1.5" fill="none"/>
-              </svg>
-              <span>团队概览</span>
+    <!-- ==================== Developer / Designer / Artist / Tester Unified View ==================== -->
+    <template v-if="['developer','designer','artist','tester'].includes(userRole)">
+      <div class="section">
+        <div class="section-title">
+          <svg class="section-icon" viewBox="0 0 24 24" fill="none"><path d="M16 4H18C19.1 4 20 4.9 20 6V20C20 21.1 19.1 22 18 22H6C4.9 22 4 21.1 4 20V6C4 4.9 4.9 4 6 4H8M12 2V10L15 7M12 10L9 7" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          {{ getRoleText(userRole) }}工作台
+        </div>
+        <div class="stats-grid">
+          <div class="stat-card stat-blue" @click="router.push('/tasks')">
+            <div class="stat-accent"></div>
+            <div class="stat-inner">
+              <div class="stat-icon-box"><el-icon :size="22"><List /></el-icon></div>
+              <div class="stat-content">
+                <div class="stat-value">{{ myPendingTasks.length }}</div>
+                <div class="stat-label">我的任务</div>
+              </div>
             </div>
-            <div class="team-list">
-              <div v-for="member in teamMembers" :key="member.id" class="team-member clickable" :class="getRoleBadgeClass(member.role)" @click="router.push({ path: '/tasks', query: { assigneeId: member.id } })">
-                <div class="member-accent" :style="{ background: getRoleGradient(member.role) }"></div>
-                <div class="member-avatar" :style="{ background: getRoleGradient(member.role) }">
-                  <img v-if="member.avatar" :src="member.avatar" class="member-avatar-img" />
-                  <span v-else>{{ member.name.charAt(0) }}</span>
-                </div>
-                <div class="member-info">
-                  <div class="member-name">{{ member.name }}
-                    <span class="member-role-pill" :style="{ background: getRoleGradient(member.role) }">{{ getRoleText(member.role) }}</span>
-                  </div>
-                  <div class="member-stats">
-                    <span class="stat-item"><span class="stat-dot dot-warning"></span>{{ member.pendingCount }}待处理</span>
-                    <span class="stat-item"><span class="stat-dot dot-blue"></span>{{ member.inProgressCount }}进行中</span>
-                    <span class="stat-item"><span class="stat-dot dot-success"></span>{{ member.completedCount }}已完成</span>
-                    <span class="stat-item"><span class="stat-dot dot-danger"></span>{{ member.openBugCount }}缺陷</span>
-                  </div>
-                  <div class="member-progress">
-                    <div class="progress-bar">
-                      <div class="progress-fill" :class="member.completionRate >= 60 ? 'fill-success' : member.completionRate >= 30 ? 'fill-warning' : 'fill-danger'" :style="{ width: member.completionRate + '%' }"></div>
-                    </div>
-                    <span class="progress-text" :class="member.completionRate >= 60 ? 'text-success' : member.completionRate >= 30 ? 'text-warning' : 'text-danger'">{{ member.completionRate }}%</span>
-                  </div>
-                </div>
-                <div class="member-arrow">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
-                </div>
+          </div>
+          <div class="stat-card stat-orange" @click="router.push('/bugs')">
+            <div class="stat-accent"></div>
+            <div class="stat-inner">
+              <div class="stat-icon-box"><el-icon :size="22"><Warning /></el-icon></div>
+              <div class="stat-content">
+                <div class="stat-value">{{ myPendingBugs.length }}</div>
+                <div class="stat-label">我的Bug</div>
+              </div>
+            </div>
+          </div>
+          <div class="stat-card stat-purple" @click="router.push('/tasks')">
+            <div class="stat-accent"></div>
+            <div class="stat-inner">
+              <div class="stat-icon-box"><el-icon :size="22"><TrendCharts /></el-icon></div>
+              <div class="stat-content">
+                <div class="stat-value">{{ myActiveTaskCount }}</div>
+                <div class="stat-label">我的负载</div>
+              </div>
+            </div>
+          </div>
+          <div class="stat-card stat-green" @click="router.push('/tasks')">
+            <div class="stat-accent"></div>
+            <div class="stat-inner">
+              <div class="stat-icon-box"><el-icon :size="22"><CircleCheck /></el-icon></div>
+              <div class="stat-content">
+                <div class="stat-value">{{ taskCompletionRate }}%</div>
+                <div class="stat-label">我的效率</div>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </template>
 
-    <!-- ==================== Developer View ==================== -->
-    <template v-if="userRole === 'developer'">
-      <div class="section">
-        <div class="section-title">
-          <svg class="section-icon" viewBox="0 0 24 24" fill="none"><path d="M8 6L2 12L8 18M16 6L22 12L16 18" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          开发者工作台
-        </div>
-        <div class="stats-grid">
-          <div v-for="stat in devStats" :key="stat.key" class="stat-card" :class="stat.color" @click="stat.click">
-            <div class="stat-accent"></div>
-            <div class="stat-inner">
-              <div class="stat-icon-box"><el-icon :size="22"><component :is="stat.icon" /></el-icon></div>
-              <div class="stat-content"><div class="stat-value">{{ stat.value }}</div><div class="stat-label">{{ stat.label }}</div></div>
-            </div>
-          </div>
-        </div>
-      </div>
       <div class="row">
         <div class="col half">
           <div class="card">
             <div class="card-header">
               <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="2" stroke="#667eea" stroke-width="1.5" fill="none"/><path d="M8 10H16M8 14H12" stroke="#667eea" stroke-width="1.5" stroke-linecap="round"/></svg>
-              <span>待办任务</span>
+              <span>我的任务</span>
               <el-button class="btn-link" @click="$router.push('/tasks')">查看全部<svg class="btn-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></el-button>
             </div>
             <div class="list">
@@ -352,7 +413,7 @@
           <div class="card">
             <div class="card-header">
               <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none"><path d="M12 4L6 10V20H18V10L12 4Z" stroke="#e74c3c" stroke-width="1.5" fill="none"/><path d="M10 14L11 15L14 12" stroke="#e74c3c" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              <span>待处理缺陷</span>
+              <span>我的Bug</span>
               <el-button class="btn-link" @click="$router.push('/bugs')">查看全部<svg class="btn-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></el-button>
             </div>
             <div class="list">
@@ -366,350 +427,51 @@
           </div>
         </div>
       </div>
+
       <div class="row">
+        <div class="col half">
+          <div class="card card-warning">
+            <div class="card-header">
+              <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none"><path d="M3 13H5V11H3V13ZM3 17H5V15H3V17ZM3 9H5V7H3V9ZM7 13H21V11H7V13ZM7 17H21V15H7V17ZM7 9H21V7H7V9Z" stroke="#f39c12" stroke-width="1.5" fill="none"/></svg>
+              <span>我的负载</span>
+            </div>
+            <div class="donut-card" style="padding: 16px">
+              <div class="donut-stats" style="display: flex; flex-direction: column; gap: 12px; width: 100%">
+                <div class="mini-stat" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--nb-bg-hover); border-radius: var(--nb-radius-md)">
+                  <span style="color: var(--nb-text-secondary)">进行中任务</span>
+                  <span class="mini-num" style="color: var(--nb-warning)">{{ inProgressCount }}</span>
+                </div>
+                <div class="mini-stat" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--nb-bg-hover); border-radius: var(--nb-radius-md)">
+                  <span style="color: var(--nb-text-secondary)">待处理任务</span>
+                  <span class="mini-num" style="color: var(--nb-primary)">{{ pendingTaskCount }}</span>
+                </div>
+                <div class="mini-stat" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--nb-bg-hover); border-radius: var(--nb-radius-md)">
+                  <span style="color: var(--nb-text-secondary)">活跃Bug</span>
+                  <span class="mini-num" style="color: var(--nb-danger)">{{ myActiveBugCount }}</span>
+                </div>
+                <div class="mini-stat" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--nb-primary-lighter); border-radius: var(--nb-radius-md)">
+                  <span style="font-weight: var(--nb-font-weight-medium)">总负载</span>
+                  <span class="mini-num" style="color: var(--nb-primary); font-size: 18px; font-weight: var(--nb-font-weight-semibold)">{{ myActiveTaskCount + myActiveBugCount }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
         <div class="col half">
           <div class="card">
             <div class="card-header">
               <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#667eea" stroke-width="1.5" fill="none"/><path d="M12 8V12L15 15" stroke="#667eea" stroke-width="1.5" stroke-linecap="round"/></svg>
-              <span>本周进度</span>
+              <span>我的效率</span>
             </div>
             <div class="donut-card">
               <div class="donut-container">
                 <svg class="donut-svg" viewBox="0 0 36 36"><circle class="donut-bg" cx="18" cy="18" r="15.5" fill="none" style="stroke: var(--nb-border-light)" stroke-width="3" /><circle class="donut-ring" cx="18" cy="18" r="15.5" fill="none" style="stroke: var(--nb-success)" stroke-width="3" stroke-dasharray="97.4" :stroke-dashoffset="97.4 - (97.4 * taskCompletionRate / 100)" stroke-linecap="round" /></svg>
-                <div class="donut-center"><span class="donut-value">{{ completedTasksThisWeek }}</span><span class="donut-label">完成</span></div>
+                <div class="donut-center"><span class="donut-value" :style="{ color: taskCompletionRate >= 60 ? 'var(--nb-success)' : taskCompletionRate >= 30 ? 'var(--nb-warning)' : 'var(--nb-danger)' }">{{ taskCompletionRate }}%</span><span class="donut-label">完成率</span></div>
               </div>
               <div class="donut-stats">
+                <div class="mini-stat"><span class="mini-num">{{ completedTasksThisWeek }}</span><span>本周完成</span></div>
                 <div class="mini-stat"><span class="mini-num">{{ totalTasksThisWeek }}</span><span>总任务</span></div>
-                <div class="mini-stat"><span class="mini-num">{{ taskCompletionRate }}%</span><span>完成率</span></div>
               </div>
-            </div>
-          </div>
-        </div>
-        <div class="col half">
-          <div class="card card-warning">
-            <div class="card-header">
-              <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#f39c12" stroke-width="1.5" fill="none"/><path d="M12 7V12L15 15" stroke="#f39c12" stroke-width="1.5" stroke-linecap="round"/></svg>
-              <span>即将到期</span>
-            </div>
-            <div class="list">
-              <div v-for="item in dueSoonItems" :key="item.id" class="list-item" @click="$router.push(`/${item.type}s/${item.id}`)">
-                <div class="item-rank" :class="getDueClass(item.dueDate)">{{ getDueDays(item.dueDate) }}</div>
-                <div class="item-content"><div class="item-title">{{ item.title }}</div><div class="item-meta"><span class="tag" :class="item.type === 'task' ? 'tag-primary' : 'tag-danger'">{{ item.type === 'task' ? '任务' : '缺陷' }}</span><span><el-icon size="12"><Folder /></el-icon> {{ item.project?.name }}</span></div></div>
-              </div>
-              <div v-if="dueSoonItems.length === 0" class="empty">暂无即将到期项</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </template>
-
-    <!-- ==================== Designer View ==================== -->
-    <template v-else-if="userRole === 'designer'">
-      <div class="section">
-        <div class="section-title">
-          <svg class="section-icon" viewBox="0 0 24 24" fill="none"><path d="M19 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19V5C21 3.9 20.1 3 19 3Z" stroke="#f59e0b" stroke-width="2" fill="none"/><path d="M7 7H17M7 12H17M7 17H13" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round"/></svg>
-          策划工作台
-        </div>
-        <div class="stats-grid">
-          <div v-for="stat in designerStats" :key="stat.key" class="stat-card" :class="stat.color" @click="stat.click">
-            <div class="stat-accent"></div>
-            <div class="stat-inner">
-              <div class="stat-icon-box"><el-icon :size="22"><component :is="stat.icon" /></el-icon></div>
-              <div class="stat-content"><div class="stat-value">{{ stat.value }}</div><div class="stat-label">{{ stat.label }}</div></div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="row">
-        <div class="col half">
-          <div class="card">
-            <div class="card-header">
-              <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none"><path d="M12 4L4 8V16L12 20L20 16V8L12 4Z" stroke="#667eea" stroke-width="1.5" fill="none"/><path d="M4 8L12 12M12 20V12M12 12L20 8" stroke="#667eea" stroke-width="1.5"/></svg>
-              <span>我创建的任务</span>
-              <el-button class="btn-link" @click="$router.push('/tasks')">查看全部<svg class="btn-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></el-button>
-            </div>
-            <div class="list">
-              <div v-for="task in myCreatedTasks" :key="task.id" class="list-item" @click="$router.push(`/tasks/${task.id}`)">
-                <div class="item-priority" :class="getPriorityClass(task.priority)"></div>
-                <div class="item-content">
-                  <div class="item-title">{{ task.title }}</div>
-                  <div class="item-meta">
-                    <span class="tag" :class="getStatusTagClass(task.status)">{{ getStatusText(task.status) }}</span>
-                    <span><el-icon size="12"><User /></el-icon> {{ task.assignees?.map((a: any) => a.realName).join('、') || '未分配' }}</span>
-                  </div>
-                </div>
-              </div>
-              <div v-if="myCreatedTasks.length === 0" class="empty">暂无创建的任务</div>
-            </div>
-          </div>
-        </div>
-        <div class="col half">
-          <div class="card card-warning">
-            <div class="card-header">
-              <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#f39c12" stroke-width="1.5" fill="none"/><path d="M12 8V12L12 12" stroke="#f39c12" stroke-width="2" stroke-linecap="round"/><path d="M8 12H12L12 16" stroke="#f39c12" stroke-width="2" stroke-linecap="round"/></svg>
-              <span>待分配任务</span>
-              <el-button class="btn-link" @click="$router.push('/tasks')">查看全部<svg class="btn-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></el-button>
-            </div>
-            <div class="list">
-              <div v-for="task in unassignedTasks" :key="task.id" class="list-item" @click="$router.push(`/tasks/${task.id}`)">
-                <div class="item-priority" :class="getPriorityClass(task.priority)"></div>
-                <div class="item-content">
-                  <div class="item-title">{{ task.title }}</div>
-                  <div class="item-meta">
-                    <span><el-icon size="12"><Folder /></el-icon> {{ task.project?.name }}</span>
-                    <span v-if="task.dueDate" :class="{ 'text-danger': isOverdue(task.dueDate) }">{{ getRemainingTime(task.dueDate) }}</span>
-                  </div>
-                </div>
-                <span class="tag" :class="getPriorityTagClass(task.priority)">{{ getPriorityText(task.priority) }}</span>
-              </div>
-              <div v-if="unassignedTasks.length === 0" class="empty">所有任务已分配</div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="row">
-        <div class="col half">
-          <div class="card">
-            <div class="card-header">
-              <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none"><path d="M3 7V17C3 18.1 3.9 19 5 19H19C20.1 19 21 18.1 21 17V9C21 7.9 20.1 7 19 7H13L11 5H5C3.9 5 3 5.9 3 7Z" fill="none" stroke="#667eea" stroke-width="1.5"/></svg>
-              <span>项目进度</span>
-              <el-button class="btn-link" @click="$router.push('/projects')">查看全部<svg class="btn-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></el-button>
-            </div>
-            <div class="list">
-              <div v-for="project in recentProjects" :key="project.id" class="list-item" @click="$router.push(`/projects/${project.id}`)">
-                <div class="item-icon"><el-icon size="18" color="#667eea"><Folder /></el-icon></div>
-                <div class="item-content">
-                  <div class="item-title">{{ project.name }}</div>
-                  <div class="item-meta"><span class="tag" :class="project.status === 'active' ? 'tag-success' : 'tag-default'">{{ project.status === 'active' ? '进行中' : '已完成' }}</span><span>{{ project.manager?.realName || '-' }}</span></div>
-                  <div class="progress"><div class="progress-bar"><div class="progress-fill" :style="{ width: getProjectProgress(project) + '%' }"></div></div><span class="health-dot" :class="getHealthColor(getProjectProgress(project))"></span><span class="progress-text">{{ getProjectProgress(project) }}%</span></div>
-                </div>
-              </div>
-              <div v-if="recentProjects.length === 0" class="empty">暂无项目</div>
-            </div>
-          </div>
-        </div>
-        <div class="col half">
-          <div class="card card-warning">
-            <div class="card-header">
-              <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#f39c12" stroke-width="1.5" fill="none"/><path d="M12 7V12L15 15" stroke="#f39c12" stroke-width="1.5" stroke-linecap="round"/></svg>
-              <span>即将到期</span>
-            </div>
-            <div class="list">
-              <div v-for="item in dueSoonItems" :key="item.id" class="list-item" @click="$router.push(`/${item.type}s/${item.id}`)">
-                <div class="item-rank" :class="getDueClass(item.dueDate)">{{ getDueDays(item.dueDate) }}</div>
-                <div class="item-content"><div class="item-title">{{ item.title }}</div><div class="item-meta"><span class="tag" :class="item.type === 'task' ? 'tag-primary' : 'tag-danger'">{{ item.type === 'task' ? '任务' : '缺陷' }}</span><span><el-icon size="12"><Folder /></el-icon> {{ item.project?.name }}</span></div></div>
-              </div>
-              <div v-if="dueSoonItems.length === 0" class="empty">暂无即将到期项</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </template>
-
-    <!-- ==================== Artist View ==================== -->
-    <template v-else-if="userRole === 'artist'">
-      <div class="section">
-        <div class="section-title">
-          <svg class="section-icon" viewBox="0 0 24 24" fill="none"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" stroke="#f59e0b" stroke-width="2" fill="none" stroke-linejoin="round"/></svg>
-          美术工作台
-        </div>
-        <div class="stats-grid">
-          <div v-for="stat in artistStats" :key="stat.key" class="stat-card" :class="stat.color" @click="stat.click">
-            <div class="stat-accent"></div>
-            <div class="stat-inner">
-              <div class="stat-icon-box"><el-icon :size="22"><component :is="stat.icon" /></el-icon></div>
-              <div class="stat-content"><div class="stat-value">{{ stat.value }}</div><div class="stat-label">{{ stat.label }}</div></div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="row">
-        <div class="col half">
-          <div class="card">
-            <div class="card-header">
-              <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="2" stroke="#667eea" stroke-width="1.5" fill="none"/><path d="M8 10H16M8 14H12" stroke="#667eea" stroke-width="1.5" stroke-linecap="round"/></svg>
-              <span>待办任务</span>
-              <el-button class="btn-link" @click="$router.push('/tasks')">查看全部<svg class="btn-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></el-button>
-            </div>
-            <div class="list">
-              <!-- 按分类分组 -->
-              <template v-for="group in tasksByCategory" :key="group.category">
-                <div class="category-group-header">
-                  <span class="category-tag">{{ group.category }}</span>
-                  <span class="category-count">{{ group.items.length }}</span>
-                </div>
-                <div v-for="task in group.items.slice(0, 5)" :key="task.id" class="list-item" @click="$router.push(`/tasks/${task.id}`)">
-                  <div class="item-priority" :class="getPriorityClass(task.priority)"></div>
-                  <div class="item-content">
-                    <div class="item-title">{{ task.title }}</div>
-                    <div class="item-meta">
-                      <span><el-icon size="12"><Folder /></el-icon> {{ task.project?.name }}</span>
-                      <span v-if="task.dueDate" :class="{ 'text-danger': isOverdue(task.dueDate) }">{{ getRemainingTime(task.dueDate) }}</span>
-                    </div>
-                  </div>
-                  <span class="tag" :class="getPriorityTagClass(task.priority)">{{ getPriorityText(task.priority) }}</span>
-                </div>
-              </template>
-              <div v-if="tasksByCategory.length === 0" class="empty">暂无待办任务</div>
-            </div>
-          </div>
-        </div>
-        <div class="col half">
-          <div class="card">
-            <div class="card-header">
-              <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none"><path d="M12 4L6 10V20H18V10L12 4Z" stroke="#e74c3c" stroke-width="1.5" fill="none"/><path d="M10 14L11 15L14 12" stroke="#e74c3c" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              <span>待处理缺陷</span>
-              <el-button class="btn-link" @click="$router.push('/bugs')">查看全部<svg class="btn-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></el-button>
-            </div>
-            <div class="list">
-              <div v-for="bug in myPendingBugs" :key="bug.id" class="list-item" @click="$router.push(`/bugs/${bug.id}`)">
-                <div class="item-priority" :class="getSeverityClass(bug.severity)"></div>
-                <div class="item-content"><div class="item-title">{{ bug.title }}</div><div class="item-meta"><span><el-icon size="12"><Folder /></el-icon> {{ bug.project?.name }}</span><span v-if="bug.dueDate" :class="{ 'text-danger': isOverdue(bug.dueDate) }">{{ getRemainingTime(bug.dueDate) }}</span></div></div>
-                <span class="tag" :class="getSeverityTagClass(bug.severity)">{{ getSeverityText(bug.severity) }}</span>
-              </div>
-              <div v-if="myPendingBugs.length === 0" class="empty">暂无待处理缺陷</div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="row">
-        <div class="col half">
-          <div class="card">
-            <div class="card-header">
-              <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#667eea" stroke-width="1.5" fill="none"/><path d="M12 8V12L15 15" stroke="#667eea" stroke-width="1.5" stroke-linecap="round"/></svg>
-              <span>本周进度</span>
-            </div>
-            <div class="donut-card">
-              <div class="donut-container">
-                <svg class="donut-svg" viewBox="0 0 36 36"><circle class="donut-bg" cx="18" cy="18" r="15.5" fill="none" style="stroke: var(--nb-border-light)" stroke-width="3" /><circle class="donut-ring" cx="18" cy="18" r="15.5" fill="none" style="stroke: var(--nb-success)" stroke-width="3" stroke-dasharray="97.4" :stroke-dashoffset="97.4 - (97.4 * taskCompletionRate / 100)" stroke-linecap="round" /></svg>
-                <div class="donut-center"><span class="donut-value">{{ completedTasksThisWeek }}</span><span class="donut-label">完成</span></div>
-              </div>
-              <div class="donut-stats">
-                <div class="mini-stat"><span class="mini-num">{{ totalTasksThisWeek }}</span><span>总任务</span></div>
-                <div class="mini-stat"><span class="mini-num">{{ taskCompletionRate }}%</span><span>完成率</span></div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="col half">
-          <div class="card card-success">
-            <div class="card-header">
-              <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#22c55e" stroke-width="1.5" fill="none"/><path d="M8 12L11 15L16 9" stroke="#22c55e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              <span>近期完成</span>
-            </div>
-            <div class="list">
-              <div v-for="task in recentlyCompletedTasks" :key="task.id" class="list-item" @click="$router.push(`/tasks/${task.id}`)">
-                <div class="item-priority" :class="getPriorityClass(task.priority)"></div>
-                <div class="item-content">
-                  <div class="item-title">{{ task.title }}</div>
-                  <div class="item-meta">
-                    <span><el-icon size="12"><Folder /></el-icon> {{ task.project?.name }}</span>
-                    <span class="tag tag-success">已完成</span>
-                  </div>
-                </div>
-              </div>
-              <div v-if="recentlyCompletedTasks.length === 0" class="empty">暂无完成记录</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </template>
-
-    <!-- ==================== Tester View ==================== -->
-    <template v-else-if="userRole === 'tester'">
-      <div class="section">
-        <div class="section-title">
-          <svg class="section-icon" viewBox="0 0 24 24" fill="none"><path d="M9 12L11 14L15 10M21 12C21 16.97 16.97 21 12 21C7.03 21 3 16.97 3 12C3 7.03 7.03 3 12 3C16.97 3 21 7.03 21 12Z" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          测试工作台
-        </div>
-        <div class="stats-grid">
-          <div v-for="stat in testerStats" :key="stat.key" class="stat-card" :class="stat.color" @click="stat.click">
-            <div class="stat-accent"></div>
-            <div class="stat-inner">
-              <div class="stat-icon-box"><el-icon :size="22"><component :is="stat.icon" /></el-icon></div>
-              <div class="stat-content"><div class="stat-value">{{ stat.value }}</div><div class="stat-label">{{ stat.label }}</div></div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="row">
-        <div class="col half">
-          <div class="card card-success">
-            <div class="card-header">
-              <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#22c55e" stroke-width="1.5" fill="none"/><path d="M8 12L11 15L16 9" stroke="#22c55e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              <span>待验证缺陷</span>
-              <el-button class="btn-link" @click="$router.push('/bugs')">查看全部<svg class="btn-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></el-button>
-            </div>
-            <div class="list">
-              <div v-for="bug in bugsToVerify" :key="bug.id" class="list-item" @click="$router.push(`/bugs/${bug.id}`)">
-                <div class="item-priority" :class="getSeverityClass(bug.severity)"></div>
-                <div class="item-content">
-                  <div class="item-title">{{ bug.title }}</div>
-                  <div class="item-meta">
-                    <span><el-icon size="12"><Folder /></el-icon> {{ bug.project?.name }}</span>
-                    <span><el-icon size="12"><User /></el-icon> {{ bug.assignee?.realName || '未分配' }}</span>
-                  </div>
-                </div>
-                <span class="tag tag-success">待验证</span>
-              </div>
-              <div v-if="bugsToVerify.length === 0" class="empty">暂无待验证缺陷</div>
-            </div>
-          </div>
-        </div>
-        <div class="col half">
-          <div class="card">
-            <div class="card-header">
-              <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none"><path d="M12 4L6 10V20H18V10L12 4Z" stroke="#e74c3c" stroke-width="1.5" fill="none"/><path d="M10 14L11 15L14 12" stroke="#e74c3c" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              <span>待处理缺陷</span>
-              <el-button class="btn-link" @click="$router.push('/bugs')">查看全部<svg class="btn-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></el-button>
-            </div>
-            <div class="list">
-              <div v-for="bug in myPendingBugs" :key="bug.id" class="list-item" @click="$router.push(`/bugs/${bug.id}`)">
-                <div class="item-priority" :class="getSeverityClass(bug.severity)"></div>
-                <div class="item-content"><div class="item-title">{{ bug.title }}</div><div class="item-meta"><span><el-icon size="12"><Folder /></el-icon> {{ bug.project?.name }}</span><span v-if="bug.dueDate" :class="{ 'text-danger': isOverdue(bug.dueDate) }">{{ getRemainingTime(bug.dueDate) }}</span></div></div>
-                <span class="tag" :class="getSeverityTagClass(bug.severity)">{{ getSeverityText(bug.severity) }}</span>
-              </div>
-              <div v-if="myPendingBugs.length === 0" class="empty">暂无待处理缺陷</div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="row">
-        <div class="col half">
-          <div class="card card-primary">
-            <div class="card-header">
-              <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#667eea" stroke-width="1.5" fill="none"/><path d="M8 12L11 15L16 9" stroke="#667eea" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              <span>已验证通过</span>
-              <el-button class="btn-link" @click="$router.push('/bugs')">查看全部<svg class="btn-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></el-button>
-            </div>
-            <div class="list">
-              <div v-for="bug in recentlyVerifiedBugs" :key="bug.id" class="list-item" @click="$router.push(`/bugs/${bug.id}`)">
-                <div class="item-priority" :class="getSeverityClass(bug.severity)"></div>
-                <div class="item-content">
-                  <div class="item-title">{{ bug.title }}</div>
-                  <div class="item-meta">
-                    <span><el-icon size="12"><Folder /></el-icon> {{ bug.project?.name }}</span>
-                    <span><el-icon size="12"><User /></el-icon> {{ bug.assignee?.realName || '未分配' }}</span>
-                  </div>
-                </div>
-                <span class="tag tag-primary">已验证</span>
-              </div>
-              <div v-if="recentlyVerifiedBugs.length === 0" class="empty">暂无验证记录</div>
-            </div>
-          </div>
-        </div>
-        <div class="col half">
-          <div class="card card-warning">
-            <div class="card-header">
-              <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#f39c12" stroke-width="1.5" fill="none"/><path d="M12 7V12L15 15" stroke="#f39c12" stroke-width="1.5" stroke-linecap="round"/></svg>
-              <span>即将到期</span>
-            </div>
-            <div class="list">
-              <div v-for="item in dueSoonItems" :key="item.id" class="list-item" @click="$router.push(`/${item.type}s/${item.id}`)">
-                <div class="item-rank" :class="getDueClass(item.dueDate)">{{ getDueDays(item.dueDate) }}</div>
-                <div class="item-content"><div class="item-title">{{ item.title }}</div><div class="item-meta"><span class="tag" :class="item.type === 'task' ? 'tag-primary' : 'tag-danger'">{{ item.type === 'task' ? '任务' : '缺陷' }}</span><span><el-icon size="12"><Folder /></el-icon> {{ item.project?.name }}</span></div></div>
-              </div>
-              <div v-if="dueSoonItems.length === 0" class="empty">暂无即将到期项</div>
             </div>
           </div>
         </div>
@@ -804,70 +566,7 @@ const quickQuests = computed(() => {
     ]
   }
 
-  if (role === 'project_manager') {
-    return [
-      {
-        key: 'myProjects',
-        title: '我的项目',
-        desc: `${myProjects.value.length} 个项目`,
-        click: () => router.push('/projects'),
-        svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect x="8" y="6" width="32" height="36" rx="4" stroke="#667eea" stroke-width="2.5" fill="none"/><path d="M16 18H32M16 26H28M16 34H24" stroke="#667eea" stroke-width="2" stroke-linecap="round"/><circle cx="36" cy="36" r="10" fill="#667eea"/></svg>'
-      },
-      {
-        key: 'teamPending',
-        title: '团队待办',
-        desc: `${pmPendingCount.value} 个待处理任务`,
-        click: () => router.push('/tasks'),
-        svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect x="8" y="6" width="32" height="36" rx="4" stroke="#f39c12" stroke-width="2.5" fill="none"/><path d="M16 18H32M16 26H28" stroke="#f39c12" stroke-width="2" stroke-linecap="round"/><circle cx="36" cy="36" r="10" fill="#f39c12"/></svg>'
-      },
-      {
-        key: 'openBugs',
-        title: '需关注',
-        desc: `${pmOpenBugCount.value} 个未关闭缺陷`,
-        click: () => router.push('/bugs'),
-        svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path d="M24 8L12 16V32L24 40L36 32V16L24 8Z" stroke="#f5576c" stroke-width="2.5" fill="none"/><path d="M20 24L23 27L28 21" stroke="#f5576c" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'
-      }
-    ]
-  }
-
-  // All dev roles
-  const quests: any[] = [
-    {
-      key: 'myTasks',
-      title: '我的任务',
-      desc: `${myPendingTasks.value.length} 个待办任务`,
-      click: () => router.push('/tasks'),
-      svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect x="8" y="6" width="32" height="36" rx="4" stroke="#667eea" stroke-width="2.5" fill="none"/><path d="M16 18H32M16 26H28M16 34H24" stroke="#667eea" stroke-width="2" stroke-linecap="round"/><circle cx="36" cy="36" r="10" fill="#667eea"/></svg>'
-    },
-    {
-      key: 'myBugs',
-      title: '我的缺陷',
-      desc: `${myPendingBugs.value.length} 个待处理缺陷`,
-      click: () => router.push('/bugs'),
-      svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path d="M24 8L12 16V32L24 40L36 32V16L24 8Z" stroke="#f5576c" stroke-width="2.5" fill="none"/><path d="M20 24L23 27L28 21" stroke="#f5576c" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'
-    }
-  ]
-
-  // Tester gets a "to verify" quest
-  if (role === 'tester') {
-    quests.push({
-      key: 'toVerify',
-      title: '待验证',
-      desc: `${bugsToVerify.value.length} 个待验证缺陷`,
-      click: () => router.push('/bugs'),
-      svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><circle cx="24" cy="24" r="18" stroke="#27ae60" stroke-width="2.5" fill="none"/><path d="M18 24L22 28L30 19" stroke="#27ae60" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>'
-    })
-  } else {
-    quests.push({
-      key: 'dueSoon',
-      title: '即将到期',
-      desc: `${dueSoonItems.value.length} 个待处理`,
-      click: () => router.push('/tasks'),
-      svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><circle cx="24" cy="24" r="18" stroke="#f39c12" stroke-width="2.5" fill="none"/><path d="M24 12V24L32 30" stroke="#f39c12" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'
-    })
-  }
-
-  return quests
+  return []
 })
 
 // ==================== Shared Data ====================
@@ -887,7 +586,7 @@ const myReportedBugs = computed(() => allBugs.value.filter((b: any) => b.reporte
 const bugsToVerify = computed(() => allBugs.value.filter((b: any) => b.status === 'fixed').slice(0, 8))
 
 const recentProjects = computed(() => allProjects.value.filter((p: any) => p.status === 'active').slice(0, 8))
-const myProjects = computed(() => allProjects.value.filter((p: any) => p.manager?.id === userId.value))
+const myProjects = computed(() => allProjects.value.filter((p: any) => p.managers?.some((m: any) => m.id === userId.value)))
 
 const urgentBugs = computed(() => allBugs.value.filter((b: any) => b.status === 'pending' || b.status === 'in_progress').sort((a: any, b: any) => {
   const order: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 }
@@ -952,36 +651,42 @@ const adminStats = computed(() => [
 
 // ==================== PM-specific ====================
 
-const pmPendingCount = computed(() => {
-  const projectIds = myProjects.value.map((p: any) => p.id)
-  return allTasks.value.filter((t: any) => projectIds.includes(t.project?.id) && t.status === 'pending').length
-})
+// PM 相关项目 ID
+const pmProjectIds = computed(() => myProjects.value.map((p: any) => p.id))
 
-const pmOpenBugCount = computed(() => {
-  const projectIds = myProjects.value.map((p: any) => p.id)
-  return allBugs.value.filter((b: any) => projectIds.includes(b.project?.id) && b.status !== 'closed' && b.status !== 'verified').length
-})
+// 待指派的任务：pending 状态且无负责人
+const pmUnassignedTasks = computed(() =>
+  allTasks.value.filter((t: any) =>
+    pmProjectIds.value.includes(t.project?.id) &&
+    t.status === 'pending' &&
+    (!t.assignees || t.assignees.length === 0)
+  )
+)
 
-const pmStats = computed(() => [
-  { key: 'myProjects', label: '我的项目', value: myProjects.value.length, icon: 'Folder', color: 'stat-blue', click: () => router.push('/projects') },
-  { key: 'tasks', label: '项目任务', value: myProjects.value.reduce((sum: number, p: any) => sum + getProjectTaskCount(p.id), 0), icon: 'List', color: 'stat-green', click: () => router.push('/tasks') },
-  { key: 'bugs', label: '项目缺陷', value: myProjects.value.reduce((sum: number, p: any) => sum + getProjectBugCount(p.id), 0), icon: 'Warning', color: 'stat-orange', click: () => router.push('/bugs') },
-  { key: 'pending', label: '待处理', value: pmPendingCount.value, icon: 'Clock', color: 'stat-red', click: () => router.push('/tasks') },
-])
+// 待关闭的任务：completed 状态（可执行关闭操作）
+const pmCloseableTasks = computed(() =>
+  allTasks.value.filter((t: any) =>
+    pmProjectIds.value.includes(t.project?.id) &&
+    t.status === 'completed'
+  )
+)
 
-const memberCompletionData = computed(() => {
-  const members = allUsers.value.filter((u: any) => u.role !== 'admin')
-  return members.map((m: any) => {
-    const userTasks = allTasks.value.filter((t: any) => t.assignees?.some((a: any) => a.id === m.id))
-    const pendingCount = userTasks.filter((t: any) => t.status === 'pending').length
-    const inProgressCount = userTasks.filter((t: any) => t.status === 'in_progress').length
-    const completedCount = userTasks.filter((t: any) => t.status === 'completed' || t.status === 'closed').length
-    const totalTasks = userTasks.length
-    const completionRate = totalTasks === 0 ? 0 : Math.round((completedCount / totalTasks) * 100)
-    const openBugCount = allBugs.value.filter((b: any) => b.assignee?.id === m.id && b.status !== 'closed' && b.status !== 'verified').length
-    return { id: m.id, name: m.realName, role: m.role, pendingCount, inProgressCount, completedCount, totalTasks, completionRate, openBugCount }
-  }).sort((a: any, b: any) => b.completionRate - a.completionRate)
-})
+// 待指派的Bug：无 assignee 且未关闭
+const pmUnassignedBugs = computed(() =>
+  allBugs.value.filter((b: any) =>
+    pmProjectIds.value.includes(b.project?.id) &&
+    b.status !== 'closed' &&
+    !b.assignee
+  )
+)
+
+// 待关闭的Bug：verified 状态（可执行关闭操作）
+const pmCloseableBugs = computed(() =>
+  allBugs.value.filter((b: any) =>
+    pmProjectIds.value.includes(b.project?.id) &&
+    b.status === 'verified'
+  )
+)
 
 // 统一的团队概览数据（合并负载和任务完成情况）
 const teamMembers = computed(() => {
@@ -1015,63 +720,23 @@ const teamMembers = computed(() => {
   }).sort((a: any, b: any) => b.completionRate - a.completionRate)
 })
 
-// ==================== Dev Stats (unified) ====================
+// ==================== Developer Shared ====================
 
-const devStats = computed(() => [
-  { key: 'myTasks', label: '我的任务', value: myTasks.value.filter((t: any) => t.status !== 'completed' && t.status !== 'closed').length, icon: 'List', color: 'stat-blue', click: () => router.push('/tasks') },
-  { key: 'myBugs', label: '我的缺陷', value: myBugs.value.filter((b: any) => b.status !== 'closed' && b.status !== 'verified').length, icon: 'Warning', color: 'stat-orange', click: () => router.push('/bugs') },
-  { key: 'completed', label: '本周完成', value: completedTasksThisWeek.value, icon: 'CircleCheck', color: 'stat-green', click: () => router.push('/tasks') },
-  { key: 'rate', label: '完成率', value: taskCompletionRate.value + '%', icon: 'TrendCharts', color: 'stat-purple', click: () => router.push('/tasks') },
-])
+const myActiveTaskCount = computed(() =>
+  myTasks.value.filter((t: any) => t.status !== 'completed' && t.status !== 'closed').length
+)
 
-// ==================== Role-specific Computed ====================
+const inProgressCount = computed(() =>
+  myTasks.value.filter((t: any) => t.status === 'in_progress').length
+)
 
-// Designer
-const designerStats = computed(() => [
-  { key: 'created', label: '我创建的任务', value: myCreatedTasks.value.length, icon: 'Document', color: 'stat-blue', click: () => router.push('/tasks') },
-  { key: 'reported', label: '报告的缺陷', value: myReportedBugs.value.length, icon: 'Warning', color: 'stat-orange', click: () => router.push('/bugs') },
-  { key: 'projects', label: '参与项目', value: myProjects.value.length, icon: 'Folder', color: 'stat-cyan', click: () => router.push('/projects') },
-  { key: 'rate', label: '完成率', value: taskCompletionRate.value + '%', icon: 'TrendCharts', color: 'stat-purple', click: () => router.push('/tasks') },
-])
+const pendingTaskCount = computed(() =>
+  myTasks.value.filter((t: any) => t.status === 'pending').length
+)
 
-const unassignedTasks = computed(() => allTasks.value.filter((t: any) => t.creator?.id === userId.value && (!t.assignees || t.assignees.length === 0)).slice(0, 8))
-
-// Artist
-const artistStats = computed(() => [
-  { key: 'myTasks', label: '我的任务', value: myTasks.value.filter((t: any) => t.status !== 'completed' && t.status !== 'closed').length, icon: 'List', color: 'stat-blue', click: () => router.push('/tasks') },
-  { key: 'pending', label: '待审核', value: myTasks.value.filter((t: any) => t.status === 'pending').length, icon: 'Clock', color: 'stat-orange', click: () => router.push('/tasks') },
-  { key: 'completed', label: '已完成', value: myTasks.value.filter((t: any) => t.status === 'completed').length, icon: 'CircleCheck', color: 'stat-green', click: () => router.push('/tasks') },
-  { key: 'rate', label: '完成率', value: taskCompletionRate.value + '%', icon: 'TrendCharts', color: 'stat-purple', click: () => router.push('/tasks') },
-])
-
-const tasksByCategory = computed(() => {
-  const pending = myTasks.value.filter((t: any) => t.status !== 'completed' && t.status !== 'closed')
-  const groups: Record<string, any[]> = {}
-  pending.forEach((t: any) => {
-    const cat = t.category || '未分类'
-    if (!groups[cat]) groups[cat] = []
-    groups[cat].push(t)
-  })
-  return Object.entries(groups).map(([category, items]) => ({ category, items }))
-})
-
-const recentlyCompletedTasks = computed(() => myTasks.value.filter((t: any) => t.status === 'completed').sort((a: any, b: any) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime()).slice(0, 5))
-
-// Tester
-const testerVerifiedThisWeek = computed(() => {
-  const now = new Date()
-  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-  return allBugs.value.filter((b: any) => b.assignee?.id === userId.value && b.status === 'verified' && new Date(b.updatedAt) >= weekAgo).length
-})
-
-const testerStats = computed(() => [
-  { key: 'toVerify', label: '待验证', value: bugsToVerify.value.length, icon: 'CircleCheck', color: 'stat-green', click: () => router.push('/bugs') },
-  { key: 'myBugs', label: '待处理缺陷', value: myPendingBugs.value.length, icon: 'Warning', color: 'stat-orange', click: () => router.push('/bugs') },
-  { key: 'fixed', label: '已修复', value: allBugs.value.filter((b: any) => b.assignee?.id === userId.value && b.status === 'fixed').length, icon: 'Tools', color: 'stat-blue', click: () => router.push('/bugs') },
-  { key: 'verified', label: '本周验证', value: testerVerifiedThisWeek.value, icon: 'Select', color: 'stat-purple', click: () => router.push('/bugs') },
-])
-
-const recentlyVerifiedBugs = computed(() => allBugs.value.filter((b: any) => b.status === 'verified').sort((a: any, b: any) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime()).slice(0, 5))
+const myActiveBugCount = computed(() =>
+  myBugs.value.filter((b: any) => b.status !== 'closed' && b.status !== 'verified' && b.status !== 'fixed').length
+)
 
 // ==================== Shared Utility Functions ====================
 
@@ -1081,9 +746,6 @@ const getProjectProgress = (project: any) => {
   const completed = projectTasks.filter((t: any) => t.status === 'completed' || t.status === 'closed').length
   return Math.round((completed / projectTasks.length) * 100)
 }
-
-const getProjectTaskCount = (projectId: number) => allTasks.value.filter((t: any) => t.project?.id === projectId).length
-const getProjectBugCount = (projectId: number) => allBugs.value.filter((b: any) => b.project?.id === projectId).length
 const getUserTaskCount = (uid: number) => allTasks.value.filter((t: any) => t.assignees?.some((a: any) => a.id === uid) && t.status !== 'completed' && t.status !== 'closed').length
 
 const getHealthColor = (progress: number) => {

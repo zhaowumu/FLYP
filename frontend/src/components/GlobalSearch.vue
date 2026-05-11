@@ -43,8 +43,8 @@
                 <div class="result-title" v-html="highlightText(project.name)"></div>
                 <div class="result-meta">
                   <span class="result-type">项目</span>
-                  <span v-if="project.manager" class="result-separator">·</span>
-                  <span v-if="project.manager" class="result-assignee">{{ project.manager.realName }}</span>
+                  <span v-if="project.managers?.length" class="result-separator">·</span>
+                  <span v-if="project.managers?.length" class="result-assignee">{{ project.managers[0].realName }}</span>
                 </div>
               </div>
               <el-icon class="result-arrow"><ArrowRight /></el-icon>

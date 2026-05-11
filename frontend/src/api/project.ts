@@ -24,6 +24,6 @@ export const archiveProject = (id: number) => {
   return api.patch(`/projects/${id}/archive`)
 }
 
-export const changeProjectManager = (id: number, managerId: number) => {
-  return api.patch(`/projects/${id}/manager`, { managerId })
+export const updateProjectManagers = (id: number, managerIds: number[]) => {
+  return api.patch(`/projects/${id}/managers`, { managerIds })
 }

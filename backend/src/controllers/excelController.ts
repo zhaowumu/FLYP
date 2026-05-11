@@ -136,7 +136,7 @@ export const excelController = {
           name: p.name,
           description: p.description,
           status: p.status,
-          createdBy: p.manager?.realName || "未知",
+          createdBy: p.managers?.map((m: any) => m.realName).join(", ") || "未知",
           createdAt: p.createdAt,
           updatedAt: p.updatedAt,
         }));

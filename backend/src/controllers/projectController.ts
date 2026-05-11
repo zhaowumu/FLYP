@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { AppDataSource } from "../config/database";
 import { Project } from "../entities/Project";
+import { User } from "../entities/User";
 
 const projectRepository = AppDataSource.getRepository(Project);
 
@@ -8,19 +9,28 @@ export const projectController = {
   // 创建项目
   async createProject(req: Request, res: Response) {
     try {
-      const { name, description } = req.body;
+      const { name, description, managerIds } = req.body;
       const createdBy = (req as any).user.id;
 
-      // 创建项目
+      let managers: User[] = [];
+      if (managerIds && Array.isArray(managerIds) && managerIds.length > 0) {
+        const userRepo = AppDataSource.getRepository(User);
+        managers = await userRepo.findByIds(managerIds);
+      }
+
       const project = projectRepository.create({
         name,
         description,
         status: "active",
         createdBy,
+        managers,
       });
-
       await projectRepository.save(project);
-      res.status(201).json(project);
+      const savedProject = await projectRepository.findOne({
+        where: { id: project.id },
+        relations: ["managers", "tasks", "bugs"],
+      });
+      res.status(201).json(savedProject);
     } catch (error) {
       console.error("Error creating project:", error);
       res.status(500).json({ error: "Failed to create project" });
@@ -31,7 +41,7 @@ export const projectController = {
   async getAllProjects(req: Request, res: Response) {
     try {
       const projects = await projectRepository.find({
-        relations: ["manager", "tasks", "bugs"],
+        relations: ["managers", "tasks", "bugs"],
       });
       res.json(projects);
     } catch (error) {
@@ -46,13 +56,11 @@ export const projectController = {
       const { id } = req.params;
       const project = await projectRepository.findOne({
         where: { id: parseInt(id as string) },
-        relations: ["manager", "tasks", "bugs"],
+        relations: ["managers", "tasks", "bugs"],
       });
-
       if (!project) {
         return res.status(404).json({ error: "Project not found" });
       }
-
       res.json(project);
     } catch (error) {
       console.error("Error getting project:", error);
@@ -65,21 +73,17 @@ export const projectController = {
     try {
       const { id } = req.params;
       const updateData = req.body;
-
       const project = await projectRepository.findOne({
         where: { id: parseInt(id as string) },
       });
-
       if (!project) {
         return res.status(404).json({ error: "Project not found" });
       }
-
       await projectRepository.update(id, updateData);
       const updatedProject = await projectRepository.findOne({
         where: { id: parseInt(id as string) },
-        relations: ["manager", "tasks", "bugs"],
+        relations: ["managers", "tasks", "bugs"],
       });
-
       res.json(updatedProject);
     } catch (error) {
       console.error("Error updating project:", error);
@@ -111,35 +115,36 @@ export const projectController = {
     }
   },
 
-  // 更改项目负责人（仅管理员）
-  async changeManager(req: Request, res: Response) {
+  // 更新项目负责人（支持多人）
+  async updateManagers(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const { managerId } = req.body;
-      const user = (req as any).user;
-
-      if (user.role !== "admin") {
-        return res.status(403).json({ error: "只有管理员可以更改项目负责人" });
-      }
+      const { managerIds } = req.body;
 
       const project = await projectRepository.findOne({
         where: { id: parseInt(id as string) },
       });
-
       if (!project) {
         return res.status(404).json({ error: "Project not found" });
       }
 
-      await projectRepository.update(id, { manager: { id: managerId } });
+      if (!Array.isArray(managerIds)) {
+        return res.status(400).json({ error: "managerIds 必须是数组" });
+      }
+
+      const userRepo = AppDataSource.getRepository(User);
+      const managers = await userRepo.findByIds(managerIds);
+      project.managers = managers;
+      await projectRepository.save(project);
+
       const updatedProject = await projectRepository.findOne({
         where: { id: parseInt(id as string) },
-        relations: ["manager", "tasks", "bugs"],
+        relations: ["managers", "tasks", "bugs"],
       });
-
       res.json(updatedProject);
     } catch (error) {
-      console.error("Error changing project manager:", error);
-      res.status(500).json({ error: "Failed to change project manager" });
+      console.error("Error updating project managers:", error);
+      res.status(500).json({ error: "Failed to update project managers" });
     }
   },
 };

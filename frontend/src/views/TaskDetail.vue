@@ -640,7 +640,7 @@ const currentUserId = computed(() => userStore.user?.id)
 const isCreator = computed(() => task.value?.creator?.id === currentUserId.value)
 const isAssignee = computed(() => task.value?.assignees?.some((a: any) => a.id === currentUserId.value))
 const isParticipant = computed(() => isCreator.value || isAssignee.value)
-const isProjectManager = computed(() => task.value?.project?.manager?.id === currentUserId.value)
+const isProjectManager = computed(() => task.value?.project?.managers?.some((m: any) => m.id === currentUserId.value))
 const isAdmin = computed(() => userStore.user?.role === 'admin')
 const canManageSidebar = computed(() => isAdmin.value || userStore.user?.role === 'project_manager')
 

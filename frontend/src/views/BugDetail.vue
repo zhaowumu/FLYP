@@ -564,7 +564,7 @@ const isReporter = computed(() => {
 })
 const isAssignee = computed(() => bug.value?.assignee?.id === currentUserId.value)
 const isParticipant = computed(() => isReporter.value || isAssignee.value)
-const isProjectManager = computed(() => bug.value?.project?.manager?.id === currentUserId.value)
+const isProjectManager = computed(() => bug.value?.project?.managers?.some((m: any) => m.id === currentUserId.value))
 const isAdmin = computed(() => userStore.user?.role === 'admin')
 
 // 可编辑权限：当前负责人、创建人、项目经理、管理员，或拥有删除权限的角色

@@ -95,7 +95,7 @@ export const taskController = {
 
       const savedTask = await taskRepository.findOne({
         where: { id: task.id },
-        relations: ["project", "project.manager", "assignees", "creator", "parentTask", "subtasks"],
+        relations: ["project", "project.managers", "assignees", "creator", "parentTask", "subtasks"],
       });
 
       res.status(201).json(savedTask);
@@ -125,7 +125,7 @@ export const taskController = {
         const tasks = await taskRepository
           .createQueryBuilder("task")
           .leftJoinAndSelect("task.project", "project")
-          .leftJoinAndSelect("project.manager", "project_manager")
+          .leftJoinAndSelect("project.managers", "project_manager")
           .leftJoinAndSelect("task.assignees", "assignees")
           .leftJoinAndSelect("task.creator", "creator")
           .leftJoinAndSelect("task.parentTask", "parentTask")
@@ -143,7 +143,7 @@ export const taskController = {
 
       const tasks = await taskRepository.find({
         where,
-        relations: ["project", "project.manager", "assignees", "creator", "parentTask", "subtasks"],
+        relations: ["project", "project.managers", "assignees", "creator", "parentTask", "subtasks"],
         order: { [sortField]: order },
       });
 
@@ -159,7 +159,7 @@ export const taskController = {
       const { id } = req.params;
       const task = await taskRepository.findOne({
         where: { id: parseInt(id as string) },
-        relations: ["project", "project.manager", "assignees", "creator", "parentTask", "subtasks"],
+        relations: ["project", "project.managers", "assignees", "creator", "parentTask", "subtasks"],
       });
 
       if (!task) {
@@ -385,7 +385,7 @@ export const taskController = {
 
       const updatedTask = await taskRepository.findOne({
         where: { id: parseInt(id as string) },
-        relations: ["project", "project.manager", "assignees", "creator", "parentTask", "subtasks"],
+        relations: ["project", "project.managers", "assignees", "creator", "parentTask", "subtasks"],
       });
 
       res.json(updatedTask);
@@ -450,7 +450,7 @@ export const taskController = {
 
           const updatedTask = await taskRepository.findOne({
             where: { id: parseInt(id as string) },
-            relations: ["project", "project.manager", "assignees", "creator", "parentTask", "subtasks"],
+            relations: ["project", "project.managers", "assignees", "creator", "parentTask", "subtasks"],
           });
 
           return res.json(updatedTask);
@@ -494,7 +494,7 @@ export const taskController = {
 
       const updatedTask = await taskRepository.findOne({
         where: { id: parseInt(id as string) },
-        relations: ["project", "project.manager", "assignees", "creator", "parentTask", "subtasks"],
+        relations: ["project", "project.managers", "assignees", "creator", "parentTask", "subtasks"],
       });
 
       res.json(updatedTask);
@@ -589,7 +589,7 @@ export const taskController = {
 
       const updatedTask = await taskRepository.findOne({
         where: { id: parseInt(id as string) },
-        relations: ["project", "project.manager", "assignees", "creator", "parentTask", "subtasks"],
+        relations: ["project", "project.managers", "assignees", "creator", "parentTask", "subtasks"],
       });
 
       res.json(updatedTask);
@@ -668,7 +668,7 @@ export const taskController = {
 
       const updatedTask = await taskRepository.findOne({
         where: { id: parseInt(id as string) },
-        relations: ["project", "project.manager", "assignees", "creator", "parentTask", "subtasks"],
+        relations: ["project", "project.managers", "assignees", "creator", "parentTask", "subtasks"],
       });
 
       res.json(updatedTask);
@@ -737,7 +737,7 @@ export const taskController = {
 
       const updatedTask = await taskRepository.findOne({
         where: { id: parseInt(id as string) },
-        relations: ["project", "project.manager", "assignees", "creator", "parentTask", "subtasks"],
+        relations: ["project", "project.managers", "assignees", "creator", "parentTask", "subtasks"],
       });
 
       res.json(updatedTask);
@@ -813,7 +813,7 @@ export const taskController = {
 
       const updatedTask = await taskRepository.findOne({
         where: { id: parseInt(id as string) },
-        relations: ["project", "project.manager", "assignees", "creator", "parentTask", "subtasks"],
+        relations: ["project", "project.managers", "assignees", "creator", "parentTask", "subtasks"],
       });
 
       res.json(updatedTask);
