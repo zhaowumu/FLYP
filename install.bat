@@ -23,7 +23,7 @@ echo Cleaning old dependencies...
 if exist node_modules rmdir /s /q node_modules
 if exist package-lock.json del package-lock.json
 echo Installing new dependencies...
-call npm install
+call npm install --legacy-peer-deps
 if %errorlevel% neq 0 (
     echo [ERROR] Backend dependencies installation failed
     pause
@@ -38,7 +38,7 @@ echo Cleaning old dependencies...
 if exist node_modules rmdir /s /q node_modules
 if exist package-lock.json del package-lock.json
 echo Installing new dependencies...
-call npm install
+call npm install --legacy-peer-deps
 if %errorlevel% neq 0 (
     echo [ERROR] Frontend dependencies installation failed
     pause
