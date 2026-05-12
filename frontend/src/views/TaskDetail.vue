@@ -892,6 +892,8 @@ const formatLogAction = (log: any) => {
     }
     case 'comment':
       return '添加了备注'
+    case 'description_change':
+      return '更新了任务描述'
     case 'extend_due_date':
       return `将截止日期从「${formatTime(oldDueDate)}」延期至「${formatTime(newDueDate)}」`
     case 'due_date_change':
@@ -1050,6 +1052,8 @@ const saveDescription = async () => {
     await updateTask(task.value.id, { description: editDescription.value })
     task.value.description = editDescription.value
     isEditingDescription.value = false
+    await addTaskComment(task.value.id, { action: 'description_change' })
+    await loadTask()
     ElMessage.success('描述已更新')
   } catch (error) {
     ElMessage.error('更新描述失败')

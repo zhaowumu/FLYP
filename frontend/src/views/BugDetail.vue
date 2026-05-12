@@ -697,6 +697,10 @@ const formatLogAction = (log: any) => {
     }
     case 'comment':
       return '添加了备注'
+    case 'description_change':
+      return '更新了缺陷描述'
+    case 'reproduce_steps_change':
+      return '更新了复现步骤'
     case 'extend_due_date':
       return `将截止日期从「${formatTime(oldDueDate)}」延期至「${formatTime(newDueDate)}」`
     default:
@@ -846,10 +850,13 @@ const saveDescription = async (field: string) => {
     if (field === 'description') {
       bug.value.description = editDescription.value
       isEditingDescription.value = false
+      await addBugComment(bug.value.id, { action: 'description_change' })
     } else if (field === 'reproduceSteps') {
       bug.value.reproduceSteps = editReproduceSteps.value
       isEditingReproduceSteps.value = false
+      await addBugComment(bug.value.id, { action: 'reproduce_steps_change' })
     }
+    await loadBug()
     ElMessage.success('内容已更新')
   } catch (error) {
     ElMessage.error('更新失败')
