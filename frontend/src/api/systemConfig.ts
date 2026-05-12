@@ -38,7 +38,7 @@ export const getDingTalkConfig = () => api.get('/system-config/dingtalk')
 export const updateDingTalkConfig = (config: { webhook: string; secret: string; keyword: string; baseUrl: string; notify: Record<string, { enabled: boolean; template: string }> }) =>
   api.put('/system-config/dingtalk', config)
 
-// 按类型测试钉钉通知（type: "create" | "status_change" | "assignee_change"，不传则发通用测试）
+// 按类型测试钉钉通知（type: "create_task" | "create_bug" | "assign_task" | "complete_task" | "reject_task" | "submit_test_task" | "pass_test_task" | "restart_task" | "assign_bug" | "fix_bug" | "verify_bug" | "reject_bug" | "restart_bug"，不传则发通用测试）
 // template: 用户自定义模板内容，为空则使用默认模板
 export const testDingTalkByType = (type?: string, template?: string) =>
   api.post('/system-config/dingtalk/test', { type, template })

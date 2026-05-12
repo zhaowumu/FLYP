@@ -68,14 +68,21 @@ export const bugController = {
       );
 
       // 构建钉钉通知用的负责人信息
-      const assigneePhone = bug.assignee?.phone || "";
-      const assigneeName = bug.assignee?.realName || "未分配";
+      let assigneePhone = "";
+      let assigneeName = "未分配";
+      if (assigneeId) {
+        const assigneeUser = await userRepository.findOne({ where: { id: assigneeId } });
+        if (assigneeUser) {
+          assigneePhone = assigneeUser.phone || "";
+          assigneeName = assigneeUser.realName || "未分配";
+        }
+      }
 
-      dingTalkService.sendNotification("create", {
+      dingTalkService.sendNotification("create_bug", {
         type: "BUG",
         id: String(bug.id),
         title: bug.title,
-        priority: bug.severity,
+        severity: bug.severity,
         creator: reporter?.realName || "未知用户",
         assigneeName: assigneeName,
         assigneePhones: assigneePhone ? `@${assigneePhone}` : "",
@@ -180,13 +187,12 @@ export const bugController = {
 
         const newAssigneePhone = newAssignee?.phone || "";
 
-        dingTalkService.sendNotification("assignee_change", {
+        dingTalkService.sendNotification("assign_bug", {
           type: "BUG",
           id: String(bug.id),
           title: bug.title,
           oldAssignee: oldAssignee?.realName || "未处理",
           newAssignee: newAssignee?.realName || "未知",
-          assigneePhones: newAssigneePhone ? `@${newAssigneePhone}` : "",
           operator: userName,
           time: new Date().toLocaleString("zh-CN")
         }, newAssigneePhone ? [newAssigneePhone] : undefined);
@@ -230,15 +236,24 @@ export const bugController = {
           }
         );
 
-        dingTalkService.sendNotification("status_change", {
-          type: "BUG",
-          id: String(bug.id),
-          title: bug.title,
-          oldStatus: bug.status,
-          newStatus: targetStatus,
-          operator: userName,
-          time: new Date().toLocaleString("zh-CN")
-        });
+        // 根据状态发送对应的通知
+        if (targetStatus === "fixed") {
+          dingTalkService.sendNotification("fix_bug", {
+            type: "BUG",
+            id: String(bug.id),
+            title: bug.title,
+            operator: userName,
+            time: new Date().toLocaleString("zh-CN")
+          });
+        } else if (targetStatus === "verified") {
+          dingTalkService.sendNotification("verify_bug", {
+            type: "BUG",
+            id: String(bug.id),
+            title: bug.title,
+            operator: userName,
+            time: new Date().toLocaleString("zh-CN")
+          });
+        }
 
         // 关闭时清空负责人
         if (targetStatus === "closed") {
@@ -332,15 +347,24 @@ export const bugController = {
         extraFields
       );
 
-      dingTalkService.sendNotification("status_change", {
-        type: "BUG",
-        id: String(bug.id),
-        title: bug.title,
-        oldStatus: prevStatus,
-        newStatus: status,
-        operator: userName,
-        time: new Date().toLocaleString("zh-CN")
-      });
+      // 根据状态发送对应的通知
+      if (status === "fixed") {
+        dingTalkService.sendNotification("fix_bug", {
+          type: "BUG",
+          id: String(bug.id),
+          title: bug.title,
+          operator: userName,
+          time: new Date().toLocaleString("zh-CN")
+        });
+      } else if (status === "verified") {
+        dingTalkService.sendNotification("verify_bug", {
+          type: "BUG",
+          id: String(bug.id),
+          title: bug.title,
+          operator: userName,
+          time: new Date().toLocaleString("zh-CN")
+        });
+      }
 
       const updatedBug = await bugRepository.findOne({
         where: { id: parseInt(id as string) },
@@ -382,19 +406,6 @@ export const bugController = {
         extraFields.newAssignee = newAssignee?.realName || "未知";
         bug.assignee = newAssignee!;
         bug.status = "in_progress";
-
-        const newAssigneePhone = newAssignee?.phone || "";
-
-        dingTalkService.sendNotification("assignee_change", {
-          type: "BUG",
-          id: String(bug.id),
-          title: bug.title,
-          oldAssignee: bug.assignee?.realName || "未处理",
-          newAssignee: newAssignee?.realName || "未知",
-          assigneePhones: newAssigneePhone ? `@${newAssigneePhone}` : "",
-          operator: userName,
-          time: new Date().toLocaleString("zh-CN")
-        }, newAssigneePhone ? [newAssigneePhone] : undefined);
       }
 
       if (log.action === "severity_change" && log.newSeverity) {
@@ -407,16 +418,6 @@ export const bugController = {
         extraFields.oldStatus = bug.status;
         extraFields.newStatus = log.newStatus;
         bug.status = log.newStatus;
-
-        dingTalkService.sendNotification("status_change", {
-          type: "BUG",
-          id: String(bug.id),
-          title: bug.title,
-          oldStatus: extraFields.oldStatus,
-          newStatus: log.newStatus,
-          operator: userName,
-          time: new Date().toLocaleString("zh-CN")
-        });
       }
 
       await bugRepository.save(bug);
@@ -483,13 +484,12 @@ export const bugController = {
 
       const assigneePhone = assignee.phone || "";
 
-      dingTalkService.sendNotification("assignee_change", {
+      dingTalkService.sendNotification("assign_bug", {
         type: "BUG",
         id: String(bug.id),
         title: bug.title,
         oldAssignee: "未分配",
         newAssignee: assignee.realName,
-        assigneePhones: assigneePhone ? `@${assigneePhone}` : "",
         operator: user?.realName || "未知用户",
         time: new Date().toLocaleString("zh-CN")
       }, assigneePhone ? [assigneePhone] : undefined);
@@ -561,7 +561,7 @@ export const bugController = {
         }
       );
 
-      dingTalkService.sendNotification("status_change", {
+      dingTalkService.sendNotification("reject_bug", {
         type: "BUG", id: String(bug.id), title: bug.title,
         oldStatus: "fixed", newStatus: "in_progress",
         operator: userName, time: new Date().toLocaleString("zh-CN")
@@ -624,10 +624,13 @@ export const bugController = {
         }
       );
 
-      dingTalkService.sendNotification("status_change", {
-        type: "BUG", id: String(bug.id), title: bug.title,
-        oldStatus: "closed", newStatus,
-        operator: userName, time: new Date().toLocaleString("zh-CN")
+      dingTalkService.sendNotification("restart_bug", {
+        type: "BUG",
+        id: String(bug.id),
+        title: bug.title,
+        assigneeName: newAssigneeName,
+        operator: userName,
+        time: new Date().toLocaleString("zh-CN")
       });
 
       const updatedBug = await bugRepository.findOne({

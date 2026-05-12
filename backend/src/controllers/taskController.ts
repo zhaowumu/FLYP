@@ -100,7 +100,7 @@ export const taskController = {
       const assigneePhones = getAssigneePhones(assignees);
       const assigneePhonesText = phonesToAtText(assigneePhones);
 
-      dingTalkService.sendNotification("create", {
+      dingTalkService.sendNotification("create_task", {
         type: "任务",
         id: String(task.id),
         title: task.title,
@@ -232,13 +232,12 @@ export const taskController = {
         const newAssigneePhones = getAssigneePhones(newAssignees);
         const phonesText = phonesToAtText(newAssigneePhones);
 
-        dingTalkService.sendNotification("assignee_change", {
+        dingTalkService.sendNotification("assign_task", {
           type: "任务",
           id: String(task.id),
           title: task.title,
           oldAssignee: oldAssigneeNames,
           newAssignee: newAssigneeNames,
-          assigneePhones: phonesText,
           operator: userName,
           time: new Date().toLocaleString("zh-CN")
         }, newAssigneePhones.length > 0 ? newAssigneePhones : undefined);
@@ -367,16 +366,6 @@ export const taskController = {
             remark: updateData.log?.remark || "",
           }
         );
-
-        dingTalkService.sendNotification("status_change", {
-          type: "任务",
-          id: String(task.id),
-          title: task.title,
-          oldStatus: task.status,
-          newStatus: updateData.status,
-          operator: userName,
-          time: new Date().toLocaleString("zh-CN")
-        });
       }
 
       if (updateData.priority && updateData.priority !== task.priority) {
@@ -509,14 +498,25 @@ export const taskController = {
         extraFields
       );
 
-      dingTalkService.sendNotification("status_change", {
-        type: "任务",
-        id: String(task.id),
-        oldStatus: extraFields.oldStatus || task.status,
-        newStatus: status,
-        operator: userName,
-        time: new Date().toLocaleString("zh-CN")
-      });
+      // 根据实际状态发送对应的通知
+      if (status === "completed") {
+        dingTalkService.sendNotification("complete_task", {
+          type: "任务",
+          id: String(task.id),
+          title: task.title,
+          operator: userName,
+          time: new Date().toLocaleString("zh-CN")
+        });
+      } else if (status === "testing") {
+        dingTalkService.sendNotification("submit_test_task", {
+          type: "任务",
+          id: String(task.id),
+          title: task.title,
+          assigneeName: log?.newAssignee || "未分配",
+          operator: userName,
+          time: new Date().toLocaleString("zh-CN")
+        });
+      }
 
       const updatedTask = await taskRepository.findOne({
         where: { id: parseInt(id as string) },
@@ -559,20 +559,6 @@ export const taskController = {
         extraFields.oldAssignee = oldAssigneeNames;
         extraFields.newAssignee = newAssigneeNames;
         task.assignees = newAssignees;
-
-        const newAssigneePhonesForComment = getAssigneePhones(newAssignees);
-        const phonesTextForComment = phonesToAtText(newAssigneePhonesForComment);
-
-        dingTalkService.sendNotification("assignee_change", {
-          type: "任务",
-          id: String(task.id),
-          title: task.title,
-          oldAssignee: oldAssigneeNames,
-          newAssignee: newAssigneeNames,
-          assigneePhones: phonesTextForComment,
-          operator: userName,
-          time: new Date().toLocaleString("zh-CN")
-        }, newAssigneePhonesForComment.length > 0 ? newAssigneePhonesForComment : undefined);
       }
 
       if (log.action === "priority_change" && log.newPriority) {
@@ -585,16 +571,6 @@ export const taskController = {
         extraFields.oldStatus = task.status;
         extraFields.newStatus = log.newStatus;
         task.status = log.newStatus;
-
-        dingTalkService.sendNotification("status_change", {
-          type: "任务",
-          id: String(task.id),
-          title: task.title,
-          oldStatus: extraFields.oldStatus,
-          newStatus: log.newStatus,
-          operator: userName,
-          time: new Date().toLocaleString("zh-CN")
-        });
       }
 
       await taskRepository.save(task);
@@ -676,7 +652,7 @@ export const taskController = {
         }
       );
 
-      dingTalkService.sendNotification("status_change", {
+      dingTalkService.sendNotification("reject_task", {
         type: "任务",
         id: String(task.id),
         title: task.title,
@@ -745,12 +721,11 @@ export const taskController = {
         }
       );
 
-      dingTalkService.sendNotification("status_change", {
+      dingTalkService.sendNotification("restart_task", {
         type: "任务",
         id: String(task.id),
         title: task.title,
-        oldStatus: "closed",
-        newStatus: newStatus,
+        assigneeName: newAssigneeNames,
         operator: userName,
         time: new Date().toLocaleString("zh-CN")
       });
@@ -808,7 +783,7 @@ export const taskController = {
         }
       );
 
-      dingTalkService.sendNotification("status_change", {
+      dingTalkService.sendNotification("pass_test_task", {
         type: "任务",
         id: String(task.id),
         title: task.title,
@@ -876,7 +851,7 @@ export const taskController = {
         }
       );
 
-      dingTalkService.sendNotification("status_change", {
+      dingTalkService.sendNotification("reject_task", {
         type: "任务",
         id: String(task.id),
         title: task.title,

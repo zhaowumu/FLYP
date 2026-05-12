@@ -66,7 +66,7 @@ export const systemConfigController = {
       const keywordConfig = await configRepository.findOne({ where: { key: "dingtalk_keyword" } });
       const baseUrlConfig = await configRepository.findOne({ where: { key: "dingtalk_base_url" } });
       
-      const notifyTypes = ["create", "status_change", "assignee_change"];
+      const notifyTypes = ["create_task", "create_bug", "assign_task", "complete_task", "reject_task", "submit_test_task", "pass_test_task", "restart_task", "assign_bug", "fix_bug", "verify_bug", "reject_bug", "restart_bug"];
       const notifyConfigs: Record<string, any> = {};
       for (const type of notifyTypes) {
         const cfg = await configRepository.findOne({ where: { key: `dingtalk_notify_${type}` } });
@@ -163,7 +163,7 @@ export const systemConfigController = {
 
   async testDingTalkNotification(req: Request, res: Response) {
     try {
-      const { type, template } = req.body; // 可选: "create" | "status_change" | "assignee_change"
+      const { type, template } = req.body; // 可选: "create_task" | "create_bug" | "assign_task" | "complete_task" | "reject_task" | "submit_test_task" | "pass_test_task" | "restart_task" | "assign_bug" | "fix_bug" | "verify_bug" | "reject_bug" | "restart_bug"
       const webhookConfig = await configRepository.findOne({ where: { key: "dingtalk_webhook" } });
       const secretConfig = await configRepository.findOne({ where: { key: "dingtalk_secret" } });
       const keywordConfig = await configRepository.findOne({ where: { key: "dingtalk_keyword" } });
@@ -219,21 +219,75 @@ export const systemConfigController = {
       if (template) {
         // 用户自定义模板 → 用测试变量渲染
         text = renderTemplate(template, testVariables);
-        title = `【测试】${type === "create" ? "新建通知" : type === "status_change" ? "状态变更通知" : type === "assignee_change" ? "负责人变更通知" : "钉钉通知"}`;
+        title = `【测试】${
+          type === "create_task" ? "新建任务通知" :
+          type === "create_bug" ? "新建缺陷通知" :
+          type === "assign_task" ? "指派任务通知" :
+          type === "complete_task" ? "完成任务通知" :
+          type === "reject_task" ? "打回任务通知" :
+          type === "submit_test_task" ? "提测任务通知" :
+          type === "pass_test_task" ? "任务测试通过通知" :
+          type === "restart_task" ? "重启任务通知" :
+          type === "assign_bug" ? "分配缺陷通知" :
+          type === "fix_bug" ? "修复缺陷通知" :
+          type === "verify_bug" ? "验证通过通知" :
+          type === "reject_bug" ? "打回缺陷通知" :
+          type === "restart_bug" ? "重启缺陷通知" : "钉钉通知"
+        }`;
       } else {
         // 无自定义模板 → 使用默认测试内容
         const defaultTemplates: Record<string, { title: string; text: string }> = {
-          create: {
-            title: "【测试】新建通知",
-            text: `### 🔔 测试 - 新建通知\n\n[🔗 **这是一个测试任务的标题**](${baseUrl}/tasks/123)\n\n**类型：** 任务\n**创建人：** 测试用户\n**优先级：** medium\n**负责人：** @13800138000\n**时间：** ${now}`,
+          create_task: {
+            title: "【测试】新建任务通知",
+            text: `### 🔔 测试 - 新建任务通知\n\n[🔗 **这是一个测试任务的标题**](${baseUrl}/tasks/123)\n\n**操作：** 创建任务\n**创建人：** 测试用户\n**优先级：** medium\n**负责人：** 张三\n**时间：** ${now}`,
           },
-          status_change: {
-            title: "【测试】状态变更通知",
-            text: `### 🔔 测试 - 状态变更通知\n\n[🔗 **这是一个测试任务的标题**](${baseUrl}/tasks/123)\n\n**操作：** 状态变更\n**进行中** → **已完成**\n**操作人：** 测试用户\n**时间：** ${now}`,
+          create_bug: {
+            title: "【测试】新建缺陷通知",
+            text: `### 🔔 测试 - 新建缺陷通知\n\n[🔗 **这是一个测试缺陷的标题**](${baseUrl}/bugs/123)\n\n**操作：** 创建缺陷\n**创建人：** 测试用户\n**严重程度：** high\n**负责人：** 张三\n**时间：** ${now}`,
           },
-          assignee_change: {
-            title: "【测试】负责人变更通知",
-            text: `### 🔔 测试 - 负责人变更通知\n\n[🔗 **这是一个测试任务的标题**](${baseUrl}/tasks/123)\n\n**操作：** 负责人变更\n**张三** → **李四**\n**操作人：** 测试用户\n**时间：** ${now}\n\n@13800138000`,
+          assign_task: {
+            title: "【测试】指派任务通知",
+            text: `### 🔔 测试 - 指派任务通知\n\n[🔗 **这是一个测试任务的标题**](${baseUrl}/tasks/123)\n\n**操作：** 指派任务\n**李四** → **张三**\n**操作人：** 测试用户\n**时间：** ${now}`,
+          },
+          complete_task: {
+            title: "【测试】完成任务通知",
+            text: `### 🔔 测试 - 完成任务通知\n\n[🔗 **这是一个测试任务的标题**](${baseUrl}/tasks/123)\n\n**操作：** 完成任务\n**完成人：** 测试用户\n**时间：** ${now}`,
+          },
+          reject_task: {
+            title: "【测试】打回任务通知",
+            text: `### 🔔 测试 - 打回任务通知\n\n[🔗 **这是一个测试任务的标题**](${baseUrl}/tasks/123)\n\n**操作：** 打回任务\n**操作人：** 测试用户\n**时间：** ${now}`,
+          },
+          submit_test_task: {
+            title: "【测试】提测任务通知",
+            text: `### 🔔 测试 - 提测任务通知\n\n[🔗 **这是一个测试任务的标题**](${baseUrl}/tasks/123)\n\n**操作：** 提测\n**测试负责人：** 张三\n**操作人：** 测试用户\n**时间：** ${now}`,
+          },
+          pass_test_task: {
+            title: "【测试】任务测试通过通知",
+            text: `### 🔔 测试 - 任务测试通过通知\n\n[🔗 **这是一个测试任务的标题**](${baseUrl}/tasks/123)\n\n**操作：** 测试通过\n**操作人：** 测试用户\n**时间：** ${now}`,
+          },
+          assign_bug: {
+            title: "【测试】分配缺陷通知",
+            text: `### 🔔 测试 - 分配缺陷通知\n\n[🔗 **这是一个测试缺陷的标题**](${baseUrl}/bugs/123)\n\n**操作：** 分配缺陷\n**未分配** → **张三**\n**操作人：** 测试用户\n**时间：** ${now}`,
+          },
+          fix_bug: {
+            title: "【测试】修复缺陷通知",
+            text: `### 🔔 测试 - 修复缺陷通知\n\n[🔗 **这是一个测试缺陷的标题**](${baseUrl}/bugs/123)\n\n**操作：** 修复缺陷\n**修复人：** 测试用户\n**时间：** ${now}`,
+          },
+          verify_bug: {
+            title: "【测试】验证通过通知",
+            text: `### 🔔 测试 - 验证通过通知\n\n[🔗 **这是一个测试缺陷的标题**](${baseUrl}/bugs/123)\n\n**操作：** 验证通过\n**操作人：** 测试用户\n**时间：** ${now}`,
+          },
+          reject_bug: {
+            title: "【测试】打回缺陷通知",
+            text: `### 🔔 测试 - 打回缺陷通知\n\n[🔗 **这是一个测试缺陷的标题**](${baseUrl}/bugs/123)\n\n**操作：** 打回缺陷\n**操作人：** 测试用户\n**时间：** ${now}`,
+          },
+          restart_task: {
+            title: "【测试】重启任务通知",
+            text: `### 🔔 测试 - 重启任务通知\n\n[🔗 **这是一个测试任务的标题**](${baseUrl}/tasks/123)\n\n**操作：** 重启任务\n**负责人：** 张三\n**操作人：** 测试用户\n**时间：** ${now}`,
+          },
+          restart_bug: {
+            title: "【测试】重启缺陷通知",
+            text: `### 🔔 测试 - 重启缺陷通知\n\n[🔗 **这是一个测试缺陷的标题**](${baseUrl}/bugs/123)\n\n**操作：** 重启缺陷\n**负责人：** 张三\n**操作人：** 测试用户\n**时间：** ${now}`,
           },
         };
 

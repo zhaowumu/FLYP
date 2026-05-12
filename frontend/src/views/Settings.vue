@@ -567,15 +567,35 @@ const testingGiteeConfig = ref(false)
 const giteeTestResult = ref<{ success: boolean; message: string } | null>(null)
 
 const defaultTemplates = {
-  create: '🔗 **[{title}]({detailLink})**\n\n**类型：** {type}\n**创建人：** {creator}\n**优先级：** {priority}\n**时间：** {time}\n{assigneePhones}',
-  status_change: '🔗 **[{title}]({detailLink})**\n\n**操作：** 状态变更\n**{oldStatus}** → **{newStatus}**\n**操作人：** {operator}\n**时间：** {time}',
-  assignee_change: '🔗 **[{title}]({detailLink})**\n\n**操作：** 负责人变更\n**{oldAssignee}** → **{newAssignee}**\n**操作人：** {operator}\n**时间：** {time}\n{assigneePhones}'
+  create_task: '🔗 **[{title}]({detailLink})**\n\n**操作：** 创建任务\n**创建人：** {creator}\n**优先级：** {priority}\n**负责人：** {assigneeName}\n**时间：** {time}',
+  create_bug: '🔗 **[{title}]({detailLink})**\n\n**操作：** 创建缺陷\n**创建人：** {creator}\n**严重程度：** {severity}\n**负责人：** {assigneeName}\n**时间：** {time}',
+  assign_task: '🔗 **[{title}]({detailLink})**\n\n**操作：** 指派任务\n**{oldAssignee}** → **{newAssignee}**\n**操作人：** {operator}\n**时间：** {time}',
+  complete_task: '🔗 **[{title}]({detailLink})**\n\n**操作：** 完成任务\n**完成人：** {operator}\n**时间：** {time}',
+  reject_task: '🔗 **[{title}]({detailLink})**\n\n**操作：** 打回任务\n**操作人：** {operator}\n**时间：** {time}',
+  submit_test_task: '🔗 **[{title}]({detailLink})**\n\n**操作：** 提测\n**测试负责人：** {assigneeName}\n**操作人：** {operator}\n**时间：** {time}',
+  pass_test_task: '🔗 **[{title}]({detailLink})**\n\n**操作：** 测试通过\n**操作人：** {operator}\n**时间：** {time}',
+  restart_task: '🔗 **[{title}]({detailLink})**\n\n**操作：** 重启任务\n**负责人：** {assigneeName}\n**操作人：** {operator}\n**时间：** {time}',
+  assign_bug: '🔗 **[{title}]({detailLink})**\n\n**操作：** 分配缺陷\n**{oldAssignee}** → **{newAssignee}**\n**操作人：** {operator}\n**时间：** {time}',
+  fix_bug: '🔗 **[{title}]({detailLink})**\n\n**操作：** 修复缺陷\n**修复人：** {operator}\n**时间：** {time}',
+  verify_bug: '🔗 **[{title}]({detailLink})**\n\n**操作：** 验证通过\n**操作人：** {operator}\n**时间：** {time}',
+  reject_bug: '🔗 **[{title}]({detailLink})**\n\n**操作：** 打回缺陷\n**操作人：** {operator}\n**时间：** {time}',
+  restart_bug: '🔗 **[{title}]({detailLink})**\n\n**操作：** 重启缺陷\n**负责人：** {assigneeName}\n**操作人：** {operator}\n**时间：** {time}'
 }
 
 const notifyConfigLabels = {
-  create: '创建任务/BUG',
-  status_change: '状态变更',
-  assignee_change: '负责人变更'
+  create_task: '新建任务',
+  create_bug: '新建缺陷',
+  assign_task: '指派任务',
+  complete_task: '完成任务',
+  reject_task: '打回任务',
+  submit_test_task: '提测任务',
+  pass_test_task: '任务测试通过',
+  restart_task: '重启任务',
+  assign_bug: '分配缺陷',
+  fix_bug: '修复缺陷',
+  verify_bug: '验证通过',
+  reject_bug: '打回缺陷',
+  restart_bug: '重启缺陷'
 }
 
 const notifyConfigs = ref<Record<string, { enabled: boolean; template: string; label: string; defaultTemplate: string }>>({})
