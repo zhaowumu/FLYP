@@ -47,3 +47,19 @@ export const rejectTask = (id: number, data: { assigneeIds: number[]; remark?: s
 export const restartTask = (id: number, data: { assigneeIds: number[]; remark?: string }) => {
   return api.patch(`/tasks/${id}/restart`, data)
 }
+
+export const submitForTest = (id: number, data: { assigneeIds: number[]; remark?: string }) => {
+  return api.patch(`/tasks/${id}/status`, {
+    status: 'testing',
+    assigneeIds: data.assigneeIds,
+    log: { action: 'submit_test', remark: data.remark || '' }
+  })
+}
+
+export const passTestTask = (id: number, data: { remark?: string }) => {
+  return api.patch(`/tasks/${id}/pass-test`, data)
+}
+
+export const rejectTestTask = (id: number, data: { assigneeIds: number[]; remark?: string }) => {
+  return api.patch(`/tasks/${id}/reject-test`, data)
+}

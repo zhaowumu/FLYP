@@ -205,7 +205,7 @@ const taskStats = computed(() => {
   const tasks = project.value?.tasks || []
   return {
     total: tasks.length,
-    inProgress: tasks.filter((t: any) => t.status === 'in_progress').length,
+    inProgress: tasks.filter((t: any) => t.status === 'in_progress' || t.status === 'testing').length,
     completed: tasks.filter((t: any) => t.status === 'completed').length
   }
 })

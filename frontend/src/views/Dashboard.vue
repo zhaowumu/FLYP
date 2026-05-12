@@ -290,6 +290,7 @@
                   <div class="member-stats">
                     <span class="stat-item"><span class="stat-dot dot-blue"></span>任务 {{ member.totalTasks }}</span>
                     <span class="stat-item"><span class="stat-dot dot-warning"></span>进行中 {{ member.inProgressCount }}</span>
+                    <span class="stat-item"><span class="stat-dot dot-purple"></span>测试中 {{ member.testingCount }}</span>
                     <span class="stat-item"><span class="stat-dot dot-danger"></span>缺陷 {{ member.openBugCount }}</span>
                   </div>
                   <div class="member-progress">
@@ -700,6 +701,7 @@ const teamMembers = computed(() => {
     const userTasks = allTasks.value.filter((t: any) => t.assignees?.some((a: any) => a.id === m.id))
     const pendingCount = userTasks.filter((t: any) => t.status === 'pending').length
     const inProgressCount = userTasks.filter((t: any) => t.status === 'in_progress').length
+    const testingCount = userTasks.filter((t: any) => t.status === 'testing').length
     const completedCount = userTasks.filter((t: any) => t.status === 'completed' || t.status === 'closed').length
     const totalTasks = userTasks.length
     const completionRate = totalTasks === 0 ? 0 : Math.round((completedCount / totalTasks) * 100)
@@ -712,6 +714,7 @@ const teamMembers = computed(() => {
       taskCount,
       pendingCount, 
       inProgressCount, 
+      testingCount,
       completedCount, 
       totalTasks, 
       completionRate, 
@@ -788,7 +791,7 @@ const getPriorityText = (p: string) => {
 }
 
 const getStatusText = (s: string) => {
-  const map: Record<string, string> = { pending: '待处理', in_progress: '进行中', completed: '已完成', closed: '已关闭' }
+  const map: Record<string, string> = { pending: '待处理', in_progress: '进行中', completed: '已完成', testing: '测试中', closed: '已关闭' }
   return map[s] || s
 }
 
@@ -828,7 +831,7 @@ const getSeverityTagClass = (s: string) => {
 }
 
 const getStatusTagClass = (s: string) => {
-  const map: Record<string, string> = { pending: 'tag-primary', in_progress: 'tag-warning', completed: 'tag-success', closed: 'tag-default' }
+  const map: Record<string, string> = { pending: 'tag-primary', in_progress: 'tag-warning', completed: 'tag-success', testing: 'tag-pink', closed: 'tag-default' }
   return map[s] || 'tag-default'
 }
 
@@ -1976,6 +1979,7 @@ onMounted(async () => {
 .dot-warning { background: var(--nb-warning); }
 .dot-blue { background: var(--nb-primary); }
 .dot-success { background: var(--nb-success); }
+.dot-purple { background: #722ed1; }
 .dot-danger { background: var(--nb-danger); }
 
 .member-progress {

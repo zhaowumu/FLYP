@@ -287,6 +287,36 @@
         关闭
       </el-button>
       
+      <!-- 提测按钮：创建人/PM/管理员可见（completed 状态） -->
+      <el-button 
+        v-if="canSubmitTest"
+        type="primary" 
+        @click="showActionPanel('submitTest')"
+      >
+        <el-icon><Upload /></el-icon>
+        提测
+      </el-button>
+      
+      <!-- 通过按钮：测试负责人可见（testing 状态） -->
+      <el-button 
+        v-if="canPassTest"
+        type="success" 
+        @click="showActionPanel('passTest')"
+      >
+        <el-icon><Check /></el-icon>
+        通过
+      </el-button>
+      
+      <!-- 打回(测试)按钮：测试负责人/创建人/PM/管理员可见（testing 状态） -->
+      <el-button 
+        v-if="canRejectTest"
+        type="warning" 
+        @click="showActionPanel('rejectTest')"
+      >
+        <el-icon><RefreshRight /></el-icon>
+        打回
+      </el-button>
+      
       <!-- 重启按钮：任何有配置权限的人可见（closed 状态） -->
       <el-button 
         v-if="canRestart"
@@ -386,6 +416,7 @@
               <el-option label="待处理" value="pending" :disabled="task?.status === 'pending'" />
               <el-option label="进行中" value="in_progress" :disabled="task?.status === 'in_progress'" />
               <el-option label="已完成" value="completed" :disabled="task?.status === 'completed'" />
+              <el-option label="测试中" value="testing" :disabled="task?.status === 'testing'" />
               <el-option label="已关闭" value="closed" :disabled="task?.status === 'closed'" />
             </el-select>
           </div>
@@ -535,6 +566,79 @@
             </el-alert>
           </div>
 
+          <!-- 提测：选择测试负责人 → testing -->
+          <div class="form-section" v-if="currentAction === 'submitTest'">
+            <el-alert 
+              title="提交测试" 
+              type="primary" 
+              :closable="false"
+              show-icon
+            >
+              <template #default>
+                任务将提交测试，状态将变为"测试中"，请指定测试负责人
+              </template>
+            </el-alert>
+            <div style="margin-top: var(--nb-space-4);">
+              <span class="label">选择测试负责人</span>
+              <el-select 
+                v-model="submitTestAssigneeIds" 
+                placeholder="请选择测试负责人"
+                style="width: 100%"
+              >
+                <el-option
+                  v-for="user in users"
+                  :key="user.id"
+                  :label="user.realName"
+                  :value="user.id"
+                />
+              </el-select>
+            </div>
+          </div>
+
+          <!-- 通过：确认通过 → closed -->
+          <div class="form-section" v-if="currentAction === 'passTest'">
+            <el-alert 
+              title="确认测试通过" 
+              type="success" 
+              :closable="false"
+              show-icon
+            >
+              <template #default>
+                测试通过，任务将关闭，状态将变为"已关闭"，负责人将被清空
+              </template>
+            </el-alert>
+          </div>
+
+          <!-- 打回(测试)：重新指定负责人 → in_progress -->
+          <div class="form-section" v-if="currentAction === 'rejectTest'">
+            <el-alert 
+              title="确认打回任务" 
+              type="warning" 
+              :closable="false"
+              show-icon
+            >
+              <template #default>
+                测试不通过，任务将打回重新开发，状态将变为"进行中"，请指定新的开发负责人
+              </template>
+            </el-alert>
+            <div style="margin-top: var(--nb-space-4);">
+              <span class="label">选择新开发负责人</span>
+              <el-select 
+                v-model="rejectTestAssigneeIds" 
+                placeholder="请选择负责人" 
+                multiple
+                style="width: 100%"
+              >
+                <el-option
+                  v-for="user in users"
+                  :key="user.id"
+                  :label="user.realName"
+                  :value="user.id"
+                />
+              </el-select>
+            </div>
+          </div>
+
           <!-- 重启：重设负责人（多选）→ in_progress/pending -->
           <div class="form-section" v-if="currentAction === 'restart'">
             <el-alert 
@@ -596,7 +700,7 @@
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getTask, updateTaskStatus, addComment as addTaskComment, updateTask, deleteTask, extendDueDate as extendTaskDueDate, getTaskCategories, rejectTask, restartTask } from '../api/task'
+import { getTask, updateTaskStatus, addComment as addTaskComment, updateTask, deleteTask, extendDueDate as extendTaskDueDate, getTaskCategories, rejectTask, restartTask, submitForTest, passTestTask, rejectTestTask } from '../api/task'
 import { getUsers } from '../api/user'
 import { useUserStore } from '../stores/user'
 import RichEditor from '../components/RichEditor.vue'
@@ -616,6 +720,8 @@ const transferUserIds = ref<number[]>([])
 const assignUserIds = ref<number[]>([])
 const rejectAssigneeIds = ref<number[]>([])
 const restartAssigneeIds = ref<number[]>([])
+const submitTestAssigneeIds = ref<number>()
+const rejectTestAssigneeIds = ref<number[]>([])
 const newPriority = ref('')
 const newStatus = ref('')
 const isEditingTitle = ref(false)
@@ -650,7 +756,8 @@ const canEdit = computed(() => isAssignee.value || isCreator.value || isProjectM
 // 状态判断
 const isClosed = computed(() => task.value?.status === 'closed')
 const isCompleted = computed(() => task.value?.status === 'completed')
-const isActive = computed(() => !isClosed.value && !isCompleted.value)
+const isTesting = computed(() => task.value?.status === 'testing')
+const isActive = computed(() => !isClosed.value && !isCompleted.value && !isTesting.value)
 
 // 按钮权限配置（角色权限 + 关系权限）
 const canAssign = computed(() => (isAdmin.value || userStore.user?.role === 'project_manager' || isCreator.value) && isActive.value)
@@ -658,6 +765,9 @@ const canComplete = computed(() => userStore.getTaskPermission('complete', { isA
 const canTransfer = computed(() => userStore.getTaskPermission('transfer', { isAssignee: isAssignee.value }) && isAssignee.value && isActive.value)
 const canReject = computed(() => userStore.getTaskPermission('reject', { isCreator: isCreator.value }) && isCreator.value && isCompleted.value)
 const canClose = computed(() => userStore.getTaskPermission('close', { isCreator: isCreator.value }) && isCreator.value && isCompleted.value)
+const canSubmitTest = computed(() => (isCreator.value || isAdmin.value || isProjectManager.value) && isCompleted.value)
+const canPassTest = computed(() => isAssignee.value && isTesting.value)
+const canRejectTest = computed(() => (isAssignee.value || isCreator.value || isAdmin.value || isProjectManager.value) && isTesting.value)
 const canRestart = computed(() => userStore.getTaskPermission('restart') && task.value?.status === 'closed')
 const canChangePriority = computed(() => userStore.getTaskPermission('changePriority', { isCreator: isCreator.value }) && !isClosed.value)
 const canChangeStatus = computed(() => userStore.getTaskPermission('changeStatus', { isCreator: isCreator.value }) && !isClosed.value)
@@ -681,16 +791,27 @@ const getPriorityText = (priority: string) => {
 
 const getStatusType = (status: string) => {
   const map: Record<string, string> = {
-    pending: 'primary', in_progress: 'warning', completed: 'success', closed: 'info'
+    pending: 'primary', in_progress: 'warning', completed: 'success', testing: 'warning', closed: 'info'
   }
   return map[status] || 'info'
 }
 
 const getStatusText = (status: string) => {
   const map: Record<string, string> = {
-    pending: '待处理', in_progress: '进行中', completed: '已完成', closed: '已关闭'
+    pending: '待处理', in_progress: '进行中', completed: '已完成', testing: '测试中', closed: '已关闭'
   }
   return map[status] || status
+}
+
+const getStatusColor = (status: string) => {
+  const map: Record<string, string> = {
+    pending: 'var(--el-color-primary)',
+    in_progress: 'var(--el-color-warning)',
+    completed: 'var(--el-color-success)',
+    testing: '#722ed1',
+    closed: 'var(--el-color-info)'
+  }
+  return map[status] || 'var(--el-color-info)'
 }
 
 const formatLogAction = (log: any) => {
@@ -744,6 +865,24 @@ const formatLogAction = (log: any) => {
       text += `，状态改为${getStatusText(newStatus || '')}`
       return text
     }
+    case 'submit_test': {
+      let text = '提交了测试'
+      if (oldAssignee && newAssignee) {
+        text += `，负责人从「${oldAssignee}」变更为「${newAssignee}」`
+      }
+      text += '，状态改为测试中'
+      return text
+    }
+    case 'pass_test':
+      return '测试通过，任务已关闭'
+    case 'reject_test': {
+      let text = '测试打回了任务'
+      if (oldAssignee && newAssignee) {
+        text += `，负责人从「${oldAssignee}」变更为「${newAssignee}」`
+      }
+      text += '，状态改为进行中'
+      return text
+    }
     case 'close': {
       let text = '关闭了任务'
       if (oldAssignee && oldAssignee !== '无') {
@@ -772,6 +911,9 @@ const getActionTitle = (action: string) => {
     close: '关闭任务',
     transfer: '转交任务',
     restart: '重启任务',
+    submitTest: '提交测试',
+    passTest: '测试通过',
+    rejectTest: '打回任务',
     priority: '更改优先级',
     changeStatus: '更改状态',
     comment: '添加备注',
@@ -792,6 +934,9 @@ const getActionConfirmText = (action: string) => {
     close: '确认关闭',
     transfer: '确认转交',
     restart: '确认重启',
+    submitTest: '确认提测',
+    passTest: '确认通过',
+    rejectTest: '确认打回',
     priority: '确认修改',
     changeStatus: '确认修改',
     comment: '添加备注',
@@ -919,6 +1064,8 @@ const showActionPanel = (action: string) => {
   assignUserIds.value = []
   rejectAssigneeIds.value = []
   restartAssigneeIds.value = []
+  submitTestAssigneeIds.value = undefined
+  rejectTestAssigneeIds.value = []
   newPriority.value = task.value?.priority || 'medium'
   newStatus.value = task.value?.status || ''
   newDueDate.value = task.value?.dueDate ? new Date(task.value.dueDate) : null
@@ -942,6 +1089,8 @@ const onDrawerClosed = () => {
   assignUserIds.value = []
   rejectAssigneeIds.value = []
   restartAssigneeIds.value = []
+  submitTestAssigneeIds.value = undefined
+  rejectTestAssigneeIds.value = []
   newPriority.value = ''
   newStatus.value = ''
   newDueDate.value = null
@@ -959,6 +1108,16 @@ const executeAction = async () => {
 
   if (currentAction.value === 'reject' && rejectAssigneeIds.value.length === 0) {
     ElMessage.warning('请选择至少一位负责人')
+    return
+  }
+
+  if (currentAction.value === 'submitTest' && !submitTestAssigneeIds.value) {
+    ElMessage.warning('请选择测试负责人')
+    return
+  }
+
+  if (currentAction.value === 'rejectTest' && rejectTestAssigneeIds.value.length === 0) {
+    ElMessage.warning('请选择至少一位开发负责人')
     return
   }
 
@@ -1038,6 +1197,32 @@ const executeAction = async () => {
           remark: commentText.value || ''
         })
         ElMessage.success('任务已重启')
+        break
+      }
+
+      case 'submitTest': {
+        await submitForTest(task.value.id, {
+          assigneeIds: [submitTestAssigneeIds.value!],
+          remark: commentText.value || ''
+        })
+        ElMessage.success('已提交测试')
+        break
+      }
+
+      case 'passTest': {
+        await passTestTask(task.value.id, {
+          remark: commentText.value || ''
+        })
+        ElMessage.success('测试通过，任务已关闭')
+        break
+      }
+
+      case 'rejectTest': {
+        await rejectTestTask(task.value.id, {
+          assigneeIds: rejectTestAssigneeIds.value,
+          remark: commentText.value || ''
+        })
+        ElMessage.success('测试打回，任务已重新指派')
         break
       }
 

@@ -20,6 +20,7 @@ export class ExcelService {
       pending: "待处理",
       in_progress: "进行中",
       completed: "已完成",
+      testing: "测试中",
       closed: "已关闭",
     };
     return map[status] || status;
@@ -444,6 +445,8 @@ export class ExcelService {
         return "in_progress";
       case "已完成":
         return "completed";
+      case "测试中":
+        return "testing";
       case "已关闭":
         return "closed";
       default:

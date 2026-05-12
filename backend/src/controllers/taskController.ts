@@ -475,6 +475,20 @@ export const taskController = {
           extraFields.newAssignee = task.creator.realName;
           task.assignees = [task.creator];
         }
+      } else if (status === "testing") {
+        // 提测：替换负责人为测试人员
+        if (task.status !== "completed") {
+          return res.status(400).json({ error: "只有已完成的任务才能提测" });
+        }
+        const { assigneeIds } = req.body;
+        if (!assigneeIds || assigneeIds.length === 0) {
+          return res.status(400).json({ error: "请指定测试负责人" });
+        }
+        const testAssignees = await resolveAssigneeIds(assigneeIds);
+        extraFields.oldAssignee = getAssigneeNames(task.assignees);
+        extraFields.newAssignee = getAssigneeNames(testAssignees);
+        task.assignees = testAssignees;
+        task.status = "testing";
       } else if (status === "closed") {
         // 关闭任务：清空负责人
         extraFields.oldAssignee = getAssigneeNames(task.assignees);
@@ -750,6 +764,137 @@ export const taskController = {
     } catch (error) {
       console.error("Error restarting task:", error);
       res.status(500).json({ error: "Failed to restart task" });
+    }
+  },
+
+  async passTestTask(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { remark } = req.body;
+      const userId = (req as any).user.id;
+
+      const task = await taskRepository.findOne({
+        where: { id: parseInt(id as string) },
+        relations: ["assignees", "creator"],
+      });
+
+      if (!task) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+
+      if (task.status !== "testing") {
+        return res.status(400).json({ error: "只有测试中的任务才能通过" });
+      }
+
+      const user = await userRepository.findOne({ where: { id: userId } });
+      const userName = user?.realName || "未知用户";
+
+      task.status = "closed";
+      task.assignees = [];
+
+      await taskRepository.save(task);
+
+      await createOperationLog(
+        task.id,
+        userId,
+        userName,
+        "pass_test",
+        {
+          oldStatus: "testing",
+          newStatus: "closed",
+          oldAssignee: getAssigneeNames(task.assignees),
+          newAssignee: "无",
+          remark: remark || "",
+        }
+      );
+
+      dingTalkService.sendNotification("status_change", {
+        type: "任务",
+        id: String(task.id),
+        title: task.title,
+        oldStatus: "testing",
+        newStatus: "closed",
+        operator: userName,
+        time: new Date().toLocaleString("zh-CN")
+      });
+
+      const updatedTask = await taskRepository.findOne({
+        where: { id: parseInt(id as string) },
+        relations: ["project", "project.managers", "assignees", "creator", "parentTask", "subtasks"],
+      });
+
+      res.json(updatedTask);
+    } catch (error) {
+      console.error("Error passing test task:", error);
+      res.status(500).json({ error: "Failed to pass test task" });
+    }
+  },
+
+  async rejectTestTask(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { assigneeIds, remark } = req.body;
+      const userId = (req as any).user.id;
+
+      const task = await taskRepository.findOne({
+        where: { id: parseInt(id as string) },
+        relations: ["assignees", "creator"],
+      });
+
+      if (!task) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+
+      if (task.status !== "testing") {
+        return res.status(400).json({ error: "只有测试中的任务才能打回" });
+      }
+
+      const user = await userRepository.findOne({ where: { id: userId } });
+      const userName = user?.realName || "未知用户";
+
+      // 设置新负责人（开发人员）
+      const oldAssigneeNames = getAssigneeNames(task.assignees);
+      const newAssignees = assigneeIds && assigneeIds.length > 0 ? await resolveAssigneeIds(assigneeIds) : [];
+      const newAssigneeNames = getAssigneeNames(newAssignees);
+
+      task.assignees = newAssignees;
+      task.status = "in_progress";
+
+      await taskRepository.save(task);
+
+      await createOperationLog(
+        task.id,
+        userId,
+        userName,
+        "reject_test",
+        {
+          oldStatus: "testing",
+          newStatus: "in_progress",
+          oldAssignee: oldAssigneeNames,
+          newAssignee: newAssigneeNames,
+          remark: remark || "",
+        }
+      );
+
+      dingTalkService.sendNotification("status_change", {
+        type: "任务",
+        id: String(task.id),
+        title: task.title,
+        oldStatus: "testing",
+        newStatus: "in_progress",
+        operator: userName,
+        time: new Date().toLocaleString("zh-CN")
+      });
+
+      const updatedTask = await taskRepository.findOne({
+        where: { id: parseInt(id as string) },
+        relations: ["project", "project.managers", "assignees", "creator", "parentTask", "subtasks"],
+      });
+
+      res.json(updatedTask);
+    } catch (error) {
+      console.error("Error rejecting test task:", error);
+      res.status(500).json({ error: "Failed to reject test task" });
     }
   },
 

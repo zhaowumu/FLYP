@@ -158,7 +158,7 @@
         <el-table-column label="" width="50" fixed="right">
           <template #default="{ row }">
             <el-button
-              v-if="row.level < 2 && userStore.getTaskPermission('create') && row.status !== 'closed'"
+              v-if="row.level < 2 && userStore.getTaskPermission('create') && row.status !== 'closed' && row.status !== 'testing'"
               text
               size="small"
               class="subtask-dots"
@@ -473,7 +473,7 @@ const getStatusType = (status: string) => {
 
 const getStatusText = (status: string) => {
   const map: Record<string, string> = {
-    pending: '待处理', in_progress: '进行中', completed: '已完成', closed: '已关闭'
+    pending: '待处理', in_progress: '进行中', completed: '已完成', testing: '测试中', closed: '已关闭'
   }
   return map[status] || status
 }
@@ -482,6 +482,7 @@ const statusOptions = [
   { label: '待处理', value: 'pending' },
   { label: '进行中', value: 'in_progress' },
   { label: '已完成', value: 'completed' },
+  { label: '测试中', value: 'testing' },
   { label: '已关闭', value: 'closed' }
 ]
 
@@ -489,6 +490,7 @@ const statusColorMap: Record<string, string> = {
   pending: 'var(--el-color-primary)',
   in_progress: 'var(--el-color-warning)',
   completed: 'var(--el-color-success)',
+  testing: '#722ed1',
   closed: 'var(--el-color-info)'
 }
 

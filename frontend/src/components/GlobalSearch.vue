@@ -254,6 +254,7 @@ function getStatusType(status: string) {
     pending: 'primary',
     in_progress: 'warning',
     completed: 'success',
+    testing: '',
     closed: ''
   }
   return map[status] || ''
@@ -264,6 +265,7 @@ function getStatusLabel(status: string) {
     pending: '待处理',
     in_progress: '进行中',
     completed: '已完成',
+    testing: '测试中',
     closed: '已关闭'
   }
   return map[status] || status

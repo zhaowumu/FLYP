@@ -28,4 +28,8 @@ router.patch("/:id/reject", taskController.rejectTask);
 
 router.patch("/:id/restart", taskController.restartTask);
 
+router.patch("/:id/pass-test", taskController.passTestTask);
+
+router.patch("/:id/reject-test", taskController.rejectTestTask);
+
 export default router;
