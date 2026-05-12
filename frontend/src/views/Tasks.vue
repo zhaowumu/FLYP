@@ -38,13 +38,31 @@
           <el-option label="高" value="high" />
           <el-option label="紧急" value="urgent" />
         </el-select>
-        <el-select v-if="userStore.isAdmin || userStore.user?.role === 'project_manager'" v-model="filterUser" placeholder="按负责人筛选" clearable style="width: 150px">
+        <el-select v-model="filterUser" placeholder="按负责人筛选" clearable filterable style="width: 180px">
           <el-option
             v-for="user in users"
             :key="user.id"
             :label="user.realName"
             :value="user.id"
-          />
+          >
+            <span style="display: flex; align-items: center; gap: 6px">
+              <el-avatar :size="20" :src="user.avatar || undefined">{{ user.realName?.charAt(0) }}</el-avatar>
+              {{ user.realName }}
+            </span>
+          </el-option>
+        </el-select>
+        <el-select v-model="filterCreator" placeholder="按创建人筛选" clearable filterable style="width: 180px">
+          <el-option
+            v-for="user in users"
+            :key="user.id"
+            :label="user.realName"
+            :value="user.id"
+          >
+            <span style="display: flex; align-items: center; gap: 6px">
+              <el-avatar :size="20" :src="user.avatar || undefined">{{ user.realName?.charAt(0) }}</el-avatar>
+              {{ user.realName }}
+            </span>
+          </el-option>
         </el-select>
         <el-select v-model="filterCategory" placeholder="分类筛选" clearable style="width: 150px">
           <el-option
@@ -235,13 +253,18 @@
           </el-col>
           <el-col :span="8">
             <el-form-item label="负责人" prop="assigneeIds">
-              <el-select v-model="taskForm.assigneeIds" placeholder="请选择负责人" clearable multiple style="width: 100%">
+              <el-select v-model="taskForm.assigneeIds" placeholder="请选择负责人" clearable multiple filterable style="width: 100%">
                 <el-option
                   v-for="user in users"
                   :key="user.id"
                   :label="user.realName"
                   :value="user.id"
-                />
+                >
+                  <span style="display: flex; align-items: center; gap: 6px">
+                    <el-avatar :size="20" :src="user.avatar || undefined">{{ user.realName?.charAt(0) }}</el-avatar>
+                    {{ user.realName }}
+                  </span>
+                </el-option>
               </el-select>
             </el-form-item>
           </el-col>
@@ -301,13 +324,18 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="负责人" prop="assigneeIds">
-              <el-select v-model="subtaskForm.assigneeIds" placeholder="请选择负责人" clearable multiple style="width: 100%">
+              <el-select v-model="subtaskForm.assigneeIds" placeholder="请选择负责人" clearable multiple filterable style="width: 100%">
                 <el-option
                   v-for="user in users"
                   :key="user.id"
                   :label="user.realName"
                   :value="user.id"
-                />
+                >
+                  <span style="display: flex; align-items: center; gap: 6px">
+                    <el-avatar :size="20" :src="user.avatar || undefined">{{ user.realName?.charAt(0) }}</el-avatar>
+                    {{ user.realName }}
+                  </span>
+                </el-option>
               </el-select>
             </el-form-item>
           </el-col>
@@ -346,6 +374,7 @@ const submitting = ref(false)
 const filterStatus = ref('')
 const filterPriority = ref('')
 const filterUser = ref<number | null>(null)
+const filterCreator = ref<number | null>(null)
 const filterCategory = ref('')
 const parentTask = ref<any>(null)
 const activeTab = ref(userStore.isPM ? 'all' : 'assigned')
@@ -392,6 +421,7 @@ const filteredTasks = computed(() => {
     if (filterStatus.value && task.status !== filterStatus.value) return false
     if (filterPriority.value && task.priority !== filterPriority.value) return false
     if (filterUser.value && !task.assignees?.some((a: any) => a.id === filterUser.value)) return false
+    if (filterCreator.value && task.creator?.id !== filterCreator.value) return false
     if (filterCategory.value && task.category !== filterCategory.value) return false
     return true
   })

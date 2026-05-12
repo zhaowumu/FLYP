@@ -87,7 +87,7 @@ export const userController = {
   async getAllUsers(req: Request, res: Response) {
     try {
       const users = await userRepository.find({
-        select: ["id", "username", "realName", "phone", "role", "isActive", "createdAt"],
+        select: ["id", "username", "realName", "avatar", "phone", "role", "isActive", "createdAt"],
       });
       res.json(users);
     } catch (error) {

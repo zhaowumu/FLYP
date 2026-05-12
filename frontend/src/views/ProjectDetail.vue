@@ -140,13 +140,18 @@
                   </el-button>
                 </template>
                 <template v-else>
-                  <el-select v-model="newManagerIds" multiple size="small" style="width: 220px" placeholder="选择负责人">
+                  <el-select v-model="newManagerIds" multiple size="small" filterable style="width: 220px" placeholder="选择负责人">
                     <el-option
                       v-for="u in users"
                       :key="u.id"
                       :label="`${u.realName} (${u.username})`"
                       :value="u.id"
-                    />
+                    >
+                      <span style="display: flex; align-items: center; gap: 6px">
+                        <el-avatar :size="20" :src="u.avatar || undefined">{{ u.realName?.charAt(0) }}</el-avatar>
+                        {{ u.realName }}
+                      </span>
+                    </el-option>
                   </el-select>
                   <el-button size="small" @click="cancelChangeManager" style="margin-left: 4px">取消</el-button>
                   <el-button size="small" type="primary" @click="saveChangeManager" :loading="saving">保存</el-button>

@@ -314,7 +314,7 @@
             </el-alert>
             <div style="margin-top: var(--nb-space-4);">
               <span class="label">选择负责人</span>
-              <el-select 
+              <el-select filterable
                 v-model="assignUserId" 
                 placeholder="请选择负责人" 
                 style="width: 100%"
@@ -324,7 +324,12 @@
                   :key="user.id"
                   :label="user.realName"
                   :value="user.id"
-                />
+                >
+                  <span style="display: flex; align-items: center; gap: 6px">
+                    <el-avatar :size="20" :src="user.avatar || undefined">{{ user.realName?.charAt(0) }}</el-avatar>
+                    {{ user.realName }}
+                  </span>
+                </el-option>
               </el-select>
             </div>
           </div>
@@ -332,7 +337,7 @@
           <!-- 转交：选择负责人 -->
           <div class="form-section" v-if="currentAction === 'transfer'">
             <span class="label">转交给</span>
-            <el-select 
+            <el-select filterable
               v-model="transferUserId" 
               placeholder="请选择负责人" 
               style="width: 100%"
@@ -342,7 +347,12 @@
                 :key="user.id"
                 :label="user.realName"
                 :value="user.id"
-              />
+              >
+                <span style="display: flex; align-items: center; gap: 6px">
+                  <el-avatar :size="20" :src="user.avatar || undefined">{{ user.realName?.charAt(0) }}</el-avatar>
+                  {{ user.realName }}
+                </span>
+              </el-option>
             </el-select>
           </div>
 
@@ -360,7 +370,7 @@
             </el-alert>
             <div style="margin-top: var(--nb-space-4);">
               <span class="label">选择负责人（可选）</span>
-              <el-select 
+              <el-select filterable
                 v-model="rejectAssignUserId" 
                 placeholder="请选择负责人" 
                 clearable
@@ -371,7 +381,12 @@
                   :key="user.id"
                   :label="user.realName"
                   :value="user.id"
-                />
+                >
+                  <span style="display: flex; align-items: center; gap: 6px">
+                    <el-avatar :size="20" :src="user.avatar || undefined">{{ user.realName?.charAt(0) }}</el-avatar>
+                    {{ user.realName }}
+                  </span>
+                </el-option>
               </el-select>
             </div>
           </div>
@@ -404,7 +419,7 @@
             </el-alert>
             <div style="margin-top: var(--nb-space-4);">
               <span class="label">选择负责人（可选）</span>
-              <el-select 
+              <el-select filterable
                 v-model="restartAssignUserId" 
                 placeholder="请选择负责人" 
                 clearable
@@ -415,7 +430,12 @@
                   :key="user.id"
                   :label="user.realName"
                   :value="user.id"
-                />
+                >
+                  <span style="display: flex; align-items: center; gap: 6px">
+                    <el-avatar :size="20" :src="user.avatar || undefined">{{ user.realName?.charAt(0) }}</el-avatar>
+                    {{ user.realName }}
+                  </span>
+                </el-option>
               </el-select>
             </div>
           </div>

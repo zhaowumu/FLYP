@@ -38,13 +38,31 @@
           <el-option label="高" value="high" />
           <el-option label="严重" value="critical" />
         </el-select>
-        <el-select v-if="userStore.isAdmin || userStore.user?.role === 'project_manager'" v-model="filterUser" placeholder="按负责人筛选" clearable style="width: 150px">
+        <el-select v-model="filterUser" placeholder="按负责人筛选" clearable filterable style="width: 180px">
           <el-option
             v-for="user in users"
             :key="user.id"
             :label="user.realName"
             :value="user.id"
-          />
+          >
+            <span style="display: flex; align-items: center; gap: 6px">
+              <el-avatar :size="20" :src="user.avatar || undefined">{{ user.realName?.charAt(0) }}</el-avatar>
+              {{ user.realName }}
+            </span>
+          </el-option>
+        </el-select>
+        <el-select v-model="filterReporter" placeholder="按报告人筛选" clearable filterable style="width: 180px">
+          <el-option
+            v-for="user in users"
+            :key="user.id"
+            :label="user.realName"
+            :value="user.id"
+          >
+            <span style="display: flex; align-items: center; gap: 6px">
+              <el-avatar :size="20" :src="user.avatar || undefined">{{ user.realName?.charAt(0) }}</el-avatar>
+              {{ user.realName }}
+            </span>
+          </el-option>
         </el-select>
         <el-select v-model="filterCategory" placeholder="分类筛选" clearable style="width: 150px">
           <el-option
@@ -188,13 +206,18 @@
           </el-col>
           <el-col :span="8">
             <el-form-item label="负责人" prop="assigneeId">
-              <el-select v-model="bugForm.assigneeId" placeholder="请选择负责人" clearable style="width: 100%">
+              <el-select v-model="bugForm.assigneeId" placeholder="请选择负责人" clearable filterable style="width: 100%">
                 <el-option
                   v-for="user in users"
                   :key="user.id"
                   :label="user.realName"
                   :value="user.id"
-                />
+                >
+                  <span style="display: flex; align-items: center; gap: 6px">
+                    <el-avatar :size="20" :src="user.avatar || undefined">{{ user.realName?.charAt(0) }}</el-avatar>
+                    {{ user.realName }}
+                  </span>
+                </el-option>
               </el-select>
             </el-form-item>
           </el-col>
@@ -230,6 +253,7 @@ const submitting = ref(false)
 const filterStatus = ref('')
 const filterSeverity = ref('')
 const filterUser = ref<number | null>(null)
+const filterReporter = ref<number | null>(null)
 const filterCategory = ref('')
 const activeTab = ref(userStore.isPM ? 'all' : 'assigned')
 
@@ -262,6 +286,7 @@ const filteredBugs = computed(() => {
     if (filterStatus.value && bug.status !== filterStatus.value) return false
     if (filterSeverity.value && bug.severity !== filterSeverity.value) return false
     if (filterUser.value && bug.assignee?.id !== filterUser.value) return false
+    if (filterReporter.value && bug.reporter?.id !== filterReporter.value) return false
     if (filterCategory.value && bug.category !== filterCategory.value) return false
     return true
   })
