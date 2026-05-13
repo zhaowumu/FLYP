@@ -198,9 +198,11 @@ const deleteUser = async (user: any) => {
     await deleteUserApi(user.id)
     ElMessage.success('删除成功')
     loadUsers()
-  } catch (error) {
+  } catch (error: any) {
     if (error !== 'cancel') {
-      ElMessage.error('删除失败')
+      // 优先使用后端返回的错误信息
+      const msg = error?.response?.data?.error || '删除失败'
+      ElMessage.error(msg)
     }
   }
 }

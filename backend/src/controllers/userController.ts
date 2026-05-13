@@ -1,11 +1,17 @@
 import { Request, Response } from "express";
 import { AppDataSource } from "../config/database";
 import { User } from "../entities/User";
+import { Task } from "../entities/Task";
+import { Bug } from "../entities/Bug";
+import { OperationLog } from "../entities/OperationLog";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { config } from "../config";
 
 const userRepository = AppDataSource.getRepository(User);
+const taskRepository = AppDataSource.getRepository(Task);
+const bugRepository = AppDataSource.getRepository(Bug);
+const operationLogRepository = AppDataSource.getRepository(OperationLog);
 
 export const userController = {
   // 用户注册
@@ -143,12 +149,77 @@ export const userController = {
   // 删除用户
   async deleteUser(req: Request, res: Response) {
     try {
-      const { id } = req.params;
-      await userRepository.delete(id);
-      res.json({ message: "User deleted successfully" });
+      const userId = parseInt(req.params.id as string, 10);
+
+      // 检查是否存在
+      const user = await userRepository.findOne({ where: { id: userId } });
+      if (!user) {
+        return res.status(404).json({ error: "用户不存在" });
+      }
+
+      // 统计关联任务数（作为负责人 assignees）
+      const assignedTaskCount = await taskRepository
+        .createQueryBuilder("task")
+        .innerJoin("task.assignees", "assignee")
+        .where("assignee.id = :userId", { userId })
+        .getCount();
+
+      // 统计创建的任务数（creator）
+      const createdTaskCount = await taskRepository
+        .createQueryBuilder("task")
+        .innerJoin("task.creator", "creator")
+        .where("creator.id = :userId", { userId })
+        .getCount();
+
+      // 统计关联 Bug 数（作为负责人 assignee）
+      const assignedBugCount = await bugRepository
+        .createQueryBuilder("bug")
+        .innerJoin("bug.assignee", "assignee")
+        .where("assignee.id = :userId", { userId })
+        .getCount();
+
+      // 统计提报的 Bug 数（reporter）
+      const reportedBugCount = await bugRepository
+        .createQueryBuilder("bug")
+        .innerJoin("bug.reporter", "reporter")
+        .where("reporter.id = :userId", { userId })
+        .getCount();
+
+      // 统计项目管理员关联数（project_managers_user junction table）
+      const pmCount = await AppDataSource.query(
+        `SELECT COUNT(*) as count FROM project_managers_user WHERE userId = ?`,
+        [userId]
+      );
+
+      const taskCount = assignedTaskCount + createdTaskCount;
+      const bugCount = assignedBugCount + reportedBugCount;
+      const projectManagerCount = pmCount[0]?.count || 0;
+
+      // 操作日志不阻止删除，但删除前将 userId 置空（保留历史记录）
+      // 清除该用户的操作日志关联（userId 置 null）
+      await AppDataSource.query(
+        `UPDATE operation_log SET userId = NULL WHERE userId = ?`,
+        [userId]
+      );
+
+      console.log(`[deleteUser] userId=${userId}, assignedTasks=${assignedTaskCount}, createdTasks=${createdTaskCount}, assignedBugs=${assignedBugCount}, reportedBugs=${reportedBugCount}, pm=${projectManagerCount}`);
+
+      const reasons: string[] = [];
+      if (taskCount > 0) reasons.push(`${taskCount} 个关联任务`);
+      if (bugCount > 0) reasons.push(`${bugCount} 个关联 Bug`);
+      if (projectManagerCount > 0) reasons.push(`${projectManagerCount} 个项目管理员身份`);
+
+      if (reasons.length > 0) {
+        return res.status(400).json({
+          error: `该用户还有 ${reasons.join("、")}，请先处理后再删除`,
+        });
+      }
+
+      await userRepository.delete(userId);
+      res.json({ message: "用户删除成功" });
     } catch (error) {
       console.error("Error deleting user:", error);
-      res.status(500).json({ error: "Failed to delete user" });
+      res.status(500).json({ error: "删除用户失败，请稍后重试" });
     }
   },
 

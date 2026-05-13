@@ -143,8 +143,15 @@ export const bugController = {
       }
 
       const logs = await getBugLogs(bug.id);
+      // user 为 null 时（用户已删除）显示"已删除人员"
+      const normalizedLogs = logs.map(log => ({
+        ...log,
+        user: log.user
+          ? { id: log.user.id, username: log.user.username, realName: log.user.realName, avatar: log.user.avatar || undefined, role: log.user.role || '' }
+          : { id: 0, username: '', realName: '已删除人员', avatar: undefined, role: '' }
+      }));
 
-      res.json({ ...bug, operationLogs: logs });
+      res.json({ ...bug, operationLogs: normalizedLogs });
     } catch (error) {
       console.error("Error getting bug:", error);
       res.status(500).json({ error: "Failed to get bug" });

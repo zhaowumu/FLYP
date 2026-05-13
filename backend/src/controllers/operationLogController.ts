@@ -40,13 +40,14 @@ export const getOperationLogs = async (req: Request, res: Response) => {
     const data = logs.map(log => {
       const { remark, ...rest } = log as any;
       const title = log.targetType === "task" ? taskMap[log.targetId] : bugMap[log.targetId];
-      // 确保 user 对象始终有值，避免前端显示"未知"
+      // user 为 null 时（用户已删除）显示"已删除人员"
       const user = log.user ? {
         id: log.user.id,
         username: log.user.username,
-        realName: log.user.realName || '未知用户',
-        role: log.user.role || 'unknown'
-      } : { id: 0, username: 'unknown', realName: '未知用户', role: 'unknown' };
+        realName: log.user.realName,
+        avatar: log.user.avatar || undefined,
+        role: log.user.role || ''
+      } : { id: 0, username: '', realName: '已删除人员', avatar: undefined, role: '' };
       return { ...rest, user, title };
     });
 
