@@ -539,6 +539,10 @@ export const bugController = {
         return res.status(404).json({ error: "Bug not found" });
       }
 
+      if (!bug.reporter || bug.reporter.id !== userId) {
+        return res.status(403).json({ error: "只有缺陷创建人才能打回" });
+      }
+
       if (bug.status !== "fixed") {
         return res.status(400).json({ error: "只有已修复的缺陷才能打回" });
       }
