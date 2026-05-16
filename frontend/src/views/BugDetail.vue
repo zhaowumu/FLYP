@@ -46,7 +46,7 @@
                 {{ bug.description ? '编辑' : '添加描述' }}
               </el-button>
             </div>
-            <div v-if="!isEditingDescription" class="section-content" v-html="bug.description || '<span style=color:var(--nb-text-secondary)>暂无描述</span>'"></div>
+            <div v-if="!isEditingDescription" class="section-content" v-html="bug.description || '<span style=color:var(--nb-text-secondary)>暂无描述</span>'" @click="handleImageClick"></div>
             <div v-else class="section-editor">
               <RichEditor
                 v-model="editDescription"
@@ -68,7 +68,7 @@
                 {{ bug.reproduceSteps ? '编辑' : '添加步骤' }}
               </el-button>
             </div>
-            <div v-if="!isEditingReproduceSteps" class="section-content" v-html="bug.reproduceSteps || '<span style=color:var(--nb-text-secondary)>暂无重现步骤</span>'"></div>
+            <div v-if="!isEditingReproduceSteps" class="section-content" v-html="bug.reproduceSteps || '<span style=color:var(--nb-text-secondary)>暂无重现步骤</span>'" @click="handleImageClick"></div>
             <div v-else class="section-editor">
               <RichEditor
                 v-model="editReproduceSteps"
@@ -100,7 +100,7 @@
                   <span class="activity-action">{{ formatLogAction(log) }}</span>
                   <span class="activity-time">{{ formatTime(log.createdAt) }}</span>
                 </div>
-                <div class="activity-remark" v-if="hasRemarkContent(log.remark)">
+                <div class="activity-remark" v-if="hasRemarkContent(log.remark)" @click="handleImageClick">
                   <div v-html="renderRemark(log.remark)"></div>
                 </div>
               </div>
@@ -534,6 +534,14 @@
         </div>
       </div>
     </el-drawer>
+
+    <!-- 图片预览 -->
+    <el-image-viewer
+      v-if="previewVisible"
+      :url-list="previewUrlList"
+      :initial-index="previewStartIndex"
+      @close="closePreview"
+    />
   </div>
 </template>
 
@@ -541,6 +549,7 @@
 import { ref, computed, watch, onMounted, nextTick, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { ImageViewer } from 'element-plus'
 import { getBug, updateBugStatus, addComment as addBugComment, updateBug, assignBug, extendDueDate as extendBugDueDate, rejectBug, restartBug, deleteBug } from '../api/bug'
 import { getUsers } from '../api/user'
 import { useUserStore } from '../stores/user'
@@ -572,6 +581,29 @@ const editReproduceSteps = ref('')
 const saving = ref(false)
 const titleInputRef = ref()
 const newDueDate = ref<Date | null>(null)
+
+// 图片预览
+const previewVisible = ref(false)
+const previewUrlList = ref<string[]>([])
+const previewStartIndex = ref(0)
+
+const handleImageClick = (e: MouseEvent) => {
+  const target = e.target as HTMLElement
+  if (target.tagName === 'IMG') {
+    const src = (target as HTMLImageElement).src
+    if (src) {
+      const container = target.closest('.section-content, .activity-remark, .description-content')
+      const images = container ? Array.from(container.querySelectorAll('img')) : [target]
+      previewUrlList.value = images.map(img => (img as HTMLImageElement).src)
+      previewStartIndex.value = images.indexOf(target)
+      previewVisible.value = true
+    }
+  }
+}
+
+const closePreview = () => {
+  previewVisible.value = false
+}
 
 const operationLogs = computed(() => {
   return bug.value?.operationLogs || []
@@ -1240,6 +1272,12 @@ onMounted(() => {
   max-width: 100%;
   height: auto;
   border-radius: var(--nb-radius-sm);
+  cursor: pointer;
+  transition: opacity var(--nb-transition-fast);
+}
+
+.section-content :deep(img:hover) {
+  opacity: 0.85;
 }
 
 .section-content :deep(video) {
@@ -1334,6 +1372,12 @@ onMounted(() => {
   height: auto;
   border-radius: var(--nb-radius-sm);
   margin: var(--nb-space-2) 0;
+  cursor: pointer;
+  transition: opacity var(--nb-transition-fast);
+}
+
+.activity-remark :deep(img:hover) {
+  opacity: 0.85;
 }
 
 .activity-remark :deep(video) {

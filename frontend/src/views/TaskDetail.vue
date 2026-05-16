@@ -46,7 +46,7 @@
                 {{ task.description ? '编辑' : '添加描述' }}
               </el-button>
             </div>
-            <div v-if="!isEditingDescription" class="description-content" v-html="task.description || '<span style=color:var(--nb-text-secondary)>暂无描述</span>'"></div>
+            <div v-if="!isEditingDescription" class="description-content" v-html="task.description || '<span style=color:var(--nb-text-secondary)>暂无描述</span>'" @click="handleImageClick"></div>
             <div v-else class="description-editor">
               <RichEditor
                 v-model="editDescription"
@@ -108,7 +108,7 @@
                   <span class="activity-action">{{ formatLogAction(log) }}</span>
                   <span class="activity-time">{{ formatTime(log.createdAt) }}</span>
                 </div>
-                <div class="activity-remark" v-if="hasRemarkContent(log.remark)">
+                <div class="activity-remark" v-if="hasRemarkContent(log.remark)" @click="handleImageClick">
                   <div v-html="renderRemark(log.remark)"></div>
                 </div>
               </div>
@@ -733,13 +733,22 @@
         </div>
       </div>
     </el-drawer>
+
+    <!-- 图片预览 -->
+    <el-image-viewer
+      v-if="previewVisible"
+      :url-list="previewUrlList"
+      :initial-index="previewStartIndex"
+      @close="closePreview"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, nextTick, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { ImageViewer } from 'element-plus'
 import { getTask, updateTaskStatus, addComment as addTaskComment, updateTask, deleteTask, extendDueDate as extendTaskDueDate, getTaskCategories, rejectTask, restartTask, submitForTest, passTestTask, rejectTestTask } from '../api/task'
 import { getUsers } from '../api/user'
 import { useUserStore } from '../stores/user'
@@ -776,6 +785,30 @@ const editCreatorId = ref<number | null>(null)
 const editDueDate = ref<Date | null>(null)
 const categories = ref<string[]>([])
 const editCategory = ref('')
+
+// 图片预览
+const previewVisible = ref(false)
+const previewUrlList = ref<string[]>([])
+const previewStartIndex = ref(0)
+
+const handleImageClick = (e: MouseEvent) => {
+  const target = e.target as HTMLElement
+  if (target.tagName === 'IMG') {
+    const src = (target as HTMLImageElement).src
+    if (src) {
+      // 收集当前容器内所有图片
+      const container = target.closest('.description-content, .activity-remark, .section-content')
+      const images = container ? Array.from(container.querySelectorAll('img')) : [target]
+      previewUrlList.value = images.map(img => (img as HTMLImageElement).src)
+      previewStartIndex.value = images.indexOf(target)
+      previewVisible.value = true
+    }
+  }
+}
+
+const closePreview = () => {
+  previewVisible.value = false
+}
 
 const operationLogs = computed(() => {
   return task.value?.operationLogs || []
@@ -1568,6 +1601,12 @@ watch(() => route.params.id, (newId) => {
   height: auto;
   border-radius: var(--nb-radius-sm);
   margin: var(--nb-space-2) 0;
+  cursor: pointer;
+  transition: opacity var(--nb-transition-fast);
+}
+
+.description-content :deep(img:hover) {
+  opacity: 0.85;
 }
 
 .description-content :deep(video) {
@@ -1760,6 +1799,12 @@ watch(() => route.params.id, (newId) => {
   height: auto;
   border-radius: var(--nb-radius-sm);
   margin: var(--nb-space-2) 0;
+  cursor: pointer;
+  transition: opacity var(--nb-transition-fast);
+}
+
+.activity-remark :deep(img:hover) {
+  opacity: 0.85;
 }
 
 .activity-remark :deep(video) {
