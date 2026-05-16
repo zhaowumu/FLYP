@@ -87,6 +87,29 @@ const editorStyle = computed(() => {
 const videoDialogVisible = ref(false)
 const videoForm = ref({ url: '', width: 640, height: 360, ratio: '16:9' })
 
+// 图片上传辅助函数
+function uploadImage(file: File, insertFn: any) {
+  const formData = new FormData()
+  formData.append('file', file)
+  fetch('/api/upload/image', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+    body: formData
+  })
+    .then(res => res.json())
+    .then(res => {
+      if (res.errno === 0) {
+        insertFn(res.data[0].url, '', '')
+        ElMessage.success('图片上传成功')
+      } else {
+        ElMessage.error('图片上传失败')
+      }
+    })
+    .catch(() => {
+      ElMessage.error('图片上传失败')
+    })
+}
+
 const toolbarConfig = {
   toolbarKeys: [
     'undo', 'redo',
@@ -113,22 +136,66 @@ const editorConfig = {
   MENU_CONF: {
     uploadImage: {
       fieldName: 'file',
-      server: '/api/upload/image',
       maxFileSize: 10 * 1024 * 1024,
       maxNumberOfFiles: 10,
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem('token')}`
-      },
-      customInsert(res: any, insertFn: any) {
-        if (res.errno === 0) {
-          insertFn(res.data[0].url, '', '')
-          ElMessage.success('图片上传成功')
-        } else {
-          ElMessage.error('图片上传失败')
+      customUpload(file: File, insertFn: any) {
+        const COMPRESS_THRESHOLD = 500 * 1024 // 500KB 以下不压缩
+        const MAX_WIDTH = 1920
+        const QUALITY = 0.8
+
+        // 小图直接上传
+        if (file.size < COMPRESS_THRESHOLD) {
+          uploadImage(file, insertFn)
+          return
         }
-      },
-      onError(file: File, err: any, res: any) {
-        ElMessage.error('图片上传失败: ' + (err?.message || ''))
+
+        // GIF 不压缩（Canvas 无法保留动图）
+        if (file.type === 'image/gif') {
+          uploadImage(file, insertFn)
+          return
+        }
+
+        // Canvas 压缩大图
+        const img = new Image()
+        img.onload = () => {
+          let { width, height } = img
+          // 宽度未超标也不压缩，直接上传原图
+          if (width <= MAX_WIDTH) {
+            URL.revokeObjectURL(img.src)
+            uploadImage(file, insertFn)
+            return
+          }
+          // 等比缩放
+          const scale = MAX_WIDTH / width
+          width = MAX_WIDTH
+          height = Math.round(height * scale)
+
+          const canvas = document.createElement('canvas')
+          canvas.width = width
+          canvas.height = height
+          const ctx = canvas.getContext('2d')!
+          ctx.drawImage(img, 0, 0, width, height)
+          URL.revokeObjectURL(img.src)
+
+          canvas.toBlob(
+            (blob) => {
+              if (blob) {
+                // 压缩后比原图还大，用原图
+                const compressedFile = new File([blob], file.name, { type: blob.type })
+                uploadImage(compressedFile.size < file.size ? compressedFile : file, insertFn)
+              } else {
+                uploadImage(file, insertFn)
+              }
+            },
+            file.type === 'image/png' ? 'image/png' : 'image/jpeg',
+            QUALITY
+          )
+        }
+        img.onerror = () => {
+          URL.revokeObjectURL(img.src)
+          uploadImage(file, insertFn)
+        }
+        img.src = URL.createObjectURL(file)
       }
     },
     uploadVideo: {
