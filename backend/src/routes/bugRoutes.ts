@@ -1,10 +1,11 @@
 import { Router } from "express";
 import { bugController } from "../controllers/bugController";
-import { bugPermissionMiddleware } from "../middleware/authMiddleware";
+import { roleMiddleware } from "../middleware/authMiddleware";
 
+const ALL_ROLES = ["admin", "project_manager", "developer", "artist", "designer", "tester"];
 const router = Router();
 
-router.post("/", bugPermissionMiddleware("create"), bugController.createBug);
+router.post("/", roleMiddleware(ALL_ROLES), bugController.createBug);
 
 router.get("/", bugController.getAllBugs);
 
@@ -22,7 +23,7 @@ router.post("/:id/comments", bugController.addComment);
 
 router.patch("/:id/assign", bugController.assignBug);
 
-router.delete("/:id", bugPermissionMiddleware("delete"), bugController.deleteBug);
+router.delete("/:id", roleMiddleware(["admin", "project_manager"]), bugController.deleteBug);
 
 router.patch("/:id/extend", bugController.extendDueDate);
 

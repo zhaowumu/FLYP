@@ -8,18 +8,18 @@
     </div>
 
     <el-tabs v-model="activeTab" type="border-card">
-      <el-tab-pane label="角色权限" name="permissions">
+      <el-tab-pane label="权限说明" name="permissions">
         <div class="permissions-container">
           <el-alert
-            title="权限说明"
+            title="权限规则说明"
             type="info"
             :closable="false"
             show-icon
             style="margin-bottom: 20px"
           >
             <template #default>
-              <p>1. 此表配置的是各角色的<strong>基础权限</strong>，修改后需重新登录生效</p>
-              <p>2. 实际权限 = 角色基础权限 ∪ 关系权限（负责人/创建人/报告人自动获得部分权限）</p>
+              <p>系统权限基于<strong>角色</strong>和<strong>关系</strong>自动控制，无需手动配置</p>
+              <p>关系指：创建人、负责人（指派人）、报告人、项目经理等</p>
             </template>
           </el-alert>
 
@@ -27,67 +27,221 @@
             <div class="permission-section">
               <div class="section-header">
                 <h3>任务权限</h3>
-                <span class="section-tip">以下操作由关系权限控制，不在系统设置中显示：完成、转交（仅负责人）、打回、关闭（仅创建人）</span>
               </div>
-              <el-table :data="taskActions" border size="default" style="width: 100%">
-                <el-table-column prop="label" label="操作" width="150" align="center" />
-                <el-table-column v-for="role in roleKeys" :key="role" :label="ROLE_LABELS[role]" align="center">
-                  <template #default="{ row }">
-                    <el-switch
-                      :model-value="getPerm(role, 'task', row.key)"
-                      @update:model-value="(val: boolean) => setPerm(role, 'task', row.key, val)"
-                      :active-color="'#13ce66'"
-                      :inactive-color="'#ff4949'"
-                    />
-                  </template>
-                </el-table-column>
-              </el-table>
+              <div class="perm-desc-grid">
+                <div class="status-flow">
+                  <div class="status-flow-row">
+                    <span class="status-node status-pending">待处理</span>
+                    <span class="status-arrow">→</span>
+                    <span class="status-node status-progress">进行中</span>
+                    <span class="status-arrow">→</span>
+                    <span class="status-node status-completed">已完成</span>
+                    <span class="status-arrow">→</span>
+                    <span class="status-node status-testing">测试中</span>
+                    <span class="status-arrow">→</span>
+                    <span class="status-node status-closed">已关闭</span>
+                  </div>
+                  <div class="status-branch-row">
+                    <span class="status-branch"><span class="branch-label">打回</span> 已完成 → 进行中</span>
+                    <span class="status-branch"><span class="branch-label">测试打回</span> 测试中 → 进行中</span>
+                    <span class="status-branch"><span class="branch-label">重启</span> 已关闭 → 待处理/进行中</span>
+                  </div>
+                </div>
+                <div class="perm-desc-item">
+                  <span class="perm-action">创建任务</span>
+                  <span class="perm-rule">状态：无 &nbsp;|&nbsp; 可见：所有角色 &nbsp;|&nbsp; 执行后：状态→未指定负责人「待处理」/指定负责人「进行中」，负责人→指定用户</span>
+                </div>
+                <div class="perm-desc-item">
+                  <span class="perm-action">完成任务</span>
+                  <span class="perm-rule">状态：待处理/进行中 &nbsp;|&nbsp; 可见：当前负责人 &nbsp;|&nbsp; 执行后：唯一负责人→状态「已完成」，负责人改为创建人；多负责人→当前人从负责人列表移除，状态不变</span>
+                </div>
+                <div class="perm-desc-item">
+                  <span class="perm-action">转交任务</span>
+                  <span class="perm-rule">状态：待处理/进行中 &nbsp;|&nbsp; 可见：当前负责人 &nbsp;|&nbsp; 执行后：状态不变，负责人→替换为所选用户</span>
+                </div>
+                <div class="perm-desc-item">
+                  <span class="perm-action">反馈任务</span>
+                  <span class="perm-rule">状态：进行中 &nbsp;|&nbsp; 可见：当前负责人 &nbsp;|&nbsp; 执行后：单人负责→状态不变，负责人→替换为创建人；多人负责→提示「请直接联系创建人沟通反馈」</span>
+                </div>
+                <div class="perm-desc-item">
+                  <span class="perm-action">指派任务</span>
+                  <span class="perm-rule">状态：待处理/进行中 &nbsp;|&nbsp; 可见：管理员/项目经理/创建人 &nbsp;|&nbsp; 执行后：状态→「进行中」，负责人→设置为所选用户</span>
+                </div>
+                <div class="perm-desc-item">
+                  <span class="perm-action">打回任务</span>
+                  <span class="perm-rule">状态：已完成 &nbsp;|&nbsp; 可见：仅创建人 &nbsp;|&nbsp; 执行后：状态→「进行中」，负责人→替换为所选用户</span>
+                </div>
+                <div class="perm-desc-item">
+                  <span class="perm-action">关闭任务</span>
+                  <span class="perm-rule">状态：已完成 &nbsp;|&nbsp; 可见：管理员/项目经理/创建人 &nbsp;|&nbsp; 执行后：状态→「已关闭」，负责人→清空</span>
+                </div>
+                <div class="perm-desc-item">
+                  <span class="perm-action">提交测试</span>
+                  <span class="perm-rule">状态：已完成 &nbsp;|&nbsp; 可见：管理员/项目经理/创建人 &nbsp;|&nbsp; 执行后：状态→「测试中」，负责人→替换为所选测试人员</span>
+                </div>
+                <div class="perm-desc-item">
+                  <span class="perm-action">测试通过</span>
+                  <span class="perm-rule">状态：测试中 &nbsp;|&nbsp; 可见：当前负责人（测试员） &nbsp;|&nbsp; 执行后：状态→「已关闭」，负责人→清空</span>
+                </div>
+                <div class="perm-desc-item">
+                  <span class="perm-action">测试打回</span>
+                  <span class="perm-rule">状态：测试中 &nbsp;|&nbsp; 可见：管理员/项目经理/负责人 &nbsp;|&nbsp; 执行后：状态→「进行中」，负责人→替换为所选用户</span>
+                </div>
+                <div class="perm-desc-item">
+                  <span class="perm-action">重启任务</span>
+                  <span class="perm-rule">状态：已关闭 &nbsp;|&nbsp; 可见：所有角色 &nbsp;|&nbsp; 执行后：指定负责人→状态「进行中」/不指定→状态「待处理」，负责人→指定用户或空</span>
+                </div>
+                <div class="perm-desc-item">
+                  <span class="perm-action">添加备注</span>
+                  <span class="perm-rule">状态：无限制 &nbsp;|&nbsp; 可见：所有角色 &nbsp;|&nbsp; 执行后：状态不变，负责人不变</span>
+                </div>
+                <div class="perm-desc-item">
+                  <span class="perm-action">修改优先级</span>
+                  <span class="perm-rule">状态：任意 &nbsp;|&nbsp; 可见（侧边栏）：仅管理员/项目经理 &nbsp;|&nbsp; 执行后：状态不变，负责人不变</span>
+                </div>
+                <div class="perm-desc-item">
+                  <span class="perm-action">修改状态</span>
+                  <span class="perm-rule">状态：任意 &nbsp;|&nbsp; 可见（侧边栏）：仅管理员/项目经理 &nbsp;|&nbsp; 执行后：状态→强制修改为指定状态，负责人不变</span>
+                </div>
+                <div class="perm-desc-item">
+                  <span class="perm-action">修改负责人</span>
+                  <span class="perm-rule">状态：任意 &nbsp;|&nbsp; 可见（侧边栏）：仅管理员/项目经理 &nbsp;|&nbsp; 执行后：状态不变，负责人→强制替换为所选用户</span>
+                </div>
+                <div class="perm-desc-item">
+                  <span class="perm-action">修改创建人</span>
+                  <span class="perm-rule">状态：任意 &nbsp;|&nbsp; 可见（侧边栏）：仅管理员/项目经理 &nbsp;|&nbsp; 执行后：状态不变，创建人→强制修改为所选用户</span>
+                </div>
+                <div class="perm-desc-item">
+                  <span class="perm-action">修改分类</span>
+                  <span class="perm-rule">状态：任意 &nbsp;|&nbsp; 可见（侧边栏）：仅管理员/项目经理 &nbsp;|&nbsp; 执行后：状态不变，负责人不变</span>
+                </div>
+                <div class="perm-desc-item">
+                  <span class="perm-action">修改截止日期</span>
+                  <span class="perm-rule">状态：任意 &nbsp;|&nbsp; 可见（侧边栏）：仅管理员/项目经理 &nbsp;|&nbsp; 执行后：状态不变，负责人不变</span>
+                </div>
+                <div class="perm-desc-item">
+                  <span class="perm-action">延期</span>
+                  <span class="perm-rule">状态：未关闭 &nbsp;|&nbsp; 可见：仅管理员/项目经理 &nbsp;|&nbsp; 执行后：状态不变，负责人不变，截止日期→延长</span>
+                </div>
+                <div class="perm-desc-item">
+                  <span class="perm-action">删除任务</span>
+                  <span class="perm-rule">状态：无限制 &nbsp;|&nbsp; 可见：仅管理员/项目经理 &nbsp;|&nbsp; 执行后：任务永久删除</span>
+                </div>
+              </div>
             </div>
 
             <div class="permission-section">
               <div class="section-header">
                 <h3>缺陷权限</h3>
-                <span class="section-tip">以下操作由关系权限控制，不在系统设置中显示：修复（仅负责人）、验证通过/打回/关闭（仅报告人）、转交（仅负责人）</span>
               </div>
-              <el-table :data="bugActions" border size="default" style="width: 100%">
-                <el-table-column prop="label" label="操作" width="150" align="center" />
-                <el-table-column v-for="role in roleKeys" :key="role" :label="ROLE_LABELS[role]" align="center">
-                  <template #default="{ row }">
-                    <el-switch
-                      :model-value="getPerm(role, 'bug', row.key)"
-                      @update:model-value="(val: boolean) => setPerm(role, 'bug', row.key, val)"
-                      :active-color="'#13ce66'"
-                      :inactive-color="'#ff4949'"
-                    />
-                  </template>
-                </el-table-column>
-              </el-table>
+              <div class="perm-desc-grid">
+                <div class="status-flow">
+                  <div class="status-flow-row">
+                    <span class="status-node status-pending">待处理</span>
+                    <span class="status-arrow">→</span>
+                    <span class="status-node status-progress">进行中</span>
+                    <span class="status-arrow">→</span>
+                    <span class="status-node status-fixed">已修复</span>
+                    <span class="status-arrow">→</span>
+                    <span class="status-node status-verified">已验证</span>
+                    <span class="status-arrow">→</span>
+                    <span class="status-node status-closed">已关闭</span>
+                  </div>
+                  <div class="status-branch-row">
+                    <span class="status-branch"><span class="branch-label">打回</span> 已修复 → 进行中</span>
+                    <span class="status-branch"><span class="branch-label">重启</span> 已关闭 → 待处理/进行中</span>
+                  </div>
+                </div>
+                <div class="perm-desc-item">
+                  <span class="perm-action">创建缺陷</span>
+                  <span class="perm-rule">状态：无 &nbsp;|&nbsp; 可见：所有角色 &nbsp;|&nbsp; 执行后：状态→未指定负责人「待处理」/指定负责人「进行中」，负责人→指定用户</span>
+                </div>
+                <div class="perm-desc-item">
+                  <span class="perm-action">分配缺陷</span>
+                  <span class="perm-rule">状态：待处理/进行中 &nbsp;|&nbsp; 可见：管理员/项目经理/报告人 &nbsp;|&nbsp; 执行后：状态→「进行中」，负责人→设置为所选用户</span>
+                </div>
+                <div class="perm-desc-item">
+                  <span class="perm-action">修复完成</span>
+                  <span class="perm-rule">状态：进行中 &nbsp;|&nbsp; 可见：当前负责人 &nbsp;|&nbsp; 执行后：状态→「已修复」，负责人→改为报告人</span>
+                </div>
+                <div class="perm-desc-item">
+                  <span class="perm-action">转交缺陷</span>
+                  <span class="perm-rule">状态：待处理/进行中 &nbsp;|&nbsp; 可见：当前负责人 &nbsp;|&nbsp; 执行后：状态不变，负责人→替换为所选用户</span>
+                </div>
+                <div class="perm-desc-item">
+                  <span class="perm-action">反馈缺陷</span>
+                  <span class="perm-rule">状态：进行中 &nbsp;|&nbsp; 可见：当前负责人 &nbsp;|&nbsp; 执行后：状态不变，负责人→替换为报告人</span>
+                </div>
+                <div class="perm-desc-item">
+                  <span class="perm-action">打回缺陷</span>
+                  <span class="perm-rule">状态：已修复 &nbsp;|&nbsp; 可见：仅报告人 &nbsp;|&nbsp; 执行后：状态→「进行中」，负责人→可选指定新用户</span>
+                </div>
+                <div class="perm-desc-item">
+                  <span class="perm-action">验证通过</span>
+                  <span class="perm-rule">状态：已修复 &nbsp;|&nbsp; 可见：仅报告人 &nbsp;|&nbsp; 执行后：状态→「已验证」，负责人不变</span>
+                </div>
+                <div class="perm-desc-item">
+                  <span class="perm-action">关闭缺陷</span>
+                  <span class="perm-rule">状态：已验证 &nbsp;|&nbsp; 可见：管理员/项目经理/报告人 &nbsp;|&nbsp; 执行后：状态→「已关闭」，负责人→清空</span>
+                </div>
+                <div class="perm-desc-item">
+                  <span class="perm-action">重启缺陷</span>
+                  <span class="perm-rule">状态：已关闭 &nbsp;|&nbsp; 可见：所有角色 &nbsp;|&nbsp; 执行后：指定负责人→状态「进行中」/不指定→状态「待处理」，负责人→指定用户或空</span>
+                </div>
+                <div class="perm-desc-item">
+                  <span class="perm-action">添加备注</span>
+                  <span class="perm-rule">状态：无限制 &nbsp;|&nbsp; 可见：所有角色 &nbsp;|&nbsp; 执行后：状态不变，负责人不变</span>
+                </div>
+                <div class="perm-desc-item">
+                  <span class="perm-action">修改严重程度</span>
+                  <span class="perm-rule">状态：任意 &nbsp;|&nbsp; 可见（侧边栏）：仅管理员/项目经理 &nbsp;|&nbsp; 执行后：状态不变，负责人不变</span>
+                </div>
+                <div class="perm-desc-item">
+                  <span class="perm-action">修改状态</span>
+                  <span class="perm-rule">状态：任意 &nbsp;|&nbsp; 可见（侧边栏）：仅管理员/项目经理 &nbsp;|&nbsp; 执行后：状态→强制修改为指定状态，负责人不变</span>
+                </div>
+                <div class="perm-desc-item">
+                  <span class="perm-action">修改负责人</span>
+                  <span class="perm-rule">状态：任意 &nbsp;|&nbsp; 可见（侧边栏）：仅管理员/项目经理 &nbsp;|&nbsp; 执行后：状态不变，负责人→强制替换为所选用户</span>
+                </div>
+                <div class="perm-desc-item">
+                  <span class="perm-action">修改报告人</span>
+                  <span class="perm-rule">状态：任意 &nbsp;|&nbsp; 可见（侧边栏）：仅管理员/项目经理 &nbsp;|&nbsp; 执行后：状态不变，报告人→强制修改为所选用户</span>
+                </div>
+                <div class="perm-desc-item">
+                  <span class="perm-action">修改分类</span>
+                  <span class="perm-rule">状态：任意 &nbsp;|&nbsp; 可见（侧边栏）：仅管理员/项目经理 &nbsp;|&nbsp; 执行后：状态不变，负责人不变</span>
+                </div>
+                <div class="perm-desc-item">
+                  <span class="perm-action">修改截止日期</span>
+                  <span class="perm-rule">状态：任意 &nbsp;|&nbsp; 可见（侧边栏）：仅管理员/项目经理 &nbsp;|&nbsp; 执行后：状态不变，负责人不变</span>
+                </div>
+                <div class="perm-desc-item">
+                  <span class="perm-action">延期</span>
+                  <span class="perm-rule">状态：未关闭 &nbsp;|&nbsp; 可见：仅管理员/项目经理 &nbsp;|&nbsp; 执行后：状态不变，负责人不变，截止日期→延长</span>
+                </div>
+                <div class="perm-desc-item">
+                  <span class="perm-action">删除缺陷</span>
+                  <span class="perm-rule">状态：无限制 &nbsp;|&nbsp; 可见：仅管理员/项目经理 &nbsp;|&nbsp; 执行后：缺陷永久删除</span>
+                </div>
+              </div>
             </div>
 
             <div class="permission-section">
               <div class="section-header">
                 <h3>项目权限</h3>
-                <span class="section-tip">仅管理员和项目经理可创建项目，仅管理员可删除项目</span>
               </div>
-              <el-table :data="projectActions" border size="default" style="width: 100%">
-                <el-table-column prop="label" label="操作" width="150" align="center" />
-                <el-table-column v-for="role in roleKeys" :key="role" :label="ROLE_LABELS[role]" align="center">
-                  <template #default="{ row }">
-                    <el-switch
-                      :model-value="getPerm(role, 'project', row.key)"
-                      @update:model-value="(val: boolean) => setPerm(role, 'project', row.key, val)"
-                      :active-color="'#13ce66'"
-                      :inactive-color="'#ff4949'"
-                    />
-                  </template>
-                </el-table-column>
-              </el-table>
+              <div class="perm-desc-grid">
+                <div class="perm-desc-item">
+                  <span class="perm-action">创建项目</span>
+                  <span class="perm-rule">可见：管理员/项目经理 &nbsp;|&nbsp; 执行后：创建新项目</span>
+                </div>
+                <div class="perm-desc-item">
+                  <span class="perm-action">删除项目</span>
+                  <span class="perm-rule">可见：仅管理员 &nbsp;|&nbsp; 执行后：永久删除项目及关联数据</span>
+                </div>
+              </div>
             </div>
-          </div>
-
-          <div class="permission-actions">
-            <el-button @click="resetPermissions">恢复默认</el-button>
-            <el-button type="primary" @click="savePermissions" :loading="savingPermissions">保存权限配置</el-button>
           </div>
         </div>
       </el-tab-pane>
@@ -544,7 +698,6 @@ import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Delete, Download, Upload, Refresh, RefreshRight, VideoPlay } from '@element-plus/icons-vue'
 import { backupData as backupDataApi, restoreData as restoreDataApi, exportAll as exportAllApi, clearDatabase as clearDatabaseApi, clearAllDatabase as clearAllDatabaseApi, getBackupStatus as getBackupStatusApi, getBackupList as getBackupListApi, downloadBackup as downloadBackupApi, deleteBackupFile as deleteBackupFileApi, backupNow as backupNowApi } from '../api/excel'
-import { getPermissions, updatePermissions } from '../api/permission'
 import { getCustomLinks, updateCustomLinks, listMarkdownFiles } from '../api/customLink'
 import { getDingTalkConfig, updateDingTalkConfig, testDingTalkByType, getGiteeBackupConfig, updateGiteeBackupConfig, testGiteeBackupConnection } from '../api/systemConfig'
 import api from '../api'
@@ -559,7 +712,6 @@ const backupStatus = ref<{ running: boolean; schedule: string; backupCount: numb
 const backupFiles = ref<Array<{ name: string; size: number; date: string }>>([])
 const backupListLoading = ref(false)
 const backupNowLoading = ref(false)
-const savingPermissions = ref(false)
 const savingCustomLinks = ref(false)
 const savingDingtalk = ref(false)
 const testingDingtalk = ref(false)
@@ -611,118 +763,7 @@ const notifyConfigLabels = {
 
 const notifyConfigs = ref<Record<string, { enabled: boolean; template: string; label: string; defaultTemplate: string }>>({})
 
-const ROLE_LABELS: Record<string, string> = {
-  admin: '管理员',
-  project_manager: '项目经理',
-  developer: '程序',
-  artist: '美术',
-  designer: '策划',
-  tester: '测试',
-}
-
-const roleKeys = Object.keys(ROLE_LABELS)
-
-const taskActions = [
-  { key: 'create', label: '创建任务' },
-  { key: 'assign', label: '指派' },
-  { key: 'restart', label: '重启' },
-  { key: 'comment', label: '备注' },
-  { key: 'delete', label: '删除' },
-  { key: 'extendDueDate', label: '延期' },
-]
-
-const projectActions = [
-  { key: 'create', label: '创建项目' },
-  { key: 'delete', label: '删除项目' },
-]
-
-const bugActions = [
-  { key: 'create', label: '创建BUG' },
-  { key: 'assign', label: '分配' },
-  { key: 'restartBug', label: '重启' },
-  { key: 'comment', label: '备注' },
-  { key: 'delete', label: '删除' },
-  { key: 'extendDueDate', label: '延期' },
-]
-
-const DEFAULT_PERMISSIONS = {
-  admin: {
-    task: { create: true, assign: true, restart: true, comment: true, delete: true, extendDueDate: true },
-    bug: { create: true, assign: true, restartBug: true, comment: true, delete: true, extendDueDate: true },
-    project: { create: true, delete: true },
-  },
-  project_manager: {
-    task: { create: true, assign: true, restart: true, comment: true, delete: true, extendDueDate: true },
-    bug: { create: true, assign: true, restartBug: true, comment: true, delete: true, extendDueDate: true },
-    project: { create: true, delete: false },
-  },
-  developer: {
-    task: { create: true, assign: false, restart: true, comment: true, delete: false, extendDueDate: false },
-    bug: { create: true, assign: false, restartBug: true, comment: true, delete: false, extendDueDate: false },
-    project: { create: false, delete: false },
-  },
-  artist: {
-    task: { create: true, assign: false, restart: true, comment: true, delete: false, extendDueDate: false },
-    bug: { create: true, assign: false, restartBug: true, comment: true, delete: false, extendDueDate: false },
-    project: { create: false, delete: false },
-  },
-  designer: {
-    task: { create: true, assign: false, restart: true, comment: true, delete: false, extendDueDate: false },
-    bug: { create: true, assign: false, restartBug: true, comment: true, delete: false, extendDueDate: false },
-    project: { create: false, delete: false },
-  },
-  tester: {
-    task: { create: true, assign: false, restart: true, comment: true, delete: false, extendDueDate: false },
-    bug: { create: true, assign: false, restartBug: true, comment: true, delete: false, extendDueDate: false },
-    project: { create: false, delete: false },
-  },
-}
-
-const permissions = ref<any>(JSON.parse(JSON.stringify(DEFAULT_PERMISSIONS)))
-
-function getPerm(role: string, module: string, key: string): boolean {
-  return permissions.value?.[role]?.[module]?.[key] ?? false
-}
-
-function setPerm(role: string, module: string, key: string, value: boolean) {
-  if (!permissions.value[role]) {
-    permissions.value[role] = { task: {}, bug: {} }
-  }
-  if (!permissions.value[role][module]) {
-    permissions.value[role][module] = {}
-  }
-  permissions.value[role][module][key] = value
-}
-
-async function loadPermissions() {
-  try {
-    const res = await getPermissions()
-    if (res.data) {
-      permissions.value = res.data
-    }
-  } catch {
-    permissions.value = JSON.parse(JSON.stringify(DEFAULT_PERMISSIONS))
-  }
-}
-
-async function savePermissions() {
-  savingPermissions.value = true
-  try {
-    await updatePermissions(permissions.value)
-    ElMessage.success('权限配置已保存，用户重新登录后生效')
-  } catch {
-    ElMessage.error('保存失败')
-  } finally {
-    savingPermissions.value = false
-  }
-}
-
-function resetPermissions() {
-  permissions.value = JSON.parse(JSON.stringify(DEFAULT_PERMISSIONS))
-  ElMessage.success('已恢复为默认权限配置')
-}
-
-function addLink() {
+async function addLink() {
   customLinks.value.push({ name: '', url: '', icon: 'Link', type: 'url' })
 }
 
@@ -1175,7 +1216,6 @@ async function handleDeleteBackup(filename: string) {
 }
 
 onMounted(() => {
-  loadPermissions()
   loadCustomLinks()
   loadMarkdownFiles()
   loadDingTalkConfig()
@@ -1251,18 +1291,102 @@ onMounted(() => {
   white-space: nowrap;
 }
 
-.section-tip {
-  font-size: var(--nb-font-size-sm);
+.perm-desc-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.status-flow {
+  padding: 16px;
+  background: var(--nb-bg-hover);
+  border-radius: var(--nb-radius-md);
+  border: 1px dashed var(--nb-border-color);
+}
+
+.status-flow-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.status-node {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.status-pending   { background: #909399; }
+.status-progress  { background: #409eff; }
+.status-completed { background: #67c23a; }
+.status-testing   { background: #e6a23c; }
+.status-fixed     { background: #409eff; }
+.status-verified  { background: #67c23a; }
+.status-closed    { background: #909399; }
+
+.status-arrow {
+  color: var(--nb-text-secondary);
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.status-branch-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.status-branch {
+  font-size: 12px;
   color: var(--nb-text-secondary);
 }
 
-.permission-actions {
+.branch-label {
+  display: inline-block;
+  padding: 1px 8px;
+  background: var(--nb-primary-light-9, #ecf5ff);
+  color: var(--nb-primary);
+  border-radius: 4px;
+  font-size: 11px;
+  margin-right: 4px;
+  font-weight: 500;
+}
+
+.perm-desc-item {
   display: flex;
-  justify-content: flex-end;
-  gap: var(--nb-space-3);
-  margin-top: var(--nb-space-5);
-  padding-top: var(--nb-space-4);
-  border-top: 1px solid var(--nb-border);
+  align-items: flex-start;
+  gap: 16px;
+  padding: 10px 16px;
+  background: var(--nb-bg-hover);
+  border-radius: var(--nb-radius-md);
+  border-left: 3px solid var(--nb-primary);
+}
+
+.perm-action {
+  font-size: var(--nb-font-size-sm);
+  font-weight: var(--nb-font-weight-medium);
+  color: var(--nb-text-primary);
+  min-width: 160px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  padding-top: 1px;
+}
+
+.perm-rule {
+  font-size: var(--nb-font-size-sm);
+  color: var(--nb-text-secondary);
+  line-height: 1.6;
 }
 
 .export-section {

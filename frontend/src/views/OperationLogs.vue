@@ -131,6 +131,49 @@ const getLogActionText = (log: any) => {
       return '添加了备注'
     case 'reopen':
       return log.targetType === 'task' ? '重新打开了任务' : '重新打开了缺陷'
+    case 'feedback': {
+      let text = log.targetType === 'task' ? '反馈了任务' : '反馈了缺陷'
+      if (log.oldAssignee && log.newAssignee) {
+        text += `，负责人从「${log.oldAssignee}」交还给「${log.newAssignee}」`
+      }
+      return text
+    }
+    case 'transfer': {
+      let text = log.targetType === 'task' ? '转交了任务' : '转交了缺陷'
+      if (log.oldAssignee && log.newAssignee) {
+        text += `，负责人从「${log.oldAssignee}」变更为「${log.newAssignee}」`
+      }
+      return text
+    }
+    case 'fix':
+      return '标记缺陷为已修复'
+    case 'verify':
+      return '验证通过'
+    case 'reject': {
+      let text = log.targetType === 'task' ? '打回了任务' : '打回了缺陷'
+      if (log.oldAssignee && log.newAssignee && log.oldAssignee !== log.newAssignee) {
+        text += `，负责人从「${log.oldAssignee}」变更为「${log.newAssignee}」`
+      }
+      return text
+    }
+    case 'restart':
+      return log.targetType === 'task' ? '重启了任务' : '重启了缺陷'
+    case 'partial_complete':
+      return '完成了部分任务'
+    case 'submit_test':
+      return '提交了测试'
+    case 'pass_test':
+      return '测试通过，任务已关闭'
+    case 'reject_test':
+      return '测试打回了任务'
+    case 'description_change':
+      return log.targetType === 'task' ? '更新了任务描述' : '更新了缺陷描述'
+    case 'reproduce_steps_change':
+      return '更新了复现步骤'
+    case 'category_change':
+      return '更改了分类'
+    case 'creator_change':
+      return `将创建人变更为「${log.newAssignee}」`
     default:
       return action
   }
@@ -143,6 +186,14 @@ const getLogActionClass = (action: string) => {
   if (action === 'assign') return 'log-assign'
   if (action === 'priority_change') return 'log-priority'
   if (action === 'severity_change') return 'log-severity'
+  if (action === 'feedback') return 'log-assign'
+  if (action === 'transfer') return 'log-assign'
+  if (action === 'complete' || action === 'partial_complete') return 'log-status'
+  if (action === 'close') return 'log-status'
+  if (action === 'fix') return 'log-status'
+  if (action === 'verify') return 'log-status'
+  if (action === 'reject' || action === 'reject_test') return 'log-status'
+  if (action === 'submit_test' || action === 'pass_test') return 'log-status'
   return 'log-default'
 }
 

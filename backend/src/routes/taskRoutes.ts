@@ -1,10 +1,11 @@
 import { Router } from "express";
 import { taskController } from "../controllers/taskController";
-import { taskPermissionMiddleware } from "../middleware/authMiddleware";
+import { roleMiddleware } from "../middleware/authMiddleware";
 
+const ALL_ROLES = ["admin", "project_manager", "developer", "artist", "designer", "tester"];
 const router = Router();
 
-router.post("/", taskPermissionMiddleware("create"), taskController.createTask);
+router.post("/", roleMiddleware(ALL_ROLES), taskController.createTask);
 
 router.get("/", taskController.getAllTasks);
 
@@ -18,7 +19,7 @@ router.patch("/:id/status", taskController.updateTaskStatus);
 
 router.post("/:id/comments", taskController.addComment);
 
-router.delete("/:id", taskPermissionMiddleware("delete"), taskController.deleteTask);
+router.delete("/:id", roleMiddleware(["admin", "project_manager"]), taskController.deleteTask);
 
 router.post("/:id/subtasks", taskController.addSubtask);
 

@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { login, register, getUserInfo, updateProfile } from '../api/user'
-import { getPermissions } from '../api/permission'
 
 export interface User {
   id: number
@@ -15,72 +14,68 @@ export interface User {
 export const useUserStore = defineStore('user', () => {
   const token = ref(localStorage.getItem('token') || '')
   const user = ref<User | null>(JSON.parse(localStorage.getItem('user') || 'null'))
-  const permissions = ref<any>(JSON.parse(localStorage.getItem('permissions') || 'null'))
 
   const isLoggedIn = computed(() => !!token.value)
   const isAdmin = computed(() => user.value?.role === 'admin')
   const isPM = computed(() => user.value?.role === 'admin' || user.value?.role === 'project_manager')
 
   function getTaskPermission(action: string, extra: { isAssignee?: boolean; isCreator?: boolean } = {}): boolean {
-    if (!permissions.value || !user.value) return false
-    const role = user.value.role
-    const isAdminOrPM = role === 'admin' || role === 'project_manager'
+    if (!user.value) return false
+    const isAdminOrPM = user.value.role === 'admin' || user.value.role === 'project_manager'
 
-    const rolePerms = permissions.value[role]
-    const roleHas = rolePerms?.task?.[action] ?? false
-
-    // 关系级权限：由 extra 中的实际布尔值判断（组件需传入 isAssignee.value / isCreator.value）
-    const relationPerms: Record<string, boolean> = {
+    const perms: Record<string, boolean> = {
+      create: true,
       complete: extra.isAssignee || false,
       reopen: extra.isCreator || false,
       reject: extra.isCreator || false,
-      assign: extra.isCreator || false,
+      assign: isAdminOrPM || (extra.isCreator || false),
       restart: true,
-      close: extra.isCreator || false,
+      close: isAdminOrPM || (extra.isCreator || false),
       transfer: extra.isAssignee || false,
+      feedback: extra.isAssignee || false,
       submitTest: isAdminOrPM || (extra.isCreator || false),
       passTest: extra.isAssignee || false,
-      rejectTest: isAdminOrPM || (extra.isCreator || extra.isAssignee || false),
+      rejectTest: isAdminOrPM || (extra.isAssignee || false),
       changePriority: isAdminOrPM || (extra.isCreator || false),
       changeStatus: isAdminOrPM || (extra.isCreator || false),
       comment: true,
-      delete: false,
+      delete: isAdminOrPM,
+      extendDueDate: isAdminOrPM,
     }
 
-    return roleHas || (relationPerms[action] ?? false)
+    return perms[action] ?? false
   }
 
   function getBugPermission(action: string, extra: { isReporter?: boolean; isAssignee?: boolean } = {}): boolean {
-    if (!permissions.value || !user.value) return false
-    const role = user.value.role
-    const isAdminOrPM = role === 'admin' || role === 'project_manager'
+    if (!user.value) return false
+    const isAdminOrPM = user.value.role === 'admin' || user.value.role === 'project_manager'
 
-    const rolePerms = permissions.value[role]
-    const roleHas = rolePerms?.bug?.[action] ?? false
-
-    // 关系级权限：由 extra 中的实际布尔值判断（组件需传入 isReporter.value / isAssignee.value）
-    const relationPerms: Record<string, boolean> = {
+    const perms: Record<string, boolean> = {
+      create: true,
       fix: extra.isAssignee || false,
       reopen: extra.isReporter || false,
-      assign: extra.isReporter || false,
-      rejectBug: extra.isReporter || false,
+      assign: isAdminOrPM || (extra.isReporter || false),
+      rejectBug: isAdminOrPM || (extra.isReporter || false),
       restartBug: true,
       verify: extra.isReporter || false,
-      close: extra.isReporter || false,
+      close: isAdminOrPM || (extra.isReporter || false),
       transfer: extra.isAssignee || false,
+      feedback: extra.isAssignee || false,
       changeSeverity: isAdminOrPM || (extra.isReporter || false),
       changeStatus: isAdminOrPM || (extra.isReporter || false),
       comment: true,
-      delete: false,
+      delete: isAdminOrPM,
+      extendDueDate: isAdminOrPM,
     }
 
-    return roleHas || (relationPerms[action] ?? false)
+    return perms[action] ?? false
   }
 
   function getProjectPermission(action: string): boolean {
-    if (!permissions.value || !user.value) return false
-    const rolePerms = permissions.value[user.value.role]
-    return rolePerms?.project?.[action] ?? false
+    if (!user.value) return false
+    if (action === 'create') return user.value.role === 'admin' || user.value.role === 'project_manager'
+    if (action === 'delete') return user.value.role === 'admin'
+    return false
   }
 
   async function loginAction(username: string, password: string) {
@@ -90,10 +85,6 @@ export const useUserStore = defineStore('user', () => {
       user.value = res.data.user
       localStorage.setItem('token', token.value)
       localStorage.setItem('user', JSON.stringify(user.value))
-
-      const permRes = await getPermissions()
-      permissions.value = permRes.data
-      localStorage.setItem('permissions', JSON.stringify(permissions.value))
 
       return res.data
     } catch (error) {
@@ -116,10 +107,6 @@ export const useUserStore = defineStore('user', () => {
       const res = await getUserInfo(user.value.id)
       user.value = res.data
       localStorage.setItem('user', JSON.stringify(user.value))
-
-      const permRes = await getPermissions()
-      permissions.value = permRes.data
-      localStorage.setItem('permissions', JSON.stringify(permissions.value))
     } catch (error) {
       console.error('Failed to fetch user info:', error)
     }
@@ -139,7 +126,6 @@ export const useUserStore = defineStore('user', () => {
   function logout() {
     token.value = ''
     user.value = null
-    permissions.value = null
     localStorage.removeItem('token')
     localStorage.removeItem('user')
     localStorage.removeItem('permissions')
@@ -148,7 +134,6 @@ export const useUserStore = defineStore('user', () => {
   return {
     token,
     user,
-    permissions,
     isLoggedIn,
     isAdmin,
     isPM,

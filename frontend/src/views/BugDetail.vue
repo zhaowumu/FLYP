@@ -148,17 +148,37 @@
             </div>
             <div class="info-item">
               <span class="label">当前负责人</span>
-              <div class="assignee-display" v-if="bug.assignee">
-                <el-avatar :size="24" :src="bug.assignee.avatar || undefined">{{ bug.assignee.realName?.charAt(0) }}</el-avatar>
-                <span>{{ bug.assignee.realName }}</span>
+              <div class="info-value-row">
+                <div class="assignee-display" v-if="bug.assignee">
+                  <el-avatar :size="24" :src="bug.assignee.avatar || undefined">{{ bug.assignee.realName?.charAt(0) }}</el-avatar>
+                  <span>{{ bug.assignee.realName }}</span>
+                </div>
+                <span v-else class="text-muted">未处理</span>
+                <el-button
+                  v-if="canManageSidebar"
+                  text size="small"
+                  class="inline-edit-btn"
+                  @click="showActionPanel('editAssignee')"
+                >
+                  <el-icon><EditPen /></el-icon>
+                </el-button>
               </div>
-              <span v-else class="text-muted">未处理</span>
             </div>
             <div class="info-item">
               <span class="label">报告人</span>
-              <div class="assignee-display">
-                <el-avatar :size="24" :src="bug.reporter?.avatar || undefined">{{ bug.reporter?.realName?.charAt(0) || '-' }}</el-avatar>
-                <span>{{ bug.reporter?.realName || '-' }}</span>
+              <div class="info-value-row">
+                <div class="assignee-display">
+                  <el-avatar :size="24" :src="bug.reporter?.avatar || undefined">{{ bug.reporter?.realName?.charAt(0) || '-' }}</el-avatar>
+                  <span>{{ bug.reporter?.realName || '-' }}</span>
+                </div>
+                <el-button
+                  v-if="canManageSidebar"
+                  text size="small"
+                  class="inline-edit-btn"
+                  @click="showActionPanel('editReporter')"
+                >
+                  <el-icon><EditPen /></el-icon>
+                </el-button>
               </div>
             </div>
             <div class="info-item">
@@ -167,8 +187,18 @@
             </div>
             <div class="info-item">
               <span class="label">分类</span>
-              <el-tag v-if="bug.category" type="info" size="small" effect="plain">{{ bug.category }}</el-tag>
-              <span v-else class="text-muted value">未设置</span>
+              <div class="info-value-row">
+                <el-tag v-if="bug.category" type="info" size="small" effect="plain">{{ bug.category }}</el-tag>
+                <span v-else class="text-muted value">未设置</span>
+                <el-button
+                  v-if="canManageSidebar"
+                  text size="small"
+                  class="inline-edit-btn"
+                  @click="showActionPanel('editCategory')"
+                >
+                  <el-icon><EditPen /></el-icon>
+                </el-button>
+              </div>
             </div>
             <div class="info-item">
               <span class="label">创建时间</span>
@@ -206,15 +236,25 @@
       </el-button>
       
       <!-- 转交按钮：负责人可见 -->
-      <el-button 
+      <el-button
         v-if="canTransfer"
-        type="warning" 
+        type="warning"
         @click="showActionPanel('transfer')"
       >
         <el-icon><Switch /></el-icon>
         转交
       </el-button>
-      
+
+      <!-- 反馈按钮：负责人可见（in_progress 状态），交还给报告人 -->
+      <el-button
+        v-if="canFeedback"
+        type="info"
+        @click="showActionPanel('feedback')"
+      >
+        <el-icon><Promotion /></el-icon>
+        反馈
+      </el-button>
+
       <!-- 验证通过按钮：报告人可见（fixed 状态） -->
       <el-button 
         v-if="canVerify"
@@ -354,6 +394,15 @@
                 </span>
               </el-option>
             </el-select>
+          </div>
+
+          <!-- 反馈：交还给报告人 -->
+          <div class="form-section" v-if="currentAction === 'feedback'">
+            <el-alert type="warning" :closable="false" show-icon>
+              <template #title>
+                反馈后，缺陷将交还给报告人「{{ bug?.reporter?.realName || '未知' }}」处理，状态不变
+              </template>
+            </el-alert>
           </div>
 
           <!-- 打回：重选负责人 → in_progress -->
@@ -497,6 +546,71 @@
             />
           </div>
 
+          <!-- 编辑负责人 -->
+          <div class="form-section" v-if="currentAction === 'editAssignee'">
+            <span class="label">选择负责人</span>
+            <el-select filterable
+              v-model="editAssigneeId"
+              placeholder="请选择负责人"
+              clearable
+              style="width: 100%"
+            >
+              <el-option
+                v-for="user in users"
+                :key="user.id"
+                :label="user.realName"
+                :value="user.id"
+              >
+                <span style="display: flex; align-items: center; gap: 6px">
+                  <el-avatar :size="20" :src="user.avatar || undefined">{{ user.realName?.charAt(0) }}</el-avatar>
+                  {{ user.realName }}
+                </span>
+              </el-option>
+            </el-select>
+          </div>
+
+          <!-- 编辑报告人 -->
+          <div class="form-section" v-if="currentAction === 'editReporter'">
+            <span class="label">选择报告人</span>
+            <el-select filterable
+              v-model="editReporterId"
+              placeholder="请选择报告人"
+              style="width: 100%"
+            >
+              <el-option
+                v-for="user in users"
+                :key="user.id"
+                :label="user.realName"
+                :value="user.id"
+              >
+                <span style="display: flex; align-items: center; gap: 6px">
+                  <el-avatar :size="20" :src="user.avatar || undefined">{{ user.realName?.charAt(0) }}</el-avatar>
+                  {{ user.realName }}
+                </span>
+              </el-option>
+            </el-select>
+          </div>
+
+          <!-- 编辑分类 -->
+          <div class="form-section" v-if="currentAction === 'editCategory'">
+            <span class="label">分类</span>
+            <el-select
+              v-model="editCategory"
+              placeholder="请选择或输入分类"
+              filterable
+              allow-create
+              clearable
+              style="width: 100%"
+            >
+              <el-option
+                v-for="cat in categories"
+                :key="cat"
+                :label="cat"
+                :value="cat"
+              />
+            </el-select>
+          </div>
+
           <!-- 重新打开 -->
           <div class="form-section" v-if="currentAction === 'reopen'">
             <el-alert 
@@ -550,7 +664,7 @@ import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick, reactive } 
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ImageViewer } from 'element-plus'
-import { getBug, updateBugStatus, addComment as addBugComment, updateBug, assignBug, extendDueDate as extendBugDueDate, rejectBug, restartBug, deleteBug } from '../api/bug'
+import { getBug, updateBugStatus, addComment as addBugComment, updateBug, assignBug, extendDueDate as extendBugDueDate, rejectBug, restartBug, deleteBug, getBugCategories } from '../api/bug'
 import { getUsers } from '../api/user'
 import { useUserStore } from '../stores/user'
 import RichEditor from '../components/RichEditor.vue'
@@ -581,6 +695,10 @@ const editReproduceSteps = ref('')
 const saving = ref(false)
 const titleInputRef = ref()
 const newDueDate = ref<Date | null>(null)
+const editAssigneeId = ref<number | null>(null)
+const editReporterId = ref<number | null>(null)
+const editCategory = ref('')
+const categories = ref<string[]>([])
 
 // 图片预览
 const previewVisible = ref(false)
@@ -628,6 +746,7 @@ const isAssignee = computed(() => bug.value?.assignee?.id === currentUserId.valu
 const isParticipant = computed(() => isReporter.value || isAssignee.value)
 const isProjectManager = computed(() => bug.value?.project?.managers?.some((m: any) => m.id === currentUserId.value))
 const isAdmin = computed(() => userStore.user?.role === 'admin')
+const canManageSidebar = computed(() => isAdmin.value || userStore.user?.role === 'project_manager')
 
 // 可编辑权限：当前负责人、创建人、项目经理、管理员，或拥有删除权限的角色
 const canEdit = computed(() => isAssignee.value || isReporter.value || isProjectManager.value || isAdmin.value || canDelete.value)
@@ -640,15 +759,16 @@ const isInProgress = computed(() => bug.value?.status === 'in_progress')
 const isActive = computed(() => !isClosed.value && !isVerified.value && !isFixed.value)
 
 // 按钮权限配置（角色权限 + 关系权限）
-const canAssign = computed(() => userStore.getBugPermission('assign', { isReporter: isReporter.value }) && (isReporter.value || isAdmin.value || isProjectManager.value) && (isActive.value || isInProgress.value))
+const canAssign = computed(() => userStore.getBugPermission('assign', { isReporter: isReporter.value }) && (isReporter.value || isAdmin.value || isProjectManager.value) && isActive.value)
 const canFix = computed(() => userStore.getBugPermission('fix', { isAssignee: isAssignee.value }) && isAssignee.value && isInProgress.value)
 const canVerify = computed(() => userStore.getBugPermission('verify', { isReporter: isReporter.value }) && isReporter.value && isFixed.value)
 const canReject = computed(() => userStore.getBugPermission('rejectBug', { isReporter: isReporter.value }) && isReporter.value && isFixed.value)
-const canClose = computed(() => userStore.getBugPermission('close', { isReporter: isReporter.value }) && isReporter.value && isVerified.value)
+const canClose = computed(() => (isReporter.value || isAdmin.value || isProjectManager.value) && isVerified.value)
 const canRestart = computed(() => userStore.getBugPermission('restartBug') && bug.value?.status === 'closed')
 const canTransfer = computed(() => userStore.getBugPermission('transfer', { isAssignee: isAssignee.value }) && isAssignee.value && isActive.value)
-const canChangeSeverity = computed(() => userStore.getBugPermission('changeSeverity', { isReporter: isReporter.value }) && !isClosed.value && !isVerified.value)
-const canChangeStatus = computed(() => userStore.getBugPermission('changeStatus', { isReporter: isReporter.value }) && !isClosed.value && !isVerified.value)
+const canFeedback = computed(() => userStore.getBugPermission('feedback', { isAssignee: isAssignee.value }) && isAssignee.value && isInProgress.value)
+const canChangeSeverity = computed(() => isAdmin.value || userStore.user?.role === 'project_manager')
+const canChangeStatus = computed(() => isAdmin.value || userStore.user?.role === 'project_manager')
 const canComment = computed(() => userStore.getBugPermission('comment'))
 const canDelete = computed(() => (isAdmin.value || userStore.user?.role === 'project_manager'))
 const canExtend = computed(() => userStore.getBugPermission('extendDueDate') && !isClosed.value)
@@ -765,6 +885,20 @@ const formatLogAction = (log: any) => {
       return '更新了复现步骤'
     case 'extend_due_date':
       return `将截止日期从「${formatTime(oldDueDate)}」延期至「${formatTime(newDueDate)}」`
+    case 'feedback': {
+      let text = '反馈了缺陷'
+      if (oldAssignee && newAssignee) {
+        text += `，负责人从「${oldAssignee}」交还给「${newAssignee}」`
+      }
+      return text
+    }
+    case 'transfer': {
+      let text = '转交了缺陷'
+      if (oldAssignee && newAssignee) {
+        text += `，负责人从「${oldAssignee}」变更为「${newAssignee}」`
+      }
+      return text
+    }
     default:
       return action
   }
@@ -778,10 +912,14 @@ const getActionTitle = (action: string) => {
     close: '关闭缺陷',
     restart: '重启缺陷',
     transfer: '转交缺陷',
+    feedback: '反馈缺陷',
     severity: '更改严重程度',
     changeStatus: '更改状态',
     comment: '添加备注',
-    extend: '延期缺陷'
+    extend: '延期缺陷',
+    editAssignee: '编辑负责人',
+    editReporter: '编辑报告人',
+    editCategory: '编辑分类',
   }
   return map[action] || action
 }
@@ -794,10 +932,14 @@ const getActionConfirmText = (action: string) => {
     close: '确认关闭',
     restart: '确认重启',
     transfer: '确认转交',
+    feedback: '确认反馈',
     severity: '确认修改',
     changeStatus: '确认修改',
     comment: '添加备注',
-    extend: '确认延期'
+    extend: '确认延期',
+    editAssignee: '确认修改',
+    editReporter: '确认修改',
+    editCategory: '确认修改',
   }
   return map[action] || '确认'
 }
@@ -845,6 +987,15 @@ const loadUsers = async () => {
     users.value = res.data
   } catch (error) {
     console.error('Failed to load users:', error)
+  }
+}
+
+const loadCategories = async () => {
+  try {
+    const res = await getBugCategories()
+    categories.value = res.data
+  } catch (error) {
+    console.error('Failed to load categories:', error)
   }
 }
 
@@ -936,6 +1087,9 @@ const showActionPanel = (action: string) => {
   newSeverity.value = bug.value?.severity || 'medium'
   newStatus.value = bug.value?.status || ''
   newDueDate.value = bug.value?.dueDate ? new Date(bug.value.dueDate) : null
+  editAssigneeId.value = bug.value?.assignee?.id || null
+  editReporterId.value = bug.value?.reporter?.id || null
+  editCategory.value = bug.value?.category || ''
   currentAction.value = action
   showPanel.value = true
 }
@@ -1054,6 +1208,16 @@ const executeAction = async () => {
         break
       }
 
+      case 'feedback': {
+        await addBugComment(bug.value.id, {
+          action: 'feedback',
+          newAssigneeId: bug.value.reporter.id,
+          remark: commentText.value || ''
+        })
+        ElMessage.success('反馈成功，已交还给报告人')
+        break
+      }
+
       case 'severity': {
         await addBugComment(bug.value.id, {
           action: 'severity_change',
@@ -1102,6 +1266,35 @@ const executeAction = async () => {
         ElMessage.success(`截止日期已从 ${formatTime(oldDueDate)} 延期至 ${formatTime(newDueDate.value)}`)
         break
       }
+
+      case 'editAssignee': {
+        await updateBug(bug.value.id, {
+          assigneeId: editAssigneeId.value,
+          log: { remark: commentText.value || '' }
+        })
+        ElMessage.success('负责人已更新')
+        break
+      }
+
+      case 'editReporter': {
+        if (!editReporterId.value) {
+          ElMessage.warning('请选择报告人')
+          submitting.value = false
+          return
+        }
+        await updateBug(bug.value.id, {
+          reporterId: editReporterId.value,
+          log: { remark: commentText.value || '' }
+        })
+        ElMessage.success('报告人已更新')
+        break
+      }
+
+      case 'editCategory': {
+        await updateBug(bug.value.id, { category: editCategory.value || null })
+        ElMessage.success('分类已更新')
+        break
+      }
     }
 
     closeActionPanel()
@@ -1135,6 +1328,7 @@ const confirmDelete = async () => {
 onMounted(() => {
   loadBug()
   loadUsers()
+  loadCategories()
   // 捕获阶段监听图片加载失败（v-html 渲染的 img 无法直接绑定 onerror）
   window.addEventListener('error', handleImageError, true)
 })

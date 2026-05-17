@@ -1,9 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { config } from "../config";
-import { AppDataSource } from "../config/database";
-import { SystemConfig } from "../entities/SystemConfig";
-import { DEFAULT_ROLE_PERMISSIONS } from "../config/permissions";
 
 interface AuthRequest extends Request {
   user?: any;
@@ -37,73 +34,5 @@ export const roleMiddleware = (allowedRoles: string[]) => {
     }
 
     next();
-  };
-};
-
-async function getPermissions() {
-  try {
-    const configRepo = await AppDataSource.getRepository(SystemConfig).findOne({
-      where: { key: "role_permissions" },
-    });
-    if (configRepo?.value) {
-      return JSON.parse(configRepo.value);
-    }
-  } catch {
-    // ignore
-  }
-  return DEFAULT_ROLE_PERMISSIONS;
-}
-
-export const projectPermissionMiddleware = (action: string) => {
-  return async (req: AuthRequest, res: Response, next: NextFunction) => {
-    try {
-      const user = req.user;
-      const permissions = await getPermissions();
-      const rolePerms = permissions[user.role];
-      const hasPermission = rolePerms?.project?.[action] ?? false;
-
-      if (!hasPermission) {
-        return res.status(403).json({ error: "没有权限执行此操作" });
-      }
-      next();
-    } catch (error) {
-      res.status(500).json({ error: "权限检查失败" });
-    }
-  };
-};
-
-export const taskPermissionMiddleware = (action: string) => {
-  return async (req: AuthRequest, res: Response, next: NextFunction) => {
-    try {
-      const user = req.user;
-      const permissions = await getPermissions();
-      const rolePerms = permissions[user.role];
-      const hasPermission = rolePerms?.task?.[action] ?? false;
-
-      if (!hasPermission) {
-        return res.status(403).json({ error: "没有权限执行此操作" });
-      }
-      next();
-    } catch (error) {
-      res.status(500).json({ error: "权限检查失败" });
-    }
-  };
-};
-
-export const bugPermissionMiddleware = (action: string) => {
-  return async (req: AuthRequest, res: Response, next: NextFunction) => {
-    try {
-      const user = req.user;
-      const permissions = await getPermissions();
-      const rolePerms = permissions[user.role];
-      const hasPermission = rolePerms?.bug?.[action] ?? false;
-
-      if (!hasPermission) {
-        return res.status(403).json({ error: "没有权限执行此操作" });
-      }
-      next();
-    } catch (error) {
-      res.status(500).json({ error: "权限检查失败" });
-    }
   };
 };

@@ -408,12 +408,15 @@ export const bugController = {
         remark: log.remark || "",
       };
 
-      if ((log.action === "assign" || log.action === "transfer") && log.newAssigneeId) {
+      if ((log.action === "assign" || log.action === "transfer" || log.action === "feedback") && log.newAssigneeId) {
         const newAssignee = await userRepository.findOne({ where: { id: log.newAssigneeId } });
         extraFields.oldAssignee = bug.assignee?.realName || "未处理";
         extraFields.newAssignee = newAssignee?.realName || "未知";
         bug.assignee = newAssignee!;
-        bug.status = "in_progress";
+        // 只有 assign/transfer 才强制设为 in_progress，feedback 保持状态不变
+        if (log.action !== "feedback") {
+          bug.status = "in_progress";
+        }
       }
 
       if (log.action === "severity_change" && log.newSeverity) {

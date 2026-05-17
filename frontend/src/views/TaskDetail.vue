@@ -163,7 +163,7 @@
                 </div>
                 <span v-else class="text-muted">未分配</span>
                 <el-button
-                  v-if="canManageSidebar && !isClosed"
+                  v-if="canManageSidebar"
                   text size="small"
                   class="inline-edit-btn"
                   @click="showActionPanel('editAssignees')"
@@ -180,7 +180,7 @@
                   <span>{{ task.creator?.realName || '-' }}</span>
                 </div>
                 <el-button
-                  v-if="canManageSidebar && !isClosed"
+                  v-if="canManageSidebar"
                   text size="small"
                   class="inline-edit-btn"
                   @click="showActionPanel('editCreator')"
@@ -199,7 +199,7 @@
                 <el-tag v-if="task.category" type="info" size="small" effect="plain">{{ task.category }}</el-tag>
                 <span v-else class="text-muted value">未设置</span>
                 <el-button
-                  v-if="canManageSidebar && !isClosed"
+                  v-if="canManageSidebar"
                   text size="small"
                   class="inline-edit-btn"
                   @click="showActionPanel('editCategory')"
@@ -213,7 +213,7 @@
               <div class="info-value-row">
                 <span class="value">{{ task.dueDate ? new Date(task.dueDate).toLocaleDateString() : '未设置' }}</span>
                 <el-button
-                  v-if="canManageSidebar && !isClosed"
+                  v-if="canManageSidebar"
                   text size="small"
                   class="inline-edit-btn"
                   @click="showActionPanel('editDueDate')"
@@ -248,15 +248,25 @@
       </el-button>
       
       <!-- 转交按钮：只有负责人可见（pending/in_progress 状态） -->
-      <el-button 
+      <el-button
         v-if="canTransfer"
-        type="warning" 
+        type="warning"
         @click="showActionPanel('transfer')"
       >
         <el-icon><Switch /></el-icon>
         转交
       </el-button>
-      
+
+      <!-- 反馈按钮：只有负责人可见（in_progress 状态），交还给创建人 -->
+      <el-button
+        v-if="canFeedback"
+        type="info"
+        @click="handleFeedback"
+      >
+        <el-icon><Promotion /></el-icon>
+        反馈
+      </el-button>
+
       <!-- 指派按钮：管理员/项目经理/创建人可见（pending/in_progress 状态） -->
       <el-button 
         v-if="canAssign"
@@ -376,8 +386,8 @@
           <div class="form-section" v-if="currentAction === 'transfer'">
             <span class="label">转交给</span>
             <el-select filterable
-              v-model="transferUserIds" 
-              placeholder="请选择负责人" 
+              v-model="transferUserIds"
+              placeholder="请选择负责人"
               multiple
               style="width: 100%"
             >
@@ -393,6 +403,15 @@
                 </span>
               </el-option>
             </el-select>
+          </div>
+
+          <!-- 反馈：交还给创建人（仅单人负责人时出现） -->
+          <div class="form-section" v-if="currentAction === 'feedback'">
+            <el-alert type="warning" :closable="false" show-icon>
+              <template #title>
+                反馈后，任务将交还给创建人「{{ task?.creator?.realName || '未知' }}」处理，状态不变
+              </template>
+            </el-alert>
           </div>
 
           <!-- 更改优先级 -->
@@ -842,19 +861,21 @@ const isClosed = computed(() => task.value?.status === 'closed')
 const isCompleted = computed(() => task.value?.status === 'completed')
 const isTesting = computed(() => task.value?.status === 'testing')
 const isActive = computed(() => !isClosed.value && !isCompleted.value && !isTesting.value)
+const isInProgress = computed(() => task.value?.status === 'in_progress')
 
 // 按钮权限配置（角色权限 + 关系权限）
 const canAssign = computed(() => (isAdmin.value || userStore.user?.role === 'project_manager' || isCreator.value) && isActive.value)
 const canComplete = computed(() => userStore.getTaskPermission('complete', { isAssignee: isAssignee.value }) && isAssignee.value && isActive.value)
 const canTransfer = computed(() => userStore.getTaskPermission('transfer', { isAssignee: isAssignee.value }) && isAssignee.value && isActive.value)
+const canFeedback = computed(() => userStore.getTaskPermission('feedback', { isAssignee: isAssignee.value }) && isAssignee.value && isInProgress.value)
 const canReject = computed(() => userStore.getTaskPermission('reject', { isCreator: isCreator.value }) && isCreator.value && isCompleted.value)
-const canClose = computed(() => userStore.getTaskPermission('close', { isCreator: isCreator.value }) && isCreator.value && isCompleted.value)
+const canClose = computed(() => (isCreator.value || isAdmin.value || isProjectManager.value) && isCompleted.value)
 const canSubmitTest = computed(() => (isCreator.value || isAdmin.value || isProjectManager.value) && isCompleted.value)
 const canPassTest = computed(() => isAssignee.value && isTesting.value)
-const canRejectTest = computed(() => (isAssignee.value || isCreator.value || isAdmin.value || isProjectManager.value) && isTesting.value)
+const canRejectTest = computed(() => (isAssignee.value || isAdmin.value || isProjectManager.value) && isTesting.value)
 const canRestart = computed(() => userStore.getTaskPermission('restart') && task.value?.status === 'closed')
-const canChangePriority = computed(() => userStore.getTaskPermission('changePriority', { isCreator: isCreator.value }) && !isClosed.value)
-const canChangeStatus = computed(() => userStore.getTaskPermission('changeStatus', { isCreator: isCreator.value }) && !isClosed.value)
+const canChangePriority = computed(() => canManageSidebar.value)
+const canChangeStatus = computed(() => canManageSidebar.value)
 const canComment = computed(() => userStore.getTaskPermission('comment'))
 const canDelete = computed(() => (isAdmin.value || userStore.user?.role === 'project_manager'))
 const canExtend = computed(() => userStore.getTaskPermission('extendDueDate') && !isClosed.value)
@@ -984,6 +1005,20 @@ const formatLogAction = (log: any) => {
       return `将截止日期从「${formatTime(oldDueDate)}」变更为「${formatTime(newDueDate)}」`
     case 'category_change':
       return '更改了分类'
+    case 'feedback': {
+      let text = '反馈了任务'
+      if (oldAssignee && newAssignee) {
+        text += `，负责人从「${oldAssignee}」交还给「${newAssignee}」`
+      }
+      return text
+    }
+    case 'transfer': {
+      let text = '转交了任务'
+      if (oldAssignee && newAssignee) {
+        text += `，负责人从「${oldAssignee}」变更为「${newAssignee}」`
+      }
+      return text
+    }
     default:
       return action
   }
@@ -996,6 +1031,7 @@ const getActionTitle = (action: string) => {
     assign: '指派任务',
     close: '关闭任务',
     transfer: '转交任务',
+    feedback: '反馈任务',
     restart: '重启任务',
     submitTest: '提交测试',
     passTest: '测试通过',
@@ -1019,6 +1055,7 @@ const getActionConfirmText = (action: string) => {
     assign: '确认指派',
     close: '确认关闭',
     transfer: '确认转交',
+    feedback: '确认反馈',
     restart: '确认重启',
     submitTest: '确认提测',
     passTest: '确认通过',
@@ -1165,6 +1202,15 @@ const showActionPanel = (action: string) => {
   showPanel.value = true
 }
 
+const handleFeedback = () => {
+  const assigneeCount = task.value?.assignees?.length || 0
+  if (assigneeCount > 1) {
+    ElMessage.info('请直接联系创建人沟通反馈')
+  } else {
+    showActionPanel('feedback')
+  }
+}
+
 const closeActionPanel = () => {
   showPanel.value = false
   commentText.value = ''
@@ -1244,6 +1290,16 @@ const executeAction = async () => {
           log: { remark: commentText.value || '' }
         })
         ElMessage.success('转交成功')
+        break
+      }
+
+      case 'feedback': {
+        await addTaskComment(task.value.id, {
+          action: 'feedback',
+          newAssigneeIds: [task.value.creator.id],
+          remark: commentText.value || ''
+        })
+        ElMessage.success('反馈成功，已交还给创建人')
         break
       }
 

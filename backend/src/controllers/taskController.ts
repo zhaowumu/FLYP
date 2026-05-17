@@ -560,7 +560,7 @@ export const taskController = {
         remark: log.remark || "",
       };
 
-      if (log.action === "assign" && log.newAssigneeIds) {
+      if ((log.action === "assign" || log.action === "feedback") && log.newAssigneeIds) {
         const newAssignees = await resolveAssigneeIds(log.newAssigneeIds);
         const oldAssigneeNames = getAssigneeNames(task.assignees);
         const newAssigneeNames = getAssigneeNames(newAssignees);
