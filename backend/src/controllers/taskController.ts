@@ -56,10 +56,10 @@ function getAssigneePhones(assignees: User[] | undefined): string[] {
   return assignees.map(u => u.phone).filter(Boolean);
 }
 
-/** 辅助：将手机号列表转为 @ 格式文本（如 @138xxxx @139xxxx） */
-function phonesToAtText(phones: string[]): string {
-  if (!phones || phones.length === 0) return "";
-  return phones.map(p => `@${p}`).join(" ");
+/** 辅助：将手机号列表格式化为钉钉 @ 文本（@phone1 @phone2 加末尾空格，无手机号则返回空字符串） */
+function formatAtPhones(phones: string[]): string {
+  if (!phones || phones.length === 0) return '';
+  return phones.map(p => `@${p}`).join(' ') + ' ';
 }
 
 export const taskController = {
@@ -99,7 +99,6 @@ export const taskController = {
 
       const assigneeNames = getAssigneeNames(assignees);
       const assigneePhones = getAssigneePhones(assignees);
-      const assigneePhonesText = phonesToAtText(assigneePhones);
 
       dingTalkService.sendNotification("create_task", {
         type: "任务",
@@ -108,7 +107,7 @@ export const taskController = {
         priority: task.priority,
         creator: creator?.realName || "未知用户",
         assigneeName: assigneeNames,
-        assigneePhones: assigneePhonesText,
+        assigneePhones: formatAtPhones(assigneePhones),
         time: new Date().toLocaleString("zh-CN")
       }, assigneePhones.length > 0 ? assigneePhones : undefined);
 
@@ -238,7 +237,6 @@ export const taskController = {
         );
 
         const newAssigneePhones = getAssigneePhones(newAssignees);
-        const phonesText = phonesToAtText(newAssigneePhones);
 
         dingTalkService.sendNotification("assign_task", {
           type: "任务",
@@ -246,6 +244,7 @@ export const taskController = {
           title: task.title,
           oldAssignee: oldAssigneeNames,
           newAssignee: newAssigneeNames,
+          newAssigneePhones: formatAtPhones(newAssigneePhones),
           operator: userName,
           time: new Date().toLocaleString("zh-CN")
         }, newAssigneePhones.length > 0 ? newAssigneePhones : undefined);
@@ -507,6 +506,7 @@ export const taskController = {
       );
 
       // 根据实际状态发送对应的通知
+      const currentAssigneePhones = getAssigneePhones(task.assignees);
       if (status === "completed") {
         dingTalkService.sendNotification("complete_task", {
           type: "任务",
@@ -521,9 +521,10 @@ export const taskController = {
           id: String(task.id),
           title: task.title,
           assigneeName: log?.newAssignee || "未分配",
+          assigneePhones: formatAtPhones(currentAssigneePhones),
           operator: userName,
           time: new Date().toLocaleString("zh-CN")
-        });
+        }, currentAssigneePhones.length > 0 ? currentAssigneePhones : undefined);
       }
 
       const updatedTask = await taskRepository.findOne({
@@ -566,6 +567,22 @@ export const taskController = {
         const newAssigneeNames = getAssigneeNames(newAssignees);
         extraFields.oldAssignee = oldAssigneeNames;
         extraFields.newAssignee = newAssigneeNames;
+
+        // 反馈操作发钉钉通知
+        if (log.action === "feedback") {
+          const newAssigneePhones = getAssigneePhones(newAssignees);
+          dingTalkService.sendNotification("feedback_task", {
+            type: "任务",
+            id: String(task.id),
+            title: task.title,
+            oldAssignee: oldAssigneeNames,
+            newAssignee: newAssigneeNames,
+            newAssigneePhones: formatAtPhones(newAssigneePhones),
+            operator: userName,
+            time: new Date().toLocaleString("zh-CN")
+          }, newAssigneePhones.length > 0 ? newAssigneePhones : undefined);
+        }
+
         task.assignees = newAssignees;
       }
 
@@ -673,15 +690,17 @@ export const taskController = {
         }
       );
 
+      const newAssigneePhones = getAssigneePhones(newAssignees);
+
       dingTalkService.sendNotification("reject_task", {
         type: "任务",
         id: String(task.id),
         title: task.title,
-        oldStatus: "completed",
-        newStatus: "in_progress",
+        assigneeName: newAssigneeNames || "未分配",
+        assigneePhones: formatAtPhones(newAssigneePhones),
         operator: userName,
         time: new Date().toLocaleString("zh-CN")
-      });
+      }, newAssigneePhones.length > 0 ? newAssigneePhones : undefined);
 
       const updatedTask = await taskRepository.findOne({
         where: { id: parseInt(id as string) },
@@ -742,14 +761,17 @@ export const taskController = {
         }
       );
 
+      const newAssigneePhones = getAssigneePhones(newAssignees);
+
       dingTalkService.sendNotification("restart_task", {
         type: "任务",
         id: String(task.id),
         title: task.title,
         assigneeName: newAssigneeNames,
+        assigneePhones: formatAtPhones(newAssigneePhones),
         operator: userName,
         time: new Date().toLocaleString("zh-CN")
-      });
+      }, newAssigneePhones.length > 0 ? newAssigneePhones : undefined);
 
       const updatedTask = await taskRepository.findOne({
         where: { id: parseInt(id as string) },
@@ -808,8 +830,6 @@ export const taskController = {
         type: "任务",
         id: String(task.id),
         title: task.title,
-        oldStatus: "testing",
-        newStatus: "closed",
         operator: userName,
         time: new Date().toLocaleString("zh-CN")
       });
@@ -872,15 +892,17 @@ export const taskController = {
         }
       );
 
-      dingTalkService.sendNotification("reject_task", {
+      const newAssigneePhones = getAssigneePhones(newAssignees);
+
+      dingTalkService.sendNotification("reject_test_task", {
         type: "任务",
         id: String(task.id),
         title: task.title,
-        oldStatus: "testing",
-        newStatus: "in_progress",
+        assigneeName: newAssigneeNames,
+        assigneePhones: formatAtPhones(newAssigneePhones),
         operator: userName,
         time: new Date().toLocaleString("zh-CN")
-      });
+      }, newAssigneePhones.length > 0 ? newAssigneePhones : undefined);
 
       const updatedTask = await taskRepository.findOne({
         where: { id: parseInt(id as string) },

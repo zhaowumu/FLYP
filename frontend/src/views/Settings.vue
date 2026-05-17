@@ -620,20 +620,21 @@
             style="margin-bottom: 20px"
           >
             <template #default>
-              <p><strong>通用变量：</strong> {type}（任务/BUG）、{title}、{time}、{baseUrl}、{detailLink}</p>
-              <p><strong>创建通知：</strong> {type}、{title}、{priority}、{creator}、{assigneeName}、{assigneePhones}、{time}</p>
-              <p><strong>状态变更：</strong> {type}、{title}、{oldStatus}、{newStatus}、{operator}、{time}</p>
-              <p><strong>负责人变更：</strong> {type}、{title}、{oldAssignee}、{newAssignee}、{assigneePhones}、{operator}、{time}</p>
+              <p><strong>通用变量：</strong> {type}（任务/BUG）、{title}、{id}、{detailLink}</p>
+              <p><strong>创建类</strong>（create_task / create_bug）：{creator}、{assigneeName}、{assigneePhones}，任务额外有 {priority}，缺陷额外有 {severity}</p>
+              <p><strong>负责人变更类</strong>（assign_task / assign_bug / feedback_task / feedback_bug）：{oldAssignee}、{newAssignee}、{newAssigneePhones}、{operator}</p>
+              <p><strong>需跟进操作类</strong>（reject_task / submit_test_task / reject_test_task / restart_task / reject_bug / restart_bug）：{assigneeName}、{assigneePhones}、{operator}</p>
+              <p><strong>状态通知类</strong>（complete_task / pass_test_task / fix_bug / verify_bug）：{operator}</p>
               <p style="margin-top: 8px;">
                 <strong>@ 提及说明：</strong>
-                模板中使用 <code>{assigneePhones}</code> 会自动渲染为 <code>@手机号</code> 格式，
-                同时系统会设置消息 @ 属性的手机号列表。该变量依赖用户的手机号字段。
+                {assigneePhones} 和 {newAssigneePhones} 是格式化后的 @ 手机号文本（如 @13800001111 ），
+                配合 atMobiles 实现钉钉 @ 提及。负责人资料中无手机号时该变量为空。
               </p>
               <p style="margin-top: 4px;">
                 <strong>标题链接：</strong>
                 模板中使用 <code>{detailLink}</code> 即生成完整的详情页URL，
-                也可直接使用 Markdown 链接语法 <code>[标题文字]({detailLink})</code>。
-                未填写模板时使用系统默认模板（含标题链接和 @ 提及）。
+                可用 Markdown 链接语法 <code>[标题文字]({detailLink})</code>。
+                留空则使用系统默认模板。
               </p>
               <p>留空则使用默认模板，支持Markdown格式</p>
             </template>
@@ -730,19 +731,22 @@ const testingGiteeConfig = ref(false)
 const giteeTestResult = ref<{ success: boolean; message: string } | null>(null)
 
 const defaultTemplates = {
-  create_task: '🔗 **[{title}]({detailLink})**\n\n**操作：** 创建任务\n**创建人：** {creator}\n**优先级：** {priority}\n**负责人：** {assigneeName}\n**时间：** {time}',
-  create_bug: '🔗 **[{title}]({detailLink})**\n\n**操作：** 创建缺陷\n**创建人：** {creator}\n**严重程度：** {severity}\n**负责人：** {assigneeName}\n**时间：** {time}',
-  assign_task: '🔗 **[{title}]({detailLink})**\n\n**操作：** 指派任务\n**{oldAssignee}** → **{newAssignee}**\n**操作人：** {operator}\n**时间：** {time}',
-  complete_task: '🔗 **[{title}]({detailLink})**\n\n**操作：** 完成任务\n**完成人：** {operator}\n**时间：** {time}',
-  reject_task: '🔗 **[{title}]({detailLink})**\n\n**操作：** 打回任务\n**操作人：** {operator}\n**时间：** {time}',
-  submit_test_task: '🔗 **[{title}]({detailLink})**\n\n**操作：** 提测\n**测试负责人：** {assigneeName}\n**操作人：** {operator}\n**时间：** {time}',
-  pass_test_task: '🔗 **[{title}]({detailLink})**\n\n**操作：** 测试通过\n**操作人：** {operator}\n**时间：** {time}',
-  restart_task: '🔗 **[{title}]({detailLink})**\n\n**操作：** 重启任务\n**负责人：** {assigneeName}\n**操作人：** {operator}\n**时间：** {time}',
-  assign_bug: '🔗 **[{title}]({detailLink})**\n\n**操作：** 分配缺陷\n**{oldAssignee}** → **{newAssignee}**\n**操作人：** {operator}\n**时间：** {time}',
-  fix_bug: '🔗 **[{title}]({detailLink})**\n\n**操作：** 修复缺陷\n**修复人：** {operator}\n**时间：** {time}',
-  verify_bug: '🔗 **[{title}]({detailLink})**\n\n**操作：** 验证通过\n**操作人：** {operator}\n**时间：** {time}',
-  reject_bug: '🔗 **[{title}]({detailLink})**\n\n**操作：** 打回缺陷\n**操作人：** {operator}\n**时间：** {time}',
-  restart_bug: '🔗 **[{title}]({detailLink})**\n\n**操作：** 重启缺陷\n**负责人：** {assigneeName}\n**操作人：** {operator}\n**时间：** {time}'
+  create_task: '### 🆕 新建任务\n\n> 📎 **[{title}]({detailLink})**\n\n- 🚩 优先级 → **{priority}**\n- ✍️ 创建人 → **{creator}**\n- 🎯 负责人 → **{assigneeName}**\n\n---\n{assigneePhones}请及时处理 📢',
+  create_bug: '### 🐛 新建缺陷\n\n> 📎 **[{title}]({detailLink})**\n\n- ⚠️ 严重程度 → **{severity}**\n- ✍️ 报告人 → **{creator}**\n- 🎯 负责人 → **{assigneeName}**\n\n---\n{assigneePhones}请及时处理 📢',
+  assign_task: '### 👥 指派任务\n\n> 📎 **[{title}]({detailLink})**\n\n- 🔄 负责人 → **{oldAssignee}** → **{newAssignee}**\n- ✍️ 操作人 → **{operator}**\n\n---\n{newAssigneePhones}请及时处理 📢',
+  complete_task: '### ✅ 完成任务\n\n> 📎 **[{title}]({detailLink})**\n\n- 🎉 完成人 → **{operator}**',
+  reject_task: '### ↩️ 打回任务\n\n> 📎 **[{title}]({detailLink})**\n\n- 🎯 负责人 → **{assigneeName}**\n- ✍️ 操作人 → **{operator}**\n\n---\n{assigneePhones}请及时处理 📢',
+  submit_test_task: '### 🧪 提测任务\n\n> 📎 **[{title}]({detailLink})**\n\n- 🎯 测试负责人 → **{assigneeName}**\n- ✍️ 操作人 → **{operator}**\n\n---\n{assigneePhones}请及时处理 📢',
+  pass_test_task: '### ✅ 测试通过\n\n> 📎 **[{title}]({detailLink})**\n\n- ✍️ 操作人 → **{operator}**',
+  restart_task: '### 🔄 重启任务\n\n> 📎 **[{title}]({detailLink})**\n\n- 🎯 负责人 → **{assigneeName}**\n- ✍️ 操作人 → **{operator}**\n\n---\n{assigneePhones}请及时处理 📢',
+  feedback_task: '### 💬 反馈任务\n\n> 📎 **[{title}]({detailLink})**\n\n- 🔄 负责人 → **{oldAssignee}** → **{newAssignee}**\n- ✍️ 操作人 → **{operator}**\n\n---\n{newAssigneePhones}请及时处理 📢',
+  reject_test_task: '### 🔙 测试打回\n\n> 📎 **[{title}]({detailLink})**\n\n- 🎯 负责人 → **{assigneeName}**\n- ✍️ 操作人 → **{operator}**\n\n---\n{assigneePhones}请及时处理 📢',
+  assign_bug: '### 👥 分配缺陷\n\n> 📎 **[{title}]({detailLink})**\n\n- 🔄 负责人 → **{oldAssignee}** → **{newAssignee}**\n- ✍️ 操作人 → **{operator}**\n\n---\n{newAssigneePhones}请及时处理 📢',
+  fix_bug: '### 🔧 修复缺陷\n\n> 📎 **[{title}]({detailLink})**\n\n- 🎉 修复人 → **{operator}**',
+  verify_bug: '### ✅ 验证通过\n\n> 📎 **[{title}]({detailLink})**\n\n- ✍️ 操作人 → **{operator}**',
+  reject_bug: '### ↩️ 打回缺陷\n\n> 📎 **[{title}]({detailLink})**\n\n- 🎯 负责人 → **{assigneeName}**\n- ✍️ 操作人 → **{operator}**\n\n---\n{assigneePhones}请及时处理 📢',
+  restart_bug: '### 🔄 重启缺陷\n\n> 📎 **[{title}]({detailLink})**\n\n- 🎯 负责人 → **{assigneeName}**\n- ✍️ 操作人 → **{operator}**\n\n---\n{assigneePhones}请及时处理 📢',
+  feedback_bug: '### 💬 反馈缺陷\n\n> 📎 **[{title}]({detailLink})**\n\n- 🔄 负责人 → **{oldAssignee}** → **{newAssignee}**\n- ✍️ 操作人 → **{operator}**\n\n---\n{newAssigneePhones}请及时处理 📢'
 }
 
 const notifyConfigLabels = {
@@ -754,11 +758,14 @@ const notifyConfigLabels = {
   submit_test_task: '提测任务',
   pass_test_task: '任务测试通过',
   restart_task: '重启任务',
+  feedback_task: '反馈任务',
+  reject_test_task: '测试打回',
   assign_bug: '分配缺陷',
   fix_bug: '修复缺陷',
   verify_bug: '验证通过',
   reject_bug: '打回缺陷',
-  restart_bug: '重启缺陷'
+  restart_bug: '重启缺陷',
+  feedback_bug: '反馈缺陷'
 }
 
 const notifyConfigs = ref<Record<string, { enabled: boolean; template: string; label: string; defaultTemplate: string }>>({})

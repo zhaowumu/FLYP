@@ -66,7 +66,7 @@ export const systemConfigController = {
       const keywordConfig = await configRepository.findOne({ where: { key: "dingtalk_keyword" } });
       const baseUrlConfig = await configRepository.findOne({ where: { key: "dingtalk_base_url" } });
       
-      const notifyTypes = ["create_task", "create_bug", "assign_task", "complete_task", "reject_task", "submit_test_task", "pass_test_task", "restart_task", "assign_bug", "fix_bug", "verify_bug", "reject_bug", "restart_bug"];
+      const notifyTypes = ["create_task", "create_bug", "assign_task", "complete_task", "reject_task", "submit_test_task", "pass_test_task", "restart_task", "feedback_task", "reject_test_task", "assign_bug", "fix_bug", "verify_bug", "reject_bug", "restart_bug", "feedback_bug"];
       const notifyConfigs: Record<string, any> = {};
       for (const type of notifyTypes) {
         const cfg = await configRepository.findOne({ where: { key: `dingtalk_notify_${type}` } });
@@ -163,7 +163,7 @@ export const systemConfigController = {
 
   async testDingTalkNotification(req: Request, res: Response) {
     try {
-      const { type, template } = req.body; // 可选: "create_task" | "create_bug" | "assign_task" | "complete_task" | "reject_task" | "submit_test_task" | "pass_test_task" | "restart_task" | "assign_bug" | "fix_bug" | "verify_bug" | "reject_bug" | "restart_bug"
+      const { type, template } = req.body;
       const webhookConfig = await configRepository.findOne({ where: { key: "dingtalk_webhook" } });
       const secretConfig = await configRepository.findOne({ where: { key: "dingtalk_secret" } });
       const keywordConfig = await configRepository.findOne({ where: { key: "dingtalk_keyword" } });
@@ -179,28 +179,25 @@ export const systemConfigController = {
       }
 
       const now = new Date().toLocaleString("zh-CN");
-      const typeSegment = type === "assignee_change" || !type ? "tasks" : type === "status_change" ? "tasks" : "tasks";
-      const detailLink = `${baseUrl}/tasks/123`;
+      const isTaskType = type ? type.includes("task") || type === "create_task" : true;
+      const typeSegment = isTaskType ? "tasks" : "bugs";
+      const detailLink = `${baseUrl}/${typeSegment}/123`;
 
-      // 测试用的变量
+      // 测试用的变量（与实际代码传入的变量保持一致）
       const testVariables: Record<string, string> = {
-        type: "任务",
+        type: isTaskType ? "任务" : "BUG",
         id: "123",
         title: "这是一个测试通知的标题",
         priority: "medium",
+        severity: "high",
         creator: "测试用户",
         assigneeName: "张三",
-        assigneePhones: "@13800138000",
         time: now,
         baseUrl,
         detailLink,
-        oldStatus: "待处理",
-        newStatus: "已完成",
         operator: "测试用户",
         oldAssignee: "张三",
         newAssignee: "李四",
-        oldPriority: "low",
-        newPriority: "high",
       };
 
       // 简单的 renderTemplate 实现
@@ -212,82 +209,97 @@ export const systemConfigController = {
         return result;
       };
 
-      // 如果传了 template 就用它渲染，否则生成对应类型的固定测试内容
+      // 通知类型对应的中文标题
+      const typeLabels: Record<string, string> = {
+        create_task: "新建任务通知",
+        create_bug: "新建缺陷通知",
+        assign_task: "指派任务通知",
+        complete_task: "完成任务通知",
+        reject_task: "打回任务通知",
+        submit_test_task: "提测任务通知",
+        pass_test_task: "任务测试通过通知",
+        restart_task: "重启任务通知",
+        feedback_task: "反馈任务通知",
+        reject_test_task: "测试打回通知",
+        assign_bug: "分配缺陷通知",
+        fix_bug: "修复缺陷通知",
+        verify_bug: "验证通过通知",
+        reject_bug: "打回缺陷通知",
+        restart_bug: "重启缺陷通知",
+        feedback_bug: "反馈缺陷通知",
+      };
+
       let title: string;
       let text: string;
 
       if (template) {
-        // 用户自定义模板 → 用测试变量渲染
         text = renderTemplate(template, testVariables);
-        title = `【测试】${
-          type === "create_task" ? "新建任务通知" :
-          type === "create_bug" ? "新建缺陷通知" :
-          type === "assign_task" ? "指派任务通知" :
-          type === "complete_task" ? "完成任务通知" :
-          type === "reject_task" ? "打回任务通知" :
-          type === "submit_test_task" ? "提测任务通知" :
-          type === "pass_test_task" ? "任务测试通过通知" :
-          type === "restart_task" ? "重启任务通知" :
-          type === "assign_bug" ? "分配缺陷通知" :
-          type === "fix_bug" ? "修复缺陷通知" :
-          type === "verify_bug" ? "验证通过通知" :
-          type === "reject_bug" ? "打回缺陷通知" :
-          type === "restart_bug" ? "重启缺陷通知" : "钉钉通知"
-        }`;
+        title = `【测试】${typeLabels[type] || "钉钉通知"}`;
       } else {
-        // 无自定义模板 → 使用默认测试内容
         const defaultTemplates: Record<string, { title: string; text: string }> = {
           create_task: {
             title: "【测试】新建任务通知",
-            text: `### 🔔 测试 - 新建任务通知\n\n[🔗 **这是一个测试任务的标题**](${baseUrl}/tasks/123)\n\n**操作：** 创建任务\n**创建人：** 测试用户\n**优先级：** medium\n**负责人：** 张三\n**时间：** ${now}`,
+            text: `### 🆕 新建任务\n\n> 📎 **[这是一个测试通知的标题](${detailLink})**\n\n- 🚩 优先级 → **medium**\n- ✍️ 创建人 → **测试用户**\n- 🎯 负责人 → **张三**\n\n---\n@13800138000 请及时处理 📢`,
           },
           create_bug: {
             title: "【测试】新建缺陷通知",
-            text: `### 🔔 测试 - 新建缺陷通知\n\n[🔗 **这是一个测试缺陷的标题**](${baseUrl}/bugs/123)\n\n**操作：** 创建缺陷\n**创建人：** 测试用户\n**严重程度：** high\n**负责人：** 张三\n**时间：** ${now}`,
+            text: `### 🐛 新建缺陷\n\n> 📎 **[这是一个测试通知的标题](${detailLink})**\n\n- ⚠️ 严重程度 → **high**\n- ✍️ 报告人 → **测试用户**\n- 🎯 负责人 → **张三**\n\n---\n@13800138000 请及时处理 📢`,
           },
           assign_task: {
             title: "【测试】指派任务通知",
-            text: `### 🔔 测试 - 指派任务通知\n\n[🔗 **这是一个测试任务的标题**](${baseUrl}/tasks/123)\n\n**操作：** 指派任务\n**李四** → **张三**\n**操作人：** 测试用户\n**时间：** ${now}`,
+            text: `### 👥 指派任务\n\n> 📎 **[这是一个测试通知的标题](${detailLink})**\n\n- 🔄 负责人 → **张三** → **李四**\n- ✍️ 操作人 → **测试用户**\n\n---\n@13900139000 请及时处理 📢`,
           },
           complete_task: {
             title: "【测试】完成任务通知",
-            text: `### 🔔 测试 - 完成任务通知\n\n[🔗 **这是一个测试任务的标题**](${baseUrl}/tasks/123)\n\n**操作：** 完成任务\n**完成人：** 测试用户\n**时间：** ${now}`,
+            text: `### ✅ 完成任务\n\n> 📎 **[这是一个测试通知的标题](${detailLink})**\n\n- 🎉 完成人 → **测试用户**`,
           },
           reject_task: {
             title: "【测试】打回任务通知",
-            text: `### 🔔 测试 - 打回任务通知\n\n[🔗 **这是一个测试任务的标题**](${baseUrl}/tasks/123)\n\n**操作：** 打回任务\n**操作人：** 测试用户\n**时间：** ${now}`,
+            text: `### ↩️ 打回任务\n\n> 📎 **[这是一个测试通知的标题](${detailLink})**\n\n- 🎯 负责人 → **张三**\n- ✍️ 操作人 → **测试用户**\n\n---\n@13800138000 请及时处理 📢`,
           },
           submit_test_task: {
             title: "【测试】提测任务通知",
-            text: `### 🔔 测试 - 提测任务通知\n\n[🔗 **这是一个测试任务的标题**](${baseUrl}/tasks/123)\n\n**操作：** 提测\n**测试负责人：** 张三\n**操作人：** 测试用户\n**时间：** ${now}`,
+            text: `### 🧪 提测任务\n\n> 📎 **[这是一个测试通知的标题](${detailLink})**\n\n- 🎯 测试负责人 → **张三**\n- ✍️ 操作人 → **测试用户**\n\n---\n@13800138000 请及时处理 📢`,
           },
           pass_test_task: {
             title: "【测试】任务测试通过通知",
-            text: `### 🔔 测试 - 任务测试通过通知\n\n[🔗 **这是一个测试任务的标题**](${baseUrl}/tasks/123)\n\n**操作：** 测试通过\n**操作人：** 测试用户\n**时间：** ${now}`,
-          },
-          assign_bug: {
-            title: "【测试】分配缺陷通知",
-            text: `### 🔔 测试 - 分配缺陷通知\n\n[🔗 **这是一个测试缺陷的标题**](${baseUrl}/bugs/123)\n\n**操作：** 分配缺陷\n**未分配** → **张三**\n**操作人：** 测试用户\n**时间：** ${now}`,
-          },
-          fix_bug: {
-            title: "【测试】修复缺陷通知",
-            text: `### 🔔 测试 - 修复缺陷通知\n\n[🔗 **这是一个测试缺陷的标题**](${baseUrl}/bugs/123)\n\n**操作：** 修复缺陷\n**修复人：** 测试用户\n**时间：** ${now}`,
-          },
-          verify_bug: {
-            title: "【测试】验证通过通知",
-            text: `### 🔔 测试 - 验证通过通知\n\n[🔗 **这是一个测试缺陷的标题**](${baseUrl}/bugs/123)\n\n**操作：** 验证通过\n**操作人：** 测试用户\n**时间：** ${now}`,
-          },
-          reject_bug: {
-            title: "【测试】打回缺陷通知",
-            text: `### 🔔 测试 - 打回缺陷通知\n\n[🔗 **这是一个测试缺陷的标题**](${baseUrl}/bugs/123)\n\n**操作：** 打回缺陷\n**操作人：** 测试用户\n**时间：** ${now}`,
+            text: `### ✅ 测试通过\n\n> 📎 **[这是一个测试通知的标题](${detailLink})**\n\n- ✍️ 操作人 → **测试用户**`,
           },
           restart_task: {
             title: "【测试】重启任务通知",
-            text: `### 🔔 测试 - 重启任务通知\n\n[🔗 **这是一个测试任务的标题**](${baseUrl}/tasks/123)\n\n**操作：** 重启任务\n**负责人：** 张三\n**操作人：** 测试用户\n**时间：** ${now}`,
+            text: `### 🔄 重启任务\n\n> 📎 **[这是一个测试通知的标题](${detailLink})**\n\n- 🎯 负责人 → **张三**\n- ✍️ 操作人 → **测试用户**\n\n---\n@13800138000 请及时处理 📢`,
+          },
+          feedback_task: {
+            title: "【测试】反馈任务通知",
+            text: `### 💬 反馈任务\n\n> 📎 **[这是一个测试通知的标题](${detailLink})**\n\n- 🔄 负责人 → **张三** → **李四**\n- ✍️ 操作人 → **测试用户**\n\n---\n@13900139000 请及时处理 📢`,
+          },
+          reject_test_task: {
+            title: "【测试】测试打回通知",
+            text: `### 🔙 测试打回\n\n> 📎 **[这是一个测试通知的标题](${detailLink})**\n\n- 🎯 负责人 → **张三**\n- ✍️ 操作人 → **测试用户**\n\n---\n@13800138000 请及时处理 📢`,
+          },
+          assign_bug: {
+            title: "【测试】分配缺陷通知",
+            text: `### 👥 分配缺陷\n\n> 📎 **[这是一个测试通知的标题](${detailLink})**\n\n- 🔄 负责人 → **未分配** → **张三**\n- ✍️ 操作人 → **测试用户**\n\n---\n@13800138000 请及时处理 📢`,
+          },
+          fix_bug: {
+            title: "【测试】修复缺陷通知",
+            text: `### 🔧 修复缺陷\n\n> 📎 **[这是一个测试通知的标题](${detailLink})**\n\n- 🎉 修复人 → **测试用户**`,
+          },
+          verify_bug: {
+            title: "【测试】验证通过通知",
+            text: `### ✅ 验证通过\n\n> 📎 **[这是一个测试通知的标题](${detailLink})**\n\n- ✍️ 操作人 → **测试用户**`,
+          },
+          reject_bug: {
+            title: "【测试】打回缺陷通知",
+            text: `### ↩️ 打回缺陷\n\n> 📎 **[这是一个测试通知的标题](${detailLink})**\n\n- 🎯 负责人 → **张三**\n- ✍️ 操作人 → **测试用户**\n\n---\n@13800138000 请及时处理 📢`,
           },
           restart_bug: {
             title: "【测试】重启缺陷通知",
-            text: `### 🔔 测试 - 重启缺陷通知\n\n[🔗 **这是一个测试缺陷的标题**](${baseUrl}/bugs/123)\n\n**操作：** 重启缺陷\n**负责人：** 张三\n**操作人：** 测试用户\n**时间：** ${now}`,
+            text: `### 🔄 重启缺陷\n\n> 📎 **[这是一个测试通知的标题](${detailLink})**\n\n- 🎯 负责人 → **张三**\n- ✍️ 操作人 → **测试用户**\n\n---\n@13800138000 请及时处理 📢`,
+          },
+          feedback_bug: {
+            title: "【测试】反馈缺陷通知",
+            text: `### 💬 反馈缺陷\n\n> 📎 **[这是一个测试通知的标题](${detailLink})**\n\n- 🔄 负责人 → **张三** → **李四**\n- ✍️ 操作人 → **测试用户**\n\n---\n@13900139000 请及时处理 📢`,
           },
         };
 
@@ -297,7 +309,7 @@ export const systemConfigController = {
           text = t.text;
         } else {
           title = "【测试】钉钉通知";
-          text = `### 🔔 测试通知\n\n这是一条测试消息，配置成功！\n\n**发送时间：** ${now}\n\n**系统地址：** ${baseUrl}`;
+          text = `这是一条测试消息，配置成功！\n\n**发送时间：** ${now}\n\n**系统地址：** ${baseUrl}`;
         }
       }
 

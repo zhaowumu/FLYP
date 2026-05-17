@@ -37,6 +37,12 @@ async function getBugLogs(bugId: number): Promise<OperationLog[]> {
   });
 }
 
+/** 辅助：将手机号格式化为钉钉 @ 文本（@phone 加末尾空格，无手机号则返回空字符串） */
+function formatAtPhone(phone: string): string {
+  if (!phone) return '';
+  return `@${phone} `;
+}
+
 export const bugController = {
   async createBug(req: Request, res: Response) {
     try {
@@ -86,7 +92,7 @@ export const bugController = {
         severity: bug.severity,
         creator: reporter?.realName || "未知用户",
         assigneeName: assigneeName,
-        assigneePhones: assigneePhone ? `@${assigneePhone}` : "",
+        assigneePhones: formatAtPhone(assigneePhone),
         time: new Date().toLocaleString("zh-CN")
       }, assigneePhone ? [assigneePhone] : undefined);
 
@@ -201,10 +207,11 @@ export const bugController = {
           title: bug.title,
           oldAssignee: oldAssignee?.realName || "未处理",
           newAssignee: newAssignee?.realName || "未知",
+          newAssigneePhones: formatAtPhone(newAssigneePhone),
           operator: userName,
           time: new Date().toLocaleString("zh-CN")
         }, newAssigneePhone ? [newAssigneePhone] : undefined);
-        
+
         bug.assignee = newAssignee!;
 
         // 待处理 → 分配后自动升级为处理中
@@ -410,8 +417,26 @@ export const bugController = {
 
       if ((log.action === "assign" || log.action === "transfer" || log.action === "feedback") && log.newAssigneeId) {
         const newAssignee = await userRepository.findOne({ where: { id: log.newAssigneeId } });
-        extraFields.oldAssignee = bug.assignee?.realName || "未处理";
-        extraFields.newAssignee = newAssignee?.realName || "未知";
+        const oldAssigneeName = bug.assignee?.realName || "未处理";
+        const newAssigneeName = newAssignee?.realName || "未知";
+        extraFields.oldAssignee = oldAssigneeName;
+        extraFields.newAssignee = newAssigneeName;
+
+        // 反馈操作发钉钉通知
+        if (log.action === "feedback") {
+          const newAssigneePhone = newAssignee?.phone || "";
+          dingTalkService.sendNotification("feedback_bug", {
+            type: "BUG",
+            id: String(bug.id),
+            title: bug.title,
+            oldAssignee: oldAssigneeName,
+            newAssignee: newAssigneeName,
+            newAssigneePhones: formatAtPhone(newAssigneePhone),
+            operator: userName,
+            time: new Date().toLocaleString("zh-CN")
+          }, newAssigneePhone ? [newAssigneePhone] : undefined);
+        }
+
         bug.assignee = newAssignee!;
         // 只有 assign/transfer 才强制设为 in_progress，feedback 保持状态不变
         if (log.action !== "feedback") {
@@ -501,6 +526,7 @@ export const bugController = {
         title: bug.title,
         oldAssignee: "未分配",
         newAssignee: assignee.realName,
+        newAssigneePhones: formatAtPhone(assigneePhone),
         operator: user?.realName || "未知用户",
         time: new Date().toLocaleString("zh-CN")
       }, assigneePhone ? [assigneePhone] : undefined);
@@ -593,11 +619,12 @@ export const bugController = {
         }
       );
 
+      const newAssigneePhone = newAssignee?.phone || "";
+
       dingTalkService.sendNotification("reject_bug", {
         type: "BUG", id: String(bug.id), title: bug.title,
-        oldStatus: "fixed", newStatus: "in_progress",
-        operator: userName, time: new Date().toLocaleString("zh-CN")
-      });
+        assigneeName: newAssigneeName, assigneePhones: formatAtPhone(newAssigneePhone), operator: userName, time: new Date().toLocaleString("zh-CN")
+      }, newAssigneePhone ? [newAssigneePhone] : undefined);
 
       const updatedBug = await bugRepository.findOne({
         where: { id: parseInt(id as string) },
@@ -656,14 +683,17 @@ export const bugController = {
         }
       );
 
+      const newAssigneePhone = newAssignee?.phone || "";
+
       dingTalkService.sendNotification("restart_bug", {
         type: "BUG",
         id: String(bug.id),
         title: bug.title,
         assigneeName: newAssigneeName,
+        assigneePhones: formatAtPhone(newAssigneePhone),
         operator: userName,
         time: new Date().toLocaleString("zh-CN")
-      });
+      }, newAssigneePhone ? [newAssigneePhone] : undefined);
 
       const updatedBug = await bugRepository.findOne({
         where: { id: parseInt(id as string) },

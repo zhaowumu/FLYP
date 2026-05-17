@@ -38,8 +38,7 @@ export class DingTalkService {
     const keywordConfig = await configRepo.findOne({ where: { key: "dingtalk_keyword" } });
     const baseUrlConfig = await configRepo.findOne({ where: { key: "dingtalk_base_url" } });
     
-    // 移除 priority_change
-    const notifyTypes = ["create_task", "create_bug", "assign_task", "complete_task", "reject_task", "submit_test_task", "pass_test_task", "restart_task", "assign_bug", "fix_bug", "verify_bug", "reject_bug", "restart_bug"];
+    const notifyTypes = ["create_task", "create_bug", "assign_task", "complete_task", "reject_task", "submit_test_task", "pass_test_task", "restart_task", "feedback_task", "reject_test_task", "assign_bug", "fix_bug", "verify_bug", "reject_bug", "restart_bug", "feedback_bug"];
     const notify: Record<string, { enabled: boolean; template: string }> = {};
     for (const type of notifyTypes) {
       const cfg = await configRepo.findOne({ where: { key: `dingtalk_notify_${type}` } });
@@ -91,119 +90,129 @@ export class DingTalkService {
     const typeSegment = variables.type === "任务" ? "tasks" : "bugs";
     const detailLink = baseUrl && id ? `${baseUrl}/${typeSegment}/${id}` : "";
 
+    const titleLine = detailLink ? `> 📎 **[{title}]({detailLink})**` : `> 📎 **{title}**`;
     const defaults: Record<string, string> = {
       create_task: [
-        detailLink ? `[🔗 **{title}**]({detailLink})` : `**{title}**`,
-        ``,
-        `**操作：** 创建任务`,
-        `**创建人：** {creator}`,
-        `**优先级：** {priority}`,
-        `**负责人：** {assigneeName}`,
-        `**时间：** {time}`,
-      ].filter(Boolean).join("\n"),
+        `### 🆕 新建任务`, ``,
+        titleLine, ``,
+        `- 🚩 优先级 → **{priority}**`,
+        `- ✍️ 创建人 → **{creator}**`,
+        `- 🎯 负责人 → **{assigneeName}**`,
+        ``, `---`, `{assigneePhones}请及时处理 📢`,
+      ].join("\n"),
 
       create_bug: [
-        detailLink ? `[🔗 **{title}**]({detailLink})` : `**{title}**`,
-        ``,
-        `**操作：** 创建缺陷`,
-        `**创建人：** {creator}`,
-        `**严重程度：** {severity}`,
-        `**负责人：** {assigneeName}`,
-        `**时间：** {time}`,
-      ].filter(Boolean).join("\n"),
+        `### 🐛 新建缺陷`, ``,
+        titleLine, ``,
+        `- ⚠️ 严重程度 → **{severity}**`,
+        `- ✍️ 报告人 → **{creator}**`,
+        `- 🎯 负责人 → **{assigneeName}**`,
+        ``, `---`, `{assigneePhones}请及时处理 📢`,
+      ].join("\n"),
 
       assign_task: [
-        detailLink ? `[🔗 **{title}**]({detailLink})` : `**{title}**`,
-        ``,
-        `**操作：** 指派任务`,
-        `**{oldAssignee}** → **{newAssignee}**`,
-        `**操作人：** {operator}`,
-        `**时间：** {time}`,
-      ].filter(Boolean).join("\n"),
+        `### 👥 指派任务`, ``,
+        titleLine, ``,
+        `- 🔄 负责人 → **{oldAssignee}** → **{newAssignee}**`,
+        `- ✍️ 操作人 → **{operator}**`,
+        ``, `---`, `{newAssigneePhones}请及时处理 📢`,
+      ].join("\n"),
 
       complete_task: [
-        detailLink ? `[🔗 **{title}**]({detailLink})` : `**{title}**`,
-        ``,
-        `**操作：** 完成任务`,
-        `**完成人：** {operator}`,
-        `**时间：** {time}`,
-      ].filter(Boolean).join("\n"),
+        `### ✅ 完成任务`, ``,
+        titleLine, ``,
+        `- 🎉 完成人 → **{operator}**`,
+      ].join("\n"),
 
       reject_task: [
-        detailLink ? `[🔗 **{title}**]({detailLink})` : `**{title}**`,
-        ``,
-        `**操作：** 打回任务`,
-        `**操作人：** {operator}`,
-        `**时间：** {time}`,
-      ].filter(Boolean).join("\n"),
+        `### ↩️ 打回任务`, ``,
+        titleLine, ``,
+        `- 🎯 负责人 → **{assigneeName}**`,
+        `- ✍️ 操作人 → **{operator}**`,
+        ``, `---`, `{assigneePhones}请及时处理 📢`,
+      ].join("\n"),
 
       submit_test_task: [
-        detailLink ? `[🔗 **{title}**]({detailLink})` : `**{title}**`,
-        ``,
-        `**操作：** 提测`,
-        `**测试负责人：** {assigneeName}`,
-        `**操作人：** {operator}`,
-        `**时间：** {time}`,
-      ].filter(Boolean).join("\n"),
+        `### 🧪 提测任务`, ``,
+        titleLine, ``,
+        `- 🎯 测试负责人 → **{assigneeName}**`,
+        `- ✍️ 操作人 → **{operator}**`,
+        ``, `---`, `{assigneePhones}请及时处理 📢`,
+      ].join("\n"),
 
       pass_test_task: [
-        detailLink ? `[🔗 **{title}**]({detailLink})` : `**{title}**`,
-        ``,
-        `**操作：** 测试通过`,
-        `**操作人：** {operator}`,
-        `**时间：** {time}`,
-      ].filter(Boolean).join("\n"),
-
-      assign_bug: [
-        detailLink ? `[🔗 **{title}**]({detailLink})` : `**{title}**`,
-        ``,
-        `**操作：** 分配缺陷`,
-        `**{oldAssignee}** → **{newAssignee}**`,
-        `**操作人：** {operator}`,
-        `**时间：** {time}`,
-      ].filter(Boolean).join("\n"),
-
-      fix_bug: [
-        detailLink ? `[🔗 **{title}**]({detailLink})` : `**{title}**`,
-        ``,
-        `**操作：** 修复缺陷`,
-        `**修复人：** {operator}`,
-        `**时间：** {time}`,
-      ].filter(Boolean).join("\n"),
-
-      verify_bug: [
-        detailLink ? `[🔗 **{title}**]({detailLink})` : `**{title}**`,
-        ``,
-        `**操作：** 验证通过`,
-        `**操作人：** {operator}`,
-        `**时间：** {time}`,
-      ].filter(Boolean).join("\n"),
-
-      reject_bug: [
-        detailLink ? `[🔗 **{title}**]({detailLink})` : `**{title}**`,
-        ``,
-        `**操作：** 打回缺陷`,
-        `**操作人：** {operator}`,
-        `**时间：** {time}`,
-      ].filter(Boolean).join("\n"),
+        `### ✅ 测试通过`, ``,
+        titleLine, ``,
+        `- ✍️ 操作人 → **{operator}**`,
+      ].join("\n"),
 
       restart_task: [
-        detailLink ? `[🔗 **{title}**]({detailLink})` : `**{title}**`,
-        ``,
-        `**操作：** 重启任务`,
-        `**负责人：** {assigneeName}`,
-        `**操作人：** {operator}`,
-        `**时间：** {time}`,
-      ].filter(Boolean).join("\n"),
+        `### 🔄 重启任务`, ``,
+        titleLine, ``,
+        `- 🎯 负责人 → **{assigneeName}**`,
+        `- ✍️ 操作人 → **{operator}**`,
+        ``, `---`, `{assigneePhones}请及时处理 📢`,
+      ].join("\n"),
+
+      feedback_task: [
+        `### 💬 反馈任务`, ``,
+        titleLine, ``,
+        `- 🔄 负责人 → **{oldAssignee}** → **{newAssignee}**`,
+        `- ✍️ 操作人 → **{operator}**`,
+        ``, `---`, `{newAssigneePhones}请及时处理 📢`,
+      ].join("\n"),
+
+      reject_test_task: [
+        `### 🔙 测试打回`, ``,
+        titleLine, ``,
+        `- 🎯 负责人 → **{assigneeName}**`,
+        `- ✍️ 操作人 → **{operator}**`,
+        ``, `---`, `{assigneePhones}请及时处理 📢`,
+      ].join("\n"),
+
+      assign_bug: [
+        `### 👥 分配缺陷`, ``,
+        titleLine, ``,
+        `- 🔄 负责人 → **{oldAssignee}** → **{newAssignee}**`,
+        `- ✍️ 操作人 → **{operator}**`,
+        ``, `---`, `{newAssigneePhones}请及时处理 📢`,
+      ].join("\n"),
+
+      fix_bug: [
+        `### 🔧 修复缺陷`, ``,
+        titleLine, ``,
+        `- 🎉 修复人 → **{operator}**`,
+      ].join("\n"),
+
+      verify_bug: [
+        `### ✅ 验证通过`, ``,
+        titleLine, ``,
+        `- ✍️ 操作人 → **{operator}**`,
+      ].join("\n"),
+
+      reject_bug: [
+        `### ↩️ 打回缺陷`, ``,
+        titleLine, ``,
+        `- 🎯 负责人 → **{assigneeName}**`,
+        `- ✍️ 操作人 → **{operator}**`,
+        ``, `---`, `{assigneePhones}请及时处理 📢`,
+      ].join("\n"),
 
       restart_bug: [
-        detailLink ? `[🔗 **{title}**]({detailLink})` : `**{title}**`,
-        ``,
-        `**操作：** 重启缺陷`,
-        `**负责人：** {assigneeName}`,
-        `**操作人：** {operator}`,
-        `**时间：** {time}`,
-      ].filter(Boolean).join("\n"),
+        `### 🔄 重启缺陷`, ``,
+        titleLine, ``,
+        `- 🎯 负责人 → **{assigneeName}**`,
+        `- ✍️ 操作人 → **{operator}**`,
+        ``, `---`, `{assigneePhones}请及时处理 📢`,
+      ].join("\n"),
+
+      feedback_bug: [
+        `### 💬 反馈缺陷`, ``,
+        titleLine, ``,
+        `- 🔄 负责人 → **{oldAssignee}** → **{newAssignee}**`,
+        `- ✍️ 操作人 → **{operator}**`,
+        ``, `---`, `{newAssigneePhones}请及时处理 📢`,
+      ].join("\n"),
     };
     return this.renderTemplate(defaults[type] || "", variables);
   }
