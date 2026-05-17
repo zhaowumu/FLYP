@@ -546,7 +546,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, nextTick, reactive } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ImageViewer } from 'element-plus'
@@ -603,6 +603,16 @@ const handleImageClick = (e: MouseEvent) => {
 
 const closePreview = () => {
   previewVisible.value = false
+}
+
+// 图片加载失败时显示占位提示
+const handleImageError = (e: Event) => {
+  const img = e.target as HTMLImageElement
+  if (img.tagName !== 'IMG') return
+  const placeholder = document.createElement('div')
+  placeholder.className = 'image-missing-placeholder'
+  placeholder.innerHTML = '<span>图片已失效</span>'
+  img.replaceWith(placeholder)
 }
 
 const operationLogs = computed(() => {
@@ -1125,6 +1135,12 @@ const confirmDelete = async () => {
 onMounted(() => {
   loadBug()
   loadUsers()
+  // 捕获阶段监听图片加载失败（v-html 渲染的 img 无法直接绑定 onerror）
+  window.addEventListener('error', handleImageError, true)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('error', handleImageError, true)
 })
 </script>
 
@@ -1278,6 +1294,20 @@ onMounted(() => {
 
 .section-content :deep(img:hover) {
   opacity: 0.85;
+}
+
+:deep(.image-missing-placeholder) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 120px;
+  height: 80px;
+  margin: var(--nb-space-2) 0;
+  border: 1px dashed var(--nb-border-color);
+  border-radius: var(--nb-radius-sm);
+  background: var(--nb-bg-page);
+  color: var(--nb-text-secondary);
+  font-size: 12px;
 }
 
 .section-content :deep(video) {

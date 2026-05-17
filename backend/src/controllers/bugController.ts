@@ -517,20 +517,13 @@ export const bugController = {
   async deleteBug(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      // 删除前提取图片URL，删除后清理孤儿文件
+
+      // 删除前提取Bug描述和重现步骤中的图片URL
       const bug = await bugRepository.findOne({ where: { id: parseInt(id as string) } });
       const imageUrls: string[] = [];
       if (bug) {
         imageUrls.push(...extractUploadUrls(bug.description || ''));
         imageUrls.push(...extractUploadUrls(bug.reproduceSteps || ''));
-      }
-
-      // 提取该Bug关联的操作日志中的图片
-      const logs = await AppDataSource.getRepository(OperationLog).find({
-        where: { bug: { id: parseInt(id as string) } } as any
-      });
-      for (const log of logs) {
-        imageUrls.push(...extractUploadUrls(log.remark || ''));
       }
 
       await bugRepository.delete(id);

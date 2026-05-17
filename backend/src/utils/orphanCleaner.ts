@@ -17,31 +17,29 @@ export function extractUploadUrls(html: string): string[] {
  * /uploads/images/xxx.jpg -> process.cwd()/uploads/images/xxx.jpg
  */
 export function urlToFilePath(urlPath: string): string {
-  // 去除开头的 / ，拼接到 cwd
   const relativePath = urlPath.startsWith('/') ? urlPath.slice(1) : urlPath
   return path.join(process.cwd(), relativePath)
 }
 
 /**
- * 查询数据库中所有引用了指定文件路径的记录数
- * 返回仍被引用的文件路径集合
+ * 查询数据库中"有效引用"了指定文件路径的记录
+ * 有效引用 = 任务/Bug描述中的引用 + 操作日志中目标实体仍存在的引用
+ * 返回仍被有效引用的文件路径集合
  */
 export async function findReferencedUrls(filePaths: string[]): Promise<Set<string>> {
   if (filePaths.length === 0) return new Set()
 
   const referenced = new Set<string>()
 
-  // 需要检查的表和字段（SQLite 列名为驼峰，与 TypeORM 实体属性名一致）
-  const checks: { table: string; column: string }[] = [
+  // 1. 任务和 Bug 描述中的引用（实体存在即有效）
+  const entityChecks: { table: string; column: string }[] = [
     { table: 'task', column: 'description' },
     { table: 'bug', column: 'description' },
     { table: 'bug', column: 'reproduceSteps' },
-    { table: 'operation_log', column: 'remark' },
   ]
 
-  for (const { table, column } of checks) {
+  for (const { table, column } of entityChecks) {
     for (const fp of filePaths) {
-      // 用 LIKE 模糊匹配，检查是否有任何记录引用了该文件
       const result = await AppDataSource.query(
         `SELECT COUNT(*) as cnt FROM ${table} WHERE ${column} LIKE ?`,
         [`%${fp}%`]
@@ -52,11 +50,31 @@ export async function findReferencedUrls(filePaths: string[]): Promise<Set<strin
     }
   }
 
+  // 2. 操作日志中的引用（仅目标实体仍存在时才算有效）
+  for (const fp of filePaths) {
+    // 如果已经被任务/Bug引用，不需要再查操作日志
+    if (referenced.has(fp)) continue
+
+    // 查找引用了该文件且目标实体仍存在的操作日志
+    const result = await AppDataSource.query(
+      `SELECT COUNT(*) as cnt FROM operation_log
+       WHERE remark LIKE ?
+       AND (
+         (targetType = 'task' AND targetId IN (SELECT id FROM task))
+         OR (targetType = 'bug' AND targetId IN (SELECT id FROM bug))
+       )`,
+      [`%${fp}%`]
+    )
+    if (result[0]?.cnt > 0) {
+      referenced.add(fp)
+    }
+  }
+
   return referenced
 }
 
 /**
- * 删除磁盘上不被任何数据库记录引用的文件
+ * 删除磁盘上不被任何有效引用引用的文件
  * 返回已删除的文件路径列表
  */
 export async function deleteUnreferencedFiles(urls: string[]): Promise<string[]> {
@@ -64,7 +82,6 @@ export async function deleteUnreferencedFiles(urls: string[]): Promise<string[]>
   const deleted: string[] = []
 
   for (const url of urls) {
-    // 如果仍被引用，跳过
     if (referenced.has(url)) continue
 
     const filePath = urlToFilePath(url)
@@ -82,14 +99,14 @@ export async function deleteUnreferencedFiles(urls: string[]): Promise<string[]>
 }
 
 /**
- * 全量扫描清理：扫描 uploads 目录，找出不被任何数据库记录引用的孤儿文件
+ * 全量扫描清理：扫描 uploads 目录，找出不被任何有效引用的孤儿文件
+ * 有效引用 = 任务/Bug描述 + 目标实体仍存在的操作日志
  * 返回已删除的文件路径列表
  */
 export async function cleanAllOrphanedFiles(): Promise<{ deleted: string[]; total: number; orphaned: number }> {
   const uploadsDir = path.join(process.cwd(), 'uploads')
   const allFiles: string[] = []
 
-  // 扫描 images、videos、avatars 三个子目录
   const subDirs = ['images', 'videos', 'avatars']
   for (const subDir of subDirs) {
     const dirPath = path.join(uploadsDir, subDir)
@@ -104,10 +121,8 @@ export async function cleanAllOrphanedFiles(): Promise<{ deleted: string[]; tota
   const total = allFiles.length
   if (total === 0) return { deleted: [], total: 0, orphaned: 0 }
 
-  // 找出所有仍被引用的文件
   const referenced = await findReferencedUrls(allFiles)
 
-  // 删除未被引用的文件
   const deleted: string[] = []
   for (const url of allFiles) {
     if (referenced.has(url)) continue

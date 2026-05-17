@@ -606,17 +606,10 @@ export const taskController = {
   async deleteTask(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      // 删除前提取图片URL，删除后清理孤儿文件
+
+      // 删除前提取任务描述中的图片URL
       const task = await taskRepository.findOne({ where: { id: parseInt(id as string) } });
       const imageUrls = task ? extractUploadUrls(task.description || '') : [];
-
-      // 提取该任务关联的操作日志中的图片
-      const logs = await AppDataSource.getRepository(OperationLog).find({
-        where: { task: { id: parseInt(id as string) } } as any
-      });
-      for (const log of logs) {
-        imageUrls.push(...extractUploadUrls(log.remark || ''));
-      }
 
       await taskRepository.delete(id);
 
