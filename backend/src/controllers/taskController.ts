@@ -4,6 +4,7 @@ import { Task } from "../entities/Task";
 import { OperationLog } from "../entities/OperationLog";
 import { User } from "../entities/User";
 import { DingTalkService } from "../services/dingtalkService";
+import { extractUploadUrls, deleteUnreferencedFiles } from "../utils/orphanCleaner";
 
 const dingTalkService = new DingTalkService();
 
@@ -605,7 +606,27 @@ export const taskController = {
   async deleteTask(req: Request, res: Response) {
     try {
       const { id } = req.params;
+      // 删除前提取图片URL，删除后清理孤儿文件
+      const task = await taskRepository.findOne({ where: { id: parseInt(id as string) } });
+      const imageUrls = task ? extractUploadUrls(task.description || '') : [];
+
+      // 提取该任务关联的操作日志中的图片
+      const logs = await AppDataSource.getRepository(OperationLog).find({
+        where: { task: { id: parseInt(id as string) } } as any
+      });
+      for (const log of logs) {
+        imageUrls.push(...extractUploadUrls(log.remark || ''));
+      }
+
       await taskRepository.delete(id);
+
+      // 后台异步清理孤儿文件，不阻塞响应
+      if (imageUrls.length > 0) {
+        deleteUnreferencedFiles([...new Set(imageUrls)]).catch(err => {
+          console.error('清理孤儿文件失败:', err);
+        });
+      }
+
       res.json({ message: "Task deleted successfully" });
     } catch (error) {
       console.error("Error deleting task:", error);

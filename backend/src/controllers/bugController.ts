@@ -4,6 +4,7 @@ import { Bug } from "../entities/Bug";
 import { OperationLog } from "../entities/OperationLog";
 import { User } from "../entities/User";
 import { DingTalkService } from "../services/dingtalkService";
+import { extractUploadUrls, deleteUnreferencedFiles } from "../utils/orphanCleaner";
 
 const dingTalkService = new DingTalkService();
 
@@ -516,7 +517,31 @@ export const bugController = {
   async deleteBug(req: Request, res: Response) {
     try {
       const { id } = req.params;
+      // 删除前提取图片URL，删除后清理孤儿文件
+      const bug = await bugRepository.findOne({ where: { id: parseInt(id as string) } });
+      const imageUrls: string[] = [];
+      if (bug) {
+        imageUrls.push(...extractUploadUrls(bug.description || ''));
+        imageUrls.push(...extractUploadUrls(bug.reproduceSteps || ''));
+      }
+
+      // 提取该Bug关联的操作日志中的图片
+      const logs = await AppDataSource.getRepository(OperationLog).find({
+        where: { bug: { id: parseInt(id as string) } } as any
+      });
+      for (const log of logs) {
+        imageUrls.push(...extractUploadUrls(log.remark || ''));
+      }
+
       await bugRepository.delete(id);
+
+      // 后台异步清理孤儿文件，不阻塞响应
+      if (imageUrls.length > 0) {
+        deleteUnreferencedFiles([...new Set(imageUrls)]).catch(err => {
+          console.error('清理孤儿文件失败:', err);
+        });
+      }
+
       res.json({ message: "Bug deleted successfully" });
     } catch (error) {
       console.error("Error deleting bug:", error);

@@ -382,6 +382,16 @@
                 清空全部
               </el-button>
             </div>
+            <div class="backup-item">
+              <div class="backup-info">
+                <div class="backup-title">清理孤儿文件</div>
+                <div class="backup-desc">扫描上传目录，删除不被任何任务、缺陷或操作日志引用的图片、视频等文件，释放磁盘空间</div>
+              </div>
+              <el-button type="warning" @click="cleanOrphanedFiles" :loading="cleaningOrphaned">
+                <el-icon><Delete /></el-icon>
+                清理
+              </el-button>
+            </div>
           </div>
         </div>
       </el-tab-pane>
@@ -544,6 +554,7 @@ const backupLoading = ref(false)
 const restoreLoading = ref(false)
 const clearLoading = ref(false)
 const clearAllLoading = ref(false)
+const cleaningOrphaned = ref(false)
 const backupStatus = ref<{ running: boolean; schedule: string; backupCount: number }>({ running: false, schedule: '', backupCount: 0 })
 const backupFiles = ref<Array<{ name: string; size: number; date: string }>>([])
 const backupListLoading = ref(false)
@@ -1052,6 +1063,30 @@ async function clearAllDatabase() {
     }
   } finally {
     clearAllLoading.value = false
+  }
+}
+
+async function cleanOrphanedFiles() {
+  try {
+    await ElMessageBox.confirm(
+      '将扫描上传目录，删除不被任何任务、缺陷或操作日志引用的图片和视频文件。此操作不可撤销，确定要继续吗？',
+      '清理孤儿文件',
+      {
+        confirmButtonText: '确定清理',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+    )
+
+    cleaningOrphaned.value = true
+    const res = await api.post('/upload/cleanup-orphaned')
+    ElMessage.success(res.data.message || '清理完成')
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      ElMessage.error(error?.response?.data?.error || '清理失败')
+    }
+  } finally {
+    cleaningOrphaned.value = false
   }
 }
 

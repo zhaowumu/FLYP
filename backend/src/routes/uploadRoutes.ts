@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { uploadController, upload, uploadVideo, uploadAvatar } from "../controllers/uploadController";
-import { authMiddleware } from "../middleware/authMiddleware";
+import { authMiddleware, roleMiddleware } from "../middleware/authMiddleware";
+import { cleanAllOrphanedFiles } from "../utils/orphanCleaner";
 
 const router = Router();
 
@@ -15,5 +16,19 @@ router.post("/video", authMiddleware, uploadVideo.single("file"), uploadControll
 
 // 上传头像
 router.post("/avatar", authMiddleware, uploadAvatar.single("file"), uploadController.uploadAvatar);
+
+// 清理孤儿文件（仅管理员）
+router.post("/cleanup-orphaned", authMiddleware, roleMiddleware(["admin"]), async (req, res) => {
+  try {
+    const result = await cleanAllOrphanedFiles();
+    res.json({
+      message: `清理完成：共 ${result.total} 个文件，${result.orphaned} 个孤儿文件，已删除 ${result.deleted.length} 个`,
+      ...result
+    });
+  } catch (error) {
+    console.error("清理孤儿文件失败:", error);
+    res.status(500).json({ error: "清理孤儿文件失败" });
+  }
+});
 
 export default router;
