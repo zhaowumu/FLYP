@@ -431,28 +431,76 @@
 
       <div class="row">
         <div class="col half">
-          <div class="card card-warning">
+          <div class="card">
             <div class="card-header">
-              <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none"><path d="M3 13H5V11H3V13ZM3 17H5V15H3V17ZM3 9H5V7H3V9ZM7 13H21V11H7V13ZM7 17H21V15H7V17ZM7 9H21V7H7V9Z" stroke="#f39c12" stroke-width="1.5" fill="none"/></svg>
+              <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none"><path d="M3 13H5V11H3V13ZM3 17H5V15H3V17ZM3 9H5V7H3V9ZM7 13H21V11H7V13ZM7 17H21V15H7V17ZM7 9H21V7H7V9Z" stroke="#667eea" stroke-width="1.5" fill="none"/></svg>
               <span>我的负载</span>
             </div>
-            <div class="donut-card" style="padding: 16px">
-              <div class="donut-stats" style="display: flex; flex-direction: column; gap: 12px; width: 100%">
-                <div class="mini-stat" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--nb-bg-hover); border-radius: var(--nb-radius-md)">
-                  <span style="color: var(--nb-text-secondary)">进行中任务</span>
-                  <span class="mini-num" style="color: var(--nb-warning)">{{ inProgressCount }}</span>
+            <div class="workload-panel">
+              <div class="workload-bar-section">
+                <div class="workload-bar-header">
+                  <span class="workload-bar-label">任务</span>
+                  <span class="workload-bar-count">{{ myActiveTaskCount }}</span>
                 </div>
-                <div class="mini-stat" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--nb-bg-hover); border-radius: var(--nb-radius-md)">
-                  <span style="color: var(--nb-text-secondary)">待处理任务</span>
-                  <span class="mini-num" style="color: var(--nb-primary)">{{ pendingTaskCount }}</span>
+                <div class="workload-bar-track">
+                  <div class="workload-bar-fill workload-urgent" :style="{ width: getTaskStatusPercent('urgent') + '%' }"></div>
+                  <div class="workload-bar-fill workload-high" :style="{ width: getTaskStatusPercent('high') + '%' }"></div>
+                  <div class="workload-bar-fill workload-medium" :style="{ width: getTaskStatusPercent('medium') + '%' }"></div>
+                  <div class="workload-bar-fill workload-low" :style="{ width: getTaskStatusPercent('low') + '%' }"></div>
                 </div>
-                <div class="mini-stat" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--nb-bg-hover); border-radius: var(--nb-radius-md)">
-                  <span style="color: var(--nb-text-secondary)">活跃Bug</span>
-                  <span class="mini-num" style="color: var(--nb-danger)">{{ myActiveBugCount }}</span>
+                <div class="workload-bar-legend">
+                  <span class="legend-item"><i class="legend-dot legend-urgent"></i>紧急 {{ myTasksByPriority('urgent') }}</span>
+                  <span class="legend-item"><i class="legend-dot legend-high"></i>高优 {{ myTasksByPriority('high') }}</span>
+                  <span class="legend-item"><i class="legend-dot legend-medium"></i>中优 {{ myTasksByPriority('medium') }}</span>
+                  <span class="legend-item"><i class="legend-dot legend-low"></i>低优 {{ myTasksByPriority('low') }}</span>
                 </div>
-                <div class="mini-stat" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--nb-primary-lighter); border-radius: var(--nb-radius-md)">
-                  <span style="font-weight: var(--nb-font-weight-medium)">总负载</span>
-                  <span class="mini-num" style="color: var(--nb-primary); font-size: 18px; font-weight: var(--nb-font-weight-semibold)">{{ myActiveTaskCount + myActiveBugCount }}</span>
+              </div>
+              <div class="workload-bar-section">
+                <div class="workload-bar-header">
+                  <span class="workload-bar-label">缺陷</span>
+                  <span class="workload-bar-count">{{ myActiveBugCount }}</span>
+                </div>
+                <div class="workload-bar-track">
+                  <div class="workload-bar-fill workload-critical" :style="{ width: getBugSeverityPercent('critical') + '%' }"></div>
+                  <div class="workload-bar-fill workload-severity-high" :style="{ width: getBugSeverityPercent('high') + '%' }"></div>
+                  <div class="workload-bar-fill workload-severity-medium" :style="{ width: getBugSeverityPercent('medium') + '%' }"></div>
+                  <div class="workload-bar-fill workload-severity-low" :style="{ width: getBugSeverityPercent('low') + '%' }"></div>
+                </div>
+                <div class="workload-bar-legend">
+                  <span class="legend-item"><i class="legend-dot legend-critical"></i>致命 {{ myBugsBySeverity('critical') }}</span>
+                  <span class="legend-item"><i class="legend-dot legend-severity-high"></i>严重 {{ myBugsBySeverity('high') }}</span>
+                  <span class="legend-item"><i class="legend-dot legend-severity-medium"></i>一般 {{ myBugsBySeverity('medium') }}</span>
+                  <span class="legend-item"><i class="legend-dot legend-severity-low"></i>轻微 {{ myBugsBySeverity('low') }}</span>
+                </div>
+              </div>
+              <div class="workload-summary">
+                <div class="workload-summary-item">
+                  <div class="summary-ring summary-ring-warning">
+                    <svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--nb-border-light)" stroke-width="3"/><circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--nb-warning)" stroke-width="3" :stroke-dasharray="97.4" :stroke-dashoffset="97.4 - (97.4 * inProgressCount / Math.max(myActiveTaskCount, 1))" stroke-linecap="round" transform="rotate(-90 18 18)"/></svg>
+                    <span class="summary-ring-num">{{ inProgressCount }}</span>
+                  </div>
+                  <span class="summary-ring-label">进行中</span>
+                </div>
+                <div class="workload-summary-item">
+                  <div class="summary-ring summary-ring-primary">
+                    <svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--nb-border-light)" stroke-width="3"/><circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--nb-primary)" stroke-width="3" :stroke-dasharray="97.4" :stroke-dashoffset="97.4 - (97.4 * pendingTaskCount / Math.max(myActiveTaskCount, 1))" stroke-linecap="round" transform="rotate(-90 18 18)"/></svg>
+                    <span class="summary-ring-num">{{ pendingTaskCount }}</span>
+                  </div>
+                  <span class="summary-ring-label">待处理</span>
+                </div>
+                <div class="workload-summary-item">
+                  <div class="summary-ring summary-ring-danger">
+                    <svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--nb-border-light)" stroke-width="3"/><circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--nb-danger)" stroke-width="3" :stroke-dasharray="97.4" :stroke-dashoffset="97.4 - (97.4 * myActiveBugCount / Math.max(myActiveTaskCount + myActiveBugCount, 1))" stroke-linecap="round" transform="rotate(-90 18 18)"/></svg>
+                    <span class="summary-ring-num">{{ myActiveBugCount }}</span>
+                  </div>
+                  <span class="summary-ring-label">活跃Bug</span>
+                </div>
+                <div class="workload-summary-item">
+                  <div class="summary-ring summary-ring-total">
+                    <svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--nb-border-light)" stroke-width="3"/><circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--nb-gradient-primary)" stroke-width="3" :stroke-dasharray="97.4" :stroke-dashoffset="0" stroke-linecap="round" transform="rotate(-90 18 18)"/></svg>
+                    <span class="summary-ring-num">{{ myActiveTaskCount + myActiveBugCount }}</span>
+                  </div>
+                  <span class="summary-ring-label">总负载</span>
                 </div>
               </div>
             </div>
@@ -464,14 +512,59 @@
               <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#667eea" stroke-width="1.5" fill="none"/><path d="M12 8V12L15 15" stroke="#667eea" stroke-width="1.5" stroke-linecap="round"/></svg>
               <span>我的效率</span>
             </div>
-            <div class="donut-card">
-              <div class="donut-container">
-                <svg class="donut-svg" viewBox="0 0 36 36"><circle class="donut-bg" cx="18" cy="18" r="15.5" fill="none" style="stroke: var(--nb-border-light)" stroke-width="3" /><circle class="donut-ring" cx="18" cy="18" r="15.5" fill="none" style="stroke: var(--nb-success)" stroke-width="3" stroke-dasharray="97.4" :stroke-dashoffset="97.4 - (97.4 * taskCompletionRate / 100)" stroke-linecap="round" /></svg>
-                <div class="donut-center"><span class="donut-value" :style="{ color: taskCompletionRate >= 60 ? 'var(--nb-success)' : taskCompletionRate >= 30 ? 'var(--nb-warning)' : 'var(--nb-danger)' }">{{ taskCompletionRate }}%</span><span class="donut-label">完成率</span></div>
+            <div class="efficiency-panel">
+              <div class="efficiency-main">
+                <div class="efficiency-ring-container">
+                  <svg class="efficiency-ring-svg" viewBox="0 0 36 36">
+                    <circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--nb-border-light)" stroke-width="2.5"/>
+                    <circle cx="18" cy="18" r="15.5" fill="none" :stroke="taskCompletionRate >= 60 ? 'var(--nb-success)' : taskCompletionRate >= 30 ? 'var(--nb-warning)' : 'var(--nb-danger)'" stroke-width="2.5" :stroke-dasharray="97.4" :stroke-dashoffset="97.4 - (97.4 * taskCompletionRate / 100)" stroke-linecap="round" transform="rotate(-90 18 18)"/>
+                  </svg>
+                  <div class="efficiency-ring-center">
+                    <span class="efficiency-ring-value" :style="{ color: taskCompletionRate >= 60 ? 'var(--nb-success)' : taskCompletionRate >= 30 ? 'var(--nb-warning)' : 'var(--nb-danger)' }">{{ taskCompletionRate }}</span>
+                    <span class="efficiency-ring-unit">%</span>
+                  </div>
+                </div>
+                <div class="efficiency-main-info">
+                  <div class="efficiency-main-label">总完成率</div>
+                  <div class="efficiency-main-desc">{{ completedTasksThisWeek }} / {{ totalTasksThisWeek }} 任务已完成</div>
+                </div>
               </div>
-              <div class="donut-stats">
-                <div class="mini-stat"><span class="mini-num">{{ completedTasksThisWeek }}</span><span>本周完成</span></div>
-                <div class="mini-stat"><span class="mini-num">{{ totalTasksThisWeek }}</span><span>总任务</span></div>
+              <div class="efficiency-breakdown">
+                <div class="efficiency-row">
+                  <div class="efficiency-row-header">
+                    <span class="efficiency-row-label">待处理</span>
+                    <span class="efficiency-row-value">{{ pendingTaskCount }}</span>
+                  </div>
+                  <div class="efficiency-row-track"><div class="efficiency-row-fill" style="background: var(--nb-primary)" :style="{ width: (pendingTaskCount / Math.max(myActiveTaskCount + myCompletedTaskCount, 1) * 100) + '%' }"></div></div>
+                </div>
+                <div class="efficiency-row">
+                  <div class="efficiency-row-header">
+                    <span class="efficiency-row-label">进行中</span>
+                    <span class="efficiency-row-value">{{ inProgressCount }}</span>
+                  </div>
+                  <div class="efficiency-row-track"><div class="efficiency-row-fill" style="background: var(--nb-warning)" :style="{ width: (inProgressCount / Math.max(myActiveTaskCount + myCompletedTaskCount, 1) * 100) + '%' }"></div></div>
+                </div>
+                <div class="efficiency-row">
+                  <div class="efficiency-row-header">
+                    <span class="efficiency-row-label">已完成</span>
+                    <span class="efficiency-row-value">{{ myCompletedTaskCount }}</span>
+                  </div>
+                  <div class="efficiency-row-track"><div class="efficiency-row-fill" style="background: var(--nb-success)" :style="{ width: (myCompletedTaskCount / Math.max(myActiveTaskCount + myCompletedTaskCount, 1) * 100) + '%' }"></div></div>
+                </div>
+                <div class="efficiency-row">
+                  <div class="efficiency-row-header">
+                    <span class="efficiency-row-label">已关闭</span>
+                    <span class="efficiency-row-value">{{ myClosedTaskCount }}</span>
+                  </div>
+                  <div class="efficiency-row-track"><div class="efficiency-row-fill" style="background: var(--nb-text-secondary)" :style="{ width: (myClosedTaskCount / Math.max(myActiveTaskCount + myCompletedTaskCount, 1) * 100) + '%' }"></div></div>
+                </div>
+              </div>
+              <div class="efficiency-weekly">
+                <div class="efficiency-weekly-label">本周完成</div>
+                <div class="efficiency-weekly-bar">
+                  <div v-for="n in 7" :key="n" class="efficiency-weekly-cell" :class="{ 'cell-active': n <= completedTasksThisWeek, 'cell-today': n === completedTasksThisWeek + 1 }"></div>
+                </div>
+                <div class="efficiency-weekly-num">{{ completedTasksThisWeek }} 个</div>
               </div>
             </div>
           </div>
@@ -575,13 +668,23 @@ const quickQuests = computed(() => {
 const myTasks = computed(() => allTasks.value.filter((t: any) => t.assignees?.some((a: any) => a.id === userId.value) || t.creator?.id === userId.value))
 const myBugs = computed(() => allBugs.value.filter((b: any) => b.assignee?.id === userId.value || b.reporter?.id === userId.value))
 const myPendingTasks = computed(() => myTasks.value.filter((t: any) => t.status !== 'completed' && t.status !== 'closed').sort((a: any, b: any) => {
-  const order: Record<string, number> = { urgent: 0, high: 1, medium: 2, low: 3 }
-  return (order[a.priority] || 2) - (order[b.priority] || 2)
-}).slice(0, 8))
+  const priorityOrder: Record<string, number> = { urgent: 0, high: 1, medium: 2, low: 3 }
+  const pa = priorityOrder[a.priority] ?? 2, pb = priorityOrder[b.priority] ?? 2
+  if (pa !== pb) return pa - pb
+  const da = a.dueDate ? new Date(a.dueDate).getTime() : Infinity
+  const db = b.dueDate ? new Date(b.dueDate).getTime() : Infinity
+  if (da !== db) return da - db
+  return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+}).slice(0, 10))
 const myPendingBugs = computed(() => myBugs.value.filter((b: any) => b.status !== 'closed' && b.status !== 'verified' && b.status !== 'fixed').sort((a: any, b: any) => {
-  const order: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 }
-  return (order[a.severity] || 2) - (order[b.severity] || 2)
-}).slice(0, 8))
+  const severityOrder: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 }
+  const sa = severityOrder[a.severity] ?? 2, sb = severityOrder[b.severity] ?? 2
+  if (sa !== sb) return sa - sb
+  const da = a.dueDate ? new Date(a.dueDate).getTime() : Infinity
+  const db = b.dueDate ? new Date(b.dueDate).getTime() : Infinity
+  if (da !== db) return da - db
+  return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+}).slice(0, 10))
 const myCreatedTasks = computed(() => allTasks.value.filter((t: any) => t.creator?.id === userId.value).slice(0, 8))
 const myReportedBugs = computed(() => allBugs.value.filter((b: any) => b.reporter?.id === userId.value).slice(0, 8))
 const bugsToVerify = computed(() => allBugs.value.filter((b: any) => b.status === 'fixed').slice(0, 8))
@@ -740,6 +843,43 @@ const pendingTaskCount = computed(() =>
 const myActiveBugCount = computed(() =>
   myBugs.value.filter((b: any) => b.status !== 'closed' && b.status !== 'verified' && b.status !== 'fixed').length
 )
+
+const myCompletedTaskCount = computed(() =>
+  myTasks.value.filter((t: any) => t.status === 'completed').length
+)
+
+const myClosedTaskCount = computed(() =>
+  myTasks.value.filter((t: any) => t.status === 'closed').length
+)
+
+const myActiveTasksByPriority = computed(() => {
+  const tasks = myTasks.value.filter((t: any) => t.status !== 'completed' && t.status !== 'closed')
+  const map: Record<string, number> = { urgent: 0, high: 0, medium: 0, low: 0 }
+  tasks.forEach((t: any) => { map[t.priority] = (map[t.priority] || 0) + 1 })
+  return map
+})
+
+const myActiveBugsBySeverity = computed(() => {
+  const bugs = myBugs.value.filter((b: any) => b.status !== 'closed' && b.status !== 'verified' && b.status !== 'fixed')
+  const map: Record<string, number> = { critical: 0, high: 0, medium: 0, low: 0 }
+  bugs.forEach((b: any) => { map[b.severity] = (map[b.severity] || 0) + 1 })
+  return map
+})
+
+const myTasksByPriority = (p: string) => myActiveTasksByPriority.value[p] || 0
+const myBugsBySeverity = (s: string) => myActiveBugsBySeverity.value[s] || 0
+
+const getTaskStatusPercent = (priority: string) => {
+  const total = myActiveTaskCount.value
+  if (total === 0) return 0
+  return Math.round(((myActiveTasksByPriority.value[priority] || 0) / total) * 100)
+}
+
+const getBugSeverityPercent = (severity: string) => {
+  const total = myActiveBugCount.value
+  if (total === 0) return 0
+  return Math.round(((myActiveBugsBySeverity.value[severity] || 0) / total) * 100)
+}
 
 // ==================== Shared Utility Functions ====================
 
@@ -1604,9 +1744,12 @@ onMounted(async () => {
   font-weight: var(--nb-font-weight-medium);
   color: var(--nb-text-primary);
   margin-bottom: 4px;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
+  word-break: break-all;
+  line-height: 1.4;
 }
 
 .item-meta {
@@ -2164,6 +2307,286 @@ onMounted(async () => {
   display: flex;
   gap: 32px;
   margin-top: var(--nb-space-5);
+}
+
+/* ==================== Workload Panel ==================== */
+.workload-panel {
+  padding: var(--nb-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.workload-bar-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.workload-bar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.workload-bar-label {
+  font-size: var(--nb-font-size-sm);
+  font-weight: var(--nb-font-weight-semibold);
+  color: var(--nb-text-primary);
+}
+
+.workload-bar-count {
+  font-size: var(--nb-font-size-lg);
+  font-weight: var(--nb-font-weight-bold);
+  color: var(--nb-primary);
+}
+
+.workload-bar-track {
+  height: 10px;
+  border-radius: 5px;
+  background: var(--nb-border-light);
+  display: flex;
+  overflow: hidden;
+}
+
+.workload-bar-fill {
+  height: 100%;
+  transition: width 0.6s ease;
+  min-width: 0;
+}
+
+.workload-bar-fill.workload-urgent { background: #e74c3c; }
+.workload-bar-fill.workload-high { background: #f39c12; }
+.workload-bar-fill.workload-medium { background: var(--nb-primary); }
+.workload-bar-fill.workload-low { background: var(--nb-success); }
+.workload-bar-fill.workload-critical { background: #8b0000; }
+.workload-bar-fill.workload-severity-high { background: #e74c3c; }
+.workload-bar-fill.workload-severity-medium { background: #f39c12; }
+.workload-bar-fill.workload-severity-low { background: var(--nb-primary); }
+
+.workload-bar-legend {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--nb-text-secondary);
+}
+
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.legend-urgent { background: #e74c3c; }
+.legend-high { background: #f39c12; }
+.legend-medium { background: var(--nb-primary); }
+.legend-low { background: var(--nb-success); }
+.legend-critical { background: #8b0000; }
+.legend-severity-high { background: #e74c3c; }
+.legend-severity-medium { background: #f39c12; }
+.legend-severity-low { background: var(--nb-primary); }
+
+.workload-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  padding-top: 4px;
+  border-top: 1px solid var(--nb-border-light);
+}
+
+.workload-summary-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.summary-ring {
+  position: relative;
+  width: 48px;
+  height: 48px;
+}
+
+.summary-ring svg {
+  width: 100%;
+  height: 100%;
+}
+
+.summary-ring-num {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 13px;
+  font-weight: var(--nb-font-weight-bold);
+  color: var(--nb-text-primary);
+}
+
+.summary-ring-label {
+  font-size: 10px;
+  color: var(--nb-text-secondary);
+  text-align: center;
+}
+
+/* ==================== Efficiency Panel ==================== */
+.efficiency-panel {
+  padding: var(--nb-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.efficiency-main {
+  display: flex;
+  align-items: center;
+  gap: var(--nb-space-5);
+}
+
+.efficiency-ring-container {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  flex-shrink: 0;
+}
+
+.efficiency-ring-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.efficiency-ring-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: baseline;
+}
+
+.efficiency-ring-value {
+  font-size: 22px;
+  font-weight: var(--nb-font-weight-bold);
+  line-height: 1;
+}
+
+.efficiency-ring-unit {
+  font-size: 12px;
+  font-weight: var(--nb-font-weight-semibold);
+  color: var(--nb-text-secondary);
+  margin-left: 1px;
+}
+
+.efficiency-main-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.efficiency-main-label {
+  font-size: var(--nb-font-size-md);
+  font-weight: var(--nb-font-weight-semibold);
+  color: var(--nb-text-primary);
+}
+
+.efficiency-main-desc {
+  font-size: var(--nb-font-size-xs);
+  color: var(--nb-text-secondary);
+}
+
+.efficiency-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.efficiency-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.efficiency-row-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.efficiency-row-label {
+  font-size: 12px;
+  color: var(--nb-text-secondary);
+}
+
+.efficiency-row-value {
+  font-size: 13px;
+  font-weight: var(--nb-font-weight-bold);
+  color: var(--nb-text-primary);
+}
+
+.efficiency-row-track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--nb-border-light);
+  overflow: hidden;
+}
+
+.efficiency-row-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.5s ease;
+  min-width: 2px;
+}
+
+.efficiency-weekly {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--nb-bg-hover);
+  border-radius: var(--nb-radius-md);
+}
+
+.efficiency-weekly-label {
+  font-size: 12px;
+  color: var(--nb-text-secondary);
+  white-space: nowrap;
+}
+
+.efficiency-weekly-bar {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+}
+
+.efficiency-weekly-cell {
+  flex: 1;
+  height: 20px;
+  border-radius: 3px;
+  background: var(--nb-border-light);
+  transition: background 0.3s ease;
+}
+
+.efficiency-weekly-cell.cell-active {
+  background: var(--nb-success);
+}
+
+.efficiency-weekly-cell.cell-today {
+  background: var(--nb-primary-lighter);
+  border: 1px dashed var(--nb-primary);
+}
+
+.efficiency-weekly-num {
+  font-size: 13px;
+  font-weight: var(--nb-font-weight-bold);
+  color: var(--nb-success);
+  white-space: nowrap;
 }
 
 /* ==================== Role Extra ==================== */
