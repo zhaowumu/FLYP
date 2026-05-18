@@ -108,10 +108,10 @@
                   </div>
                   <div class="progress">
                     <div class="progress-bar">
-                      <div class="progress-fill" :style="{ width: getProjectProgress(project) + '%' }"></div>
+                      <div class="progress-fill" :style="{ width: (project.progress || 0) + '%' }"></div>
                     </div>
-                    <span class="health-dot" :class="getHealthColor(getProjectProgress(project))"></span>
-                    <span class="progress-text">{{ getProjectProgress(project) }}%</span>
+                    <span class="health-dot" :class="getHealthColor(project.progress || 0)"></span>
+                    <span class="progress-text">{{ project.progress || 0 }}%</span>
                   </div>
                 </div>
               </div>
@@ -148,7 +148,7 @@
                   </div>
                 </div>
                 <div class="member-badge">
-                  <span class="badge-num">{{ getUserTaskCount(user.id) }}</span>
+                  <span class="badge-num">{{ (teamMemberPendingMap[user.id] ?? 0) }}</span>
                   <span class="badge-label">待办</span>
                 </div>
               </div>
@@ -227,9 +227,9 @@
           <div class="stat-card stat-blue" @click="router.push('/tasks')">
             <div class="stat-accent"></div>
             <div class="stat-inner">
-              <div class="stat-icon-box"><el-icon :size="22"><User /></el-icon></div>
+              <div class="stat-icon-box"><el-icon :size="22"><List /></el-icon></div>
               <div class="stat-content">
-                <div class="stat-value">{{ pmUnassignedTasks.length }}</div>
+                <div class="stat-value">{{ pmUnassignedTasks }}</div>
                 <div class="stat-label">待指派的任务</div>
               </div>
             </div>
@@ -239,7 +239,7 @@
             <div class="stat-inner">
               <div class="stat-icon-box"><el-icon :size="22"><CircleCheck /></el-icon></div>
               <div class="stat-content">
-                <div class="stat-value">{{ pmCloseableTasks.length }}</div>
+                <div class="stat-value">{{ pmCloseableTasks }}</div>
                 <div class="stat-label">待关闭的任务</div>
               </div>
             </div>
@@ -247,9 +247,9 @@
           <div class="stat-card stat-orange" @click="router.push('/bugs')">
             <div class="stat-accent"></div>
             <div class="stat-inner">
-              <div class="stat-icon-box"><el-icon :size="22"><UserFilled /></el-icon></div>
+              <div class="stat-icon-box"><el-icon :size="22"><Warning /></el-icon></div>
               <div class="stat-content">
-                <div class="stat-value">{{ pmUnassignedBugs.length }}</div>
+                <div class="stat-value">{{ pmUnassignedBugs }}</div>
                 <div class="stat-label">待指派的Bug</div>
               </div>
             </div>
@@ -259,7 +259,7 @@
             <div class="stat-inner">
               <div class="stat-icon-box"><el-icon :size="22"><CircleCheckFilled /></el-icon></div>
               <div class="stat-content">
-                <div class="stat-value">{{ pmCloseableBugs.length }}</div>
+                <div class="stat-value">{{ pmCloseableBugs }}</div>
                 <div class="stat-label">待关闭的Bug</div>
               </div>
             </div>
@@ -272,9 +272,51 @@
           <div class="card">
             <div class="card-header">
               <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none">
-                <path d="M17 21V19C17 17.9 16.1 17 15 17H9C7.9 17 7 17.9 7 19V21M12 13C14.76 13 17 10.76 17 8C17 5.24 14.76 3 12 3C9.24 3 7 5.24 7 8C7 10.76 9.24 13 12 13Z" stroke="#667eea" stroke-width="1.5" fill="none"/>
+                <path d="M3 7V17C3 18.1 3.9 19 5 19H19C20.1 19 21 18.1 21 17V9C21 7.9 20.1 7 19 7H13L11 5H5C3.9 5 3 5.9 3 7Z" stroke="#667eea" stroke-width="1.5" fill="none"/>
+                <path d="M3 7V17C3 18.1 3.9 19 5 19H19C20.1 19 21 18.1 21 17V9C21 7.9 20.1 7 19 7H13L11 5H5C3.9 5 3 5.9 3 7Z" stroke="#667eea" stroke-width="0" fill="#667eea" opacity="0.1"/>
               </svg>
-              <span>团队负载效率</span>
+              <span>项目进度</span>
+              <el-button class="btn-link" @click="$router.push('/projects')">查看全部<svg class="btn-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></el-button>
+            </div>
+            <div class="list">
+              <div v-for="project in recentProjects" :key="project.id" class="list-item" @click="$router.push(`/projects/${project.id}`)">
+                <div class="item-icon"><el-icon size="18" color="#667eea"><Folder /></el-icon></div>
+                <div class="item-content">
+                  <div class="item-title">{{ project.name }}</div>
+                  <div class="item-meta">
+                    <span class="tag" :class="project.status === 'active' ? 'tag-success' : 'tag-default'">
+                      {{ project.status === 'active' ? '进行中' : '已完成' }}
+                    </span>
+                    <span><el-icon size="12"><Folder /></el-icon> {{ project.managers?.[0]?.realName || '-' }}</span>
+                  </div>
+                  <div class="progress">
+                    <div class="progress-bar">
+                      <div class="progress-fill" :style="{ width: (project.progress || 0) + '%' }"></div>
+                    </div>
+                    <span class="health-dot" :class="getHealthColor(project.progress || 0)"></span>
+                    <span class="progress-text">{{ project.progress || 0 }}%</span>
+                  </div>
+                </div>
+              </div>
+              <div v-if="recentProjects.length === 0" class="empty">
+                <svg class="empty-icon" viewBox="0 0 80 80" fill="none">
+                  <rect x="16" y="12" width="48" height="56" rx="6" stroke="#d1d5db" stroke-width="2" stroke-dasharray="4 4"/>
+                  <path d="M32 36H48M32 44H44M32 52H40" stroke="#d1d5db" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+                <div>暂无管理的项目</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col side">
+          <div class="card">
+            <div class="card-header">
+              <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="7" r="4" stroke="#667eea" stroke-width="1.5" fill="none"/>
+                <path d="M5 21C5 17.13 8.13 14 12 14C15.87 14 19 17.13 19 21" stroke="#667eea" stroke-width="1.5" fill="none"/>
+              </svg>
+              <span>团队负载</span>
             </div>
             <div class="team-list">
               <div v-for="member in teamMembers" :key="member.id" class="team-member clickable" @click="router.push({ path: '/tasks', query: { assigneeId: member.id } })">
@@ -290,25 +332,83 @@
                   <div class="member-stats">
                     <span class="stat-item"><span class="stat-dot dot-blue"></span>任务 {{ member.totalTasks }}</span>
                     <span class="stat-item"><span class="stat-dot dot-warning"></span>进行中 {{ member.inProgressCount }}</span>
-                    <span class="stat-item"><span class="stat-dot dot-purple"></span>测试中 {{ member.testingCount }}</span>
                     <span class="stat-item"><span class="stat-dot dot-danger"></span>缺陷 {{ member.openBugCount }}</span>
                   </div>
                   <div class="member-progress">
                     <div class="progress-bar">
                       <div class="progress-fill" :class="member.completionRate >= 60 ? 'fill-success' : member.completionRate >= 30 ? 'fill-warning' : 'fill-danger'" :style="{ width: member.completionRate + '%' }"></div>
                     </div>
-                    <span class="progress-text" :class="member.completionRate >= 60 ? 'text-success' : member.completionRate >= 30 ? 'text-warning' : 'text-danger'">负载 {{ member.taskCount }}/{{ member.completionRate }}%</span>
+                    <span class="progress-text" :class="member.completionRate >= 60 ? 'text-success' : member.completionRate >= 30 ? 'text-warning' : 'text-danger'">待办 {{ member.taskCount }} | {{ member.completionRate }}%</span>
                   </div>
                 </div>
                 <div class="member-arrow">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
                 </div>
               </div>
+              <div v-if="teamMembers.length === 0" class="empty">暂无团队成员</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col half">
+          <div class="card card-danger">
+            <div class="card-header">
+              <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none">
+                <path d="M12 4L4 20H20L12 4Z" stroke="#e74c3c" stroke-width="1.5" fill="none"/>
+                <path d="M12 10V14M12 16V16.5" stroke="#e74c3c" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+              <span>待处理缺陷 TOP5</span>
+              <el-button class="btn-link" @click="$router.push('/bugs')">查看全部<svg class="btn-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></el-button>
+            </div>
+            <div class="list">
+              <div v-for="bug in urgentBugs" :key="bug.id" class="list-item" @click="$router.push(`/bugs/${bug.id}`)">
+                <div class="item-rank" :class="getSeverityClass(bug.severity)">{{ getSeverityShort(bug.severity) }}</div>
+                <div class="item-content">
+                  <div class="item-title">{{ bug.title }}</div>
+                  <div class="item-meta">
+                    <span><el-icon size="12"><Folder /></el-icon> {{ bug.project?.name }}</span>
+                    <span><el-icon size="12"><User /></el-icon> {{ bug.assignee?.realName || '未分配' }}</span>
+                  </div>
+                </div>
+                <span class="tag" :class="getBugStatusTagClass(bug.status)">{{ getBugStatusText(bug.status) }}</span>
+              </div>
+              <div v-if="urgentBugs.length === 0" class="empty">暂无待处理缺陷</div>
             </div>
           </div>
         </div>
 
-        <div class="col side">
+        <div class="col half">
+          <div class="card card-warning">
+            <div class="card-header">
+              <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="9" stroke="#f39c12" stroke-width="1.5" fill="none"/>
+                <path d="M12 7V12L15 15" stroke="#f39c12" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+              <span>即将到期 TOP5</span>
+              <el-button class="btn-link" @click="$router.push('/tasks')">查看全部<svg class="btn-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></el-button>
+            </div>
+            <div class="list">
+              <div v-for="task in dueSoonTasks" :key="task.id" class="list-item" @click="$router.push(`/tasks/${task.id}`)">
+                <div class="item-rank" :class="getDueClass(task.dueDate)">{{ getDueDays(task.dueDate) }}</div>
+                <div class="item-content">
+                  <div class="item-title">{{ task.title }}</div>
+                  <div class="item-meta">
+                    <span><el-icon size="12"><Folder /></el-icon> {{ task.project?.name }}</span>
+                    <span><el-icon size="12"><User /></el-icon> {{ task.assignees?.map((a: any) => a.realName).join('、') || '未分配' }}</span>
+                  </div>
+                </div>
+                <span class="tag" :class="getPriorityTagClass(task.priority)">{{ getPriorityText(task.priority) }}</span>
+              </div>
+              <div v-if="dueSoonTasks.length === 0" class="empty">暂无即将到期任务</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col full">
           <div class="card">
             <div class="card-header">
               <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none">
@@ -561,10 +661,12 @@
               </div>
               <div class="efficiency-weekly">
                 <div class="efficiency-weekly-label">本周完成</div>
-                <div class="efficiency-weekly-bar">
-                  <div v-for="n in 7" :key="n" class="efficiency-weekly-cell" :class="{ 'cell-active': n <= completedTasksThisWeek, 'cell-today': n === completedTasksThisWeek + 1 }"></div>
+                <div class="efficiency-weekly-progress">
+                  <div class="efficiency-weekly-track">
+                    <div class="efficiency-weekly-fill" :style="{ width: Math.min((completedTasksThisWeek / Math.max(totalTasksThisWeek, 1)) * 100, 100) + '%' }"></div>
+                  </div>
+                  <span class="efficiency-weekly-num">{{ completedTasksThisWeek }} / {{ totalTasksThisWeek }}</span>
                 </div>
-                <div class="efficiency-weekly-num">{{ completedTasksThisWeek }} 个</div>
               </div>
             </div>
           </div>
@@ -577,21 +679,42 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useUserStore } from '../stores/user'
-import { getProjects } from '../api/project'
-import { getTasks } from '../api/task'
-import { getBugs } from '../api/bug'
-import { getUsers } from '../api/user'
-import { getOperationLogs } from '../api/operationLog'
+import { getDashboard } from '../api/dashboard'
 import { useRouter } from 'vue-router'
 
 const userStore = useUserStore()
 const router = useRouter()
 
-const allTasks = ref<any[]>([])
-const allBugs = ref<any[]>([])
-const allProjects = ref<any[]>([])
-const allUsers = ref<any[]>([])
+const dashboardData = ref<any>(null)
 const recentLogs = ref<any[]>([])
+
+// Page-level data (populated from API response per role)
+const recentProjects = ref<any[]>([])
+const teamMembers = ref<any[]>([])
+const urgentBugs = ref<any[]>([])
+const dueSoonTasks = ref<any[]>([])
+const adminStats = ref<any[]>([])
+const myPendingTasks = ref<any[]>([])
+const myPendingBugs = ref<any[]>([])
+const pmUnassignedTasks = ref(0)
+const pmCloseableTasks = ref(0)
+const pmUnassignedBugs = ref(0)
+const pmCloseableBugs = ref(0)
+
+// Developer stats
+const myActiveTaskCount = ref(0)
+const inProgressCount = ref(0)
+const pendingTaskCount = ref(0)
+const myActiveBugCount = ref(0)
+const myCompletedTaskCount = ref(0)
+const myClosedTaskCount = ref(0)
+const taskCompletionRate = ref(0)
+const completedTasksThisWeek = ref(0)
+const totalTasksThisWeek = ref(0)
+
+// Workload data (used by template functions)
+const workloadByPriority = ref<Record<string, number>>({ urgent: 0, high: 0, medium: 0, low: 0 })
+const workloadBySeverity = ref<Record<string, number>>({ critical: 0, high: 0, medium: 0, low: 0 })
 
 // ==================== Shared ====================
 
@@ -634,262 +757,102 @@ const bannerSubtitle = computed(() => {
 
 const quickQuests = computed(() => {
   const role = userRole.value
+  const d = dashboardData.value
   if (role === 'admin') {
     return [
       {
         key: 'projects',
         title: '项目概览',
-        desc: `${recentProjects.value.length} 个活跃项目`,
+        desc: `${d?.stats?.activeProjects || 0} 个活跃项目`,
         click: () => router.push('/projects'),
         svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect x="8" y="6" width="32" height="36" rx="4" stroke="#667eea" stroke-width="2.5" fill="none"/><path d="M16 18H32M16 26H28M16 34H24" stroke="#667eea" stroke-width="2" stroke-linecap="round"/><circle cx="36" cy="36" r="10" fill="#667eea"/></svg>'
       },
       {
         key: 'pending',
         title: '待处理项',
-        desc: `${allTasks.value.filter((t: any) => t.status === 'pending').length + allBugs.value.filter((b: any) => b.status === 'pending').length} 个待处理`,
+        desc: `${(d?.stats?.totalTasks || 0) + (d?.stats?.totalBugs || 0)} 个事项`,
         click: () => router.push('/tasks'),
         svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><circle cx="24" cy="24" r="18" stroke="#ff6b6b" stroke-width="2.5" fill="none"/><path d="M24 12V24L32 30" stroke="#ff6b6b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'
       },
       {
         key: 'team',
         title: '团队管理',
-        desc: `${allUsers.value.filter((u: any) => u.role !== 'admin').length} 位成员`,
+        desc: `${d?.stats?.teamMemberCount || 0} 位成员`,
         click: () => router.push('/users'),
         svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><circle cx="24" cy="14" r="7" stroke="#43e97b" stroke-width="2.5" fill="none"/><path d="M8 42C8 34.27 15.16 28 24 28C32.84 28 40 34.27 40 42" stroke="#43e97b" stroke-width="2.5" fill="none"/></svg>'
       }
     ]
   }
-
-  return []
-})
-
-// ==================== Shared Data ====================
-
-const myTasks = computed(() => allTasks.value.filter((t: any) => t.assignees?.some((a: any) => a.id === userId.value) || t.creator?.id === userId.value))
-const myBugs = computed(() => allBugs.value.filter((b: any) => b.assignee?.id === userId.value || b.reporter?.id === userId.value))
-const myPendingTasks = computed(() => myTasks.value.filter((t: any) => t.status !== 'completed' && t.status !== 'closed').sort((a: any, b: any) => {
-  const priorityOrder: Record<string, number> = { urgent: 0, high: 1, medium: 2, low: 3 }
-  const pa = priorityOrder[a.priority] ?? 2, pb = priorityOrder[b.priority] ?? 2
-  if (pa !== pb) return pa - pb
-  const da = a.dueDate ? new Date(a.dueDate).getTime() : Infinity
-  const db = b.dueDate ? new Date(b.dueDate).getTime() : Infinity
-  if (da !== db) return da - db
-  return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-}).slice(0, 10))
-const myPendingBugs = computed(() => myBugs.value.filter((b: any) => b.status !== 'closed' && b.status !== 'verified' && b.status !== 'fixed').sort((a: any, b: any) => {
-  const severityOrder: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 }
-  const sa = severityOrder[a.severity] ?? 2, sb = severityOrder[b.severity] ?? 2
-  if (sa !== sb) return sa - sb
-  const da = a.dueDate ? new Date(a.dueDate).getTime() : Infinity
-  const db = b.dueDate ? new Date(b.dueDate).getTime() : Infinity
-  if (da !== db) return da - db
-  return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-}).slice(0, 10))
-const myCreatedTasks = computed(() => allTasks.value.filter((t: any) => t.creator?.id === userId.value).slice(0, 8))
-const myReportedBugs = computed(() => allBugs.value.filter((b: any) => b.reporter?.id === userId.value).slice(0, 8))
-const bugsToVerify = computed(() => allBugs.value.filter((b: any) => b.status === 'fixed').slice(0, 8))
-
-const recentProjects = computed(() => allProjects.value.filter((p: any) => p.status === 'active').slice(0, 8))
-const myProjects = computed(() => allProjects.value.filter((p: any) => p.managers?.some((m: any) => m.id === userId.value)))
-
-const urgentBugs = computed(() => allBugs.value.filter((b: any) => b.status === 'pending' || b.status === 'in_progress').sort((a: any, b: any) => {
-  const order: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 }
-  return (order[a.severity] || 2) - (order[b.severity] || 2)
-}).slice(0, 5))
-
-const dueSoonTasks = computed(() => {
-  const now = new Date()
-  const threeDays = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000)
-  return allTasks.value
-    .filter((t: any) => t.dueDate && new Date(t.dueDate) <= threeDays && t.status !== 'completed' && t.status !== 'closed')
-    .sort((a: any, b: any) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
-    .slice(0, 5)
-})
-
-const dueSoonItems = computed(() => {
-  const now = new Date()
-  const threeDays = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000)
-  const items: any[] = []
-  allTasks.value.forEach((t: any) => {
-    if (t.dueDate && new Date(t.dueDate) <= threeDays && t.status !== 'completed' && t.status !== 'closed') {
-      items.push({ ...t, type: 'task' })
+  if (role === 'project_manager') {
+    const s = d?.stats || {}
+    return [
+      {
+        key: 'unassigned',
+        title: '待指派',
+        desc: `${(s.unassignedTasks || 0) + (s.unassignedBugs || 0)} 个待指派`,
+        click: () => router.push('/tasks'),
+        svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><circle cx="24" cy="14" r="7" stroke="#f59e0b" stroke-width="2.5" fill="none"/><path d="M8 42C8 34.27 15.16 28 24 28C32.84 28 40 34.27 40 42" stroke="#f59e0b" stroke-width="2.5" fill="none"/><path d="M32 8L40 16M40 8L32 16" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round"/></svg>'
+      },
+      {
+        key: 'closeable',
+        title: '待关闭',
+        desc: `${(s.closeableTasks || 0) + (s.closeableBugs || 0)} 个可关闭`,
+        click: () => router.push('/tasks'),
+        svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><circle cx="24" cy="24" r="18" stroke="#43e97b" stroke-width="2.5" fill="none"/><path d="M16 24L22 30L34 18" stroke="#43e97b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+      },
+      {
+        key: 'team',
+        title: '团队负载',
+        desc: `${d?.teamMembers?.length || 0} 位成员`,
+        click: () => router.push('/users'),
+        svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><circle cx="16" cy="16" r="6" stroke="#667eea" stroke-width="2.5" fill="none"/><circle cx="32" cy="16" r="6" stroke="#667eea" stroke-width="2.5" fill="none"/><path d="M4 40C4 32 9 26 16 26C20 26 23 28 24 30M24 30C25 28 28 26 32 26C39 26 44 32 44 40" stroke="#667eea" stroke-width="2.5" fill="none"/></svg>'
+      }
+    ]
+  }
+  // developer/designer/artist/tester
+  return [
+    {
+      key: 'myTasks',
+      title: '我的任务',
+      desc: `${d?.stats?.activeTaskCount || 0} 个进行中`,
+      click: () => router.push('/tasks'),
+      svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect x="8" y="6" width="32" height="36" rx="4" stroke="#667eea" stroke-width="2.5" fill="none"/><path d="M16 18H32M16 26H28M16 34H24" stroke="#667eea" stroke-width="2" stroke-linecap="round"/></svg>'
+    },
+    {
+      key: 'myBugs',
+      title: '我的Bug',
+      desc: `${d?.stats?.activeBugCount || 0} 个活跃`,
+      click: () => router.push('/bugs'),
+      svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><circle cx="24" cy="26" r="14" stroke="#ff6b6b" stroke-width="2.5" fill="none"/><path d="M18 12V6M24 10V4M30 12V6" stroke="#ff6b6b" stroke-width="2.5" stroke-linecap="round"/><path d="M14 20H34M14 32H34" stroke="#ff6b6b" stroke-width="2" stroke-linecap="round"/></svg>'
+    },
+    {
+      key: 'efficiency',
+      title: '我的效率',
+      desc: `${d?.stats?.taskCompletionRate || 0}% 完成率`,
+      click: () => router.push('/tasks'),
+      svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><circle cx="24" cy="24" r="18" stroke="#43e97b" stroke-width="2.5" fill="none"/><path d="M24 12V24L32 30" stroke="#43e97b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'
     }
-  })
-  allBugs.value.forEach((b: any) => {
-    if (b.dueDate && new Date(b.dueDate) <= threeDays && b.status !== 'closed' && b.status !== 'verified') {
-      items.push({ ...b, type: 'bug' })
-    }
-  })
-  return items.sort((a: any, b: any) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()).slice(0, 5)
+  ]
 })
 
-const completedTasksThisWeek = computed(() => {
-  const now = new Date()
-  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-  return myTasks.value.filter((t: any) => t.status === 'completed' && new Date(t.updatedAt) >= weekAgo).length
-})
+// ==================== Template helper functions (use API data) ====================
 
-const totalTasksThisWeek = computed(() => myTasks.value.length)
-
-const taskCompletionRate = computed(() => {
-  if (myTasks.value.length === 0) return 0
-  return Math.round((myTasks.value.filter((t: any) => t.status === 'completed' || t.status === 'closed').length / myTasks.value.length) * 100)
-})
-
-// ==================== Admin-specific ====================
-
-const adminCompletedThisWeek = computed(() => {
-  const now = new Date()
-  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-  return allTasks.value.filter((t: any) => t.status === 'completed' && new Date(t.updatedAt) >= weekAgo).length
-})
-
-const adminStats = computed(() => [
-  { key: 'projects', label: '活跃项目', value: allProjects.value.filter((p: any) => p.status === 'active').length, icon: 'Folder', color: 'stat-blue', click: () => router.push('/projects') },
-  { key: 'tasks', label: '总任务', value: allTasks.value.length, icon: 'List', color: 'stat-green', click: () => router.push('/tasks') },
-  { key: 'bugs', label: '总缺陷', value: allBugs.value.length, icon: 'Warning', color: 'stat-orange', click: () => router.push('/bugs') },
-  { key: 'users', label: '团队成员', value: allUsers.value.filter((u: any) => u.role !== 'admin').length, icon: 'User', color: 'stat-cyan', click: () => router.push('/users') },
-  { key: 'pending', label: '待处理', value: allTasks.value.filter((t: any) => t.status === 'pending').length + allBugs.value.filter((b: any) => b.status === 'pending').length, icon: 'Clock', color: 'stat-red', click: () => router.push('/tasks') },
-  { key: 'completed', label: '本周完成', value: adminCompletedThisWeek.value, icon: 'CircleCheck', color: 'stat-purple', click: () => router.push('/tasks') },
-])
-
-// ==================== PM-specific ====================
-
-// PM 相关项目 ID
-const pmProjectIds = computed(() => myProjects.value.map((p: any) => p.id))
-
-// 待指派的任务：pending 状态且无负责人
-const pmUnassignedTasks = computed(() =>
-  allTasks.value.filter((t: any) =>
-    pmProjectIds.value.includes(t.project?.id) &&
-    t.status === 'pending' &&
-    (!t.assignees || t.assignees.length === 0)
-  )
-)
-
-// 待关闭的任务：completed 状态（可执行关闭操作）
-const pmCloseableTasks = computed(() =>
-  allTasks.value.filter((t: any) =>
-    pmProjectIds.value.includes(t.project?.id) &&
-    t.status === 'completed'
-  )
-)
-
-// 待指派的Bug：无 assignee 且未关闭
-const pmUnassignedBugs = computed(() =>
-  allBugs.value.filter((b: any) =>
-    pmProjectIds.value.includes(b.project?.id) &&
-    b.status !== 'closed' &&
-    !b.assignee
-  )
-)
-
-// 待关闭的Bug：verified 状态（可执行关闭操作）
-const pmCloseableBugs = computed(() =>
-  allBugs.value.filter((b: any) =>
-    pmProjectIds.value.includes(b.project?.id) &&
-    b.status === 'verified'
-  )
-)
-
-// 统一的团队概览数据（合并负载和任务完成情况）
-const teamMembers = computed(() => {
-  const members = allUsers.value.filter((u: any) => u.role !== 'admin')
-  return members.map((m: any) => {
-    // 负载数据
-    const activeTasks = allTasks.value.filter((t: any) => t.assignees?.some((a: any) => a.id === m.id) && t.status !== 'completed' && t.status !== 'closed')
-    const taskCount = activeTasks.length
-    
-    // 任务完成情况
-    const userTasks = allTasks.value.filter((t: any) => t.assignees?.some((a: any) => a.id === m.id))
-    const pendingCount = userTasks.filter((t: any) => t.status === 'pending').length
-    const inProgressCount = userTasks.filter((t: any) => t.status === 'in_progress').length
-    const testingCount = userTasks.filter((t: any) => t.status === 'testing').length
-    const completedCount = userTasks.filter((t: any) => t.status === 'completed' || t.status === 'closed').length
-    const totalTasks = userTasks.length
-    const completionRate = totalTasks === 0 ? 0 : Math.round((completedCount / totalTasks) * 100)
-    const openBugCount = allBugs.value.filter((b: any) => b.assignee?.id === m.id && b.status !== 'closed' && b.status !== 'verified').length
-    
-    return { 
-      id: m.id, 
-      name: m.realName, 
-      role: m.role,
-      taskCount,
-      pendingCount, 
-      inProgressCount, 
-      testingCount,
-      completedCount, 
-      totalTasks, 
-      completionRate, 
-      openBugCount 
-    }
-  }).sort((a: any, b: any) => b.completionRate - a.completionRate)
-})
-
-// ==================== Developer Shared ====================
-
-const myActiveTaskCount = computed(() =>
-  myTasks.value.filter((t: any) => t.status !== 'completed' && t.status !== 'closed').length
-)
-
-const inProgressCount = computed(() =>
-  myTasks.value.filter((t: any) => t.status === 'in_progress').length
-)
-
-const pendingTaskCount = computed(() =>
-  myTasks.value.filter((t: any) => t.status === 'pending').length
-)
-
-const myActiveBugCount = computed(() =>
-  myBugs.value.filter((b: any) => b.status !== 'closed' && b.status !== 'verified' && b.status !== 'fixed').length
-)
-
-const myCompletedTaskCount = computed(() =>
-  myTasks.value.filter((t: any) => t.status === 'completed').length
-)
-
-const myClosedTaskCount = computed(() =>
-  myTasks.value.filter((t: any) => t.status === 'closed').length
-)
-
-const myActiveTasksByPriority = computed(() => {
-  const tasks = myTasks.value.filter((t: any) => t.status !== 'completed' && t.status !== 'closed')
-  const map: Record<string, number> = { urgent: 0, high: 0, medium: 0, low: 0 }
-  tasks.forEach((t: any) => { map[t.priority] = (map[t.priority] || 0) + 1 })
-  return map
-})
-
-const myActiveBugsBySeverity = computed(() => {
-  const bugs = myBugs.value.filter((b: any) => b.status !== 'closed' && b.status !== 'verified' && b.status !== 'fixed')
-  const map: Record<string, number> = { critical: 0, high: 0, medium: 0, low: 0 }
-  bugs.forEach((b: any) => { map[b.severity] = (map[b.severity] || 0) + 1 })
-  return map
-})
-
-const myTasksByPriority = (p: string) => myActiveTasksByPriority.value[p] || 0
-const myBugsBySeverity = (s: string) => myActiveBugsBySeverity.value[s] || 0
+const myTasksByPriority = (p: string) => workloadByPriority.value[p] || 0
+const myBugsBySeverity = (s: string) => workloadBySeverity.value[s] || 0
 
 const getTaskStatusPercent = (priority: string) => {
   const total = myActiveTaskCount.value
   if (total === 0) return 0
-  return Math.round(((myActiveTasksByPriority.value[priority] || 0) / total) * 100)
+  return Math.round(((workloadByPriority.value[priority] || 0) / total) * 100)
 }
 
 const getBugSeverityPercent = (severity: string) => {
   const total = myActiveBugCount.value
   if (total === 0) return 0
-  return Math.round(((myActiveBugsBySeverity.value[severity] || 0) / total) * 100)
+  return Math.round(((workloadBySeverity.value[severity] || 0) / total) * 100)
 }
 
 // ==================== Shared Utility Functions ====================
-
-const getProjectProgress = (project: any) => {
-  const projectTasks = allTasks.value.filter((t: any) => t.project?.id === project.id)
-  if (projectTasks.length === 0) return 0
-  const completed = projectTasks.filter((t: any) => t.status === 'completed' || t.status === 'closed').length
-  return Math.round((completed / projectTasks.length) * 100)
-}
-const getUserTaskCount = (uid: number) => allTasks.value.filter((t: any) => t.assignees?.some((a: any) => a.id === uid) && t.status !== 'completed' && t.status !== 'closed').length
 
 const getHealthColor = (progress: number) => {
   if (progress >= 60) return 'health-green'
@@ -1112,18 +1075,62 @@ const viewAllLogs = () => {
 
 // ==================== Data Loading ====================
 
+const teamMemberPendingMap = computed(() => {
+  const map: Record<number, number> = {}
+  teamMembers.value.forEach((m: any) => {
+    map[m.id] = m.taskCount ?? m.pendingCount ?? 0
+  })
+  return map
+})
+
 onMounted(async () => {
   try {
-    const [projectsRes, tasksRes, bugsRes, usersRes, logsRes] = await Promise.all([
-      getProjects(), getTasks(), getBugs(), getUsers(), getOperationLogs({ limit: 10 })
-    ])
-    // 处理响应数据 - API 返回格式为 { data: [...] }，axios 响应在 res.data 中
-    allProjects.value = projectsRes.data?.data || projectsRes.data || []
-    allTasks.value = tasksRes.data?.data || tasksRes.data || []
-    allBugs.value = bugsRes.data?.data || bugsRes.data || []
-    allUsers.value = usersRes.data?.data || usersRes.data || []
-    recentLogs.value = logsRes.data?.data || logsRes.data || []
-    console.log('Recent logs loaded:', recentLogs.value)
+    const res = await getDashboard()
+    const data = res.data
+    dashboardData.value = data
+
+    if (userRole.value === 'admin') {
+      recentProjects.value = data.recentProjects || []
+      teamMembers.value = data.teamMembers || []
+      urgentBugs.value = data.urgentBugs || []
+      dueSoonTasks.value = data.dueSoonTasks || []
+      adminStats.value = [
+        { key: 'projects', label: '活跃项目', value: data.stats?.activeProjects || 0, icon: 'Folder', color: 'stat-blue', click: () => router.push('/projects') },
+        { key: 'tasks', label: '总任务', value: data.stats?.totalTasks || 0, icon: 'List', color: 'stat-green', click: () => router.push('/tasks') },
+        { key: 'bugs', label: '总缺陷', value: data.stats?.totalBugs || 0, icon: 'Warning', color: 'stat-orange', click: () => router.push('/bugs') },
+        { key: 'users', label: '团队成员', value: data.stats?.teamMemberCount || 0, icon: 'User', color: 'stat-cyan', click: () => router.push('/users') },
+        { key: 'pending', label: '待处理', value: data.stats?.pendingItems || 0, icon: 'Clock', color: 'stat-red', click: () => router.push('/tasks') },
+        { key: 'completed', label: '本周完成', value: data.stats?.completedThisWeek || 0, icon: 'CircleCheck', color: 'stat-purple', click: () => router.push('/tasks') },
+      ]
+    } else if (userRole.value === 'project_manager') {
+      const s = data.stats || {}
+      pmUnassignedTasks.value = s.unassignedTasks || 0
+      pmCloseableTasks.value = s.closeableTasks || 0
+      pmUnassignedBugs.value = s.unassignedBugs || 0
+      pmCloseableBugs.value = s.closeableBugs || 0
+      teamMembers.value = data.teamMembers || []
+      recentProjects.value = data.recentProjects || []
+      urgentBugs.value = data.urgentBugs || []
+      dueSoonTasks.value = data.dueSoonTasks || []
+    } else {
+      // developer/designer/artist/tester
+      myPendingTasks.value = data.myPendingTasks || []
+      myPendingBugs.value = data.myPendingBugs || []
+      const s = data.stats || {}
+      myActiveTaskCount.value = s.activeTaskCount || 0
+      inProgressCount.value = s.inProgressCount || 0
+      pendingTaskCount.value = s.pendingTaskCount || 0
+      myActiveBugCount.value = s.activeBugCount || 0
+      myCompletedTaskCount.value = s.completedTaskCount || 0
+      myClosedTaskCount.value = s.closedTaskCount || 0
+      taskCompletionRate.value = s.taskCompletionRate || 0
+      completedTasksThisWeek.value = s.completedTasksThisWeek || 0
+      totalTasksThisWeek.value = s.totalTasksThisWeek || 0
+      workloadByPriority.value = data.workloadByPriority || { urgent: 0, high: 0, medium: 0, low: 0 }
+      workloadBySeverity.value = data.workloadBySeverity || { critical: 0, high: 0, medium: 0, low: 0 }
+    }
+
+    recentLogs.value = data.recentLogs || []
   } catch (error) {
     console.error('Failed to load dashboard data:', error)
   }
@@ -2559,27 +2566,27 @@ onMounted(async () => {
   white-space: nowrap;
 }
 
-.efficiency-weekly-bar {
+.efficiency-weekly-progress {
+  flex: 1;
   display: flex;
-  gap: 4px;
-  flex: 1;
+  align-items: center;
+  gap: 10px;
 }
 
-.efficiency-weekly-cell {
+.efficiency-weekly-track {
   flex: 1;
-  height: 20px;
-  border-radius: 3px;
+  height: 8px;
+  border-radius: 4px;
   background: var(--nb-border-light);
-  transition: background 0.3s ease;
+  overflow: hidden;
 }
 
-.efficiency-weekly-cell.cell-active {
+.efficiency-weekly-fill {
+  height: 100%;
+  border-radius: 4px;
   background: var(--nb-success);
-}
-
-.efficiency-weekly-cell.cell-today {
-  background: var(--nb-primary-lighter);
-  border: 1px dashed var(--nb-primary);
+  transition: width 0.5s ease;
+  min-width: 0;
 }
 
 .efficiency-weekly-num {
