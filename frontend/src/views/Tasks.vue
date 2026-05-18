@@ -75,12 +75,9 @@
       </div>
 
       <el-table 
-        :data="treeTasks" 
+        :data="filteredTasks" 
         style="width: 100%"
         row-key="id"
-        :tree-props="{ children: 'subtasks', hasChildren: 'hasSubtasks' }"
-        :default-expand-all="true"
-        :indent="32"
         class="task-tree-table"
         @row-click="handleRowClick"
       >
@@ -187,6 +184,16 @@
           </template>
         </el-table-column>
       </el-table>
+      <el-pagination
+        v-if="total > 0"
+        v-model:current-page="currentPage"
+        v-model:page-size="pageSize"
+        :page-sizes="[20, 50, 100]"
+        :total="total"
+        layout="total, sizes, prev, pager, next"
+        background
+        style="margin-top: 16px; justify-content: flex-end; padding: 0 4px 4px;"
+      />
     </div>
 
     <el-dialog
@@ -350,7 +357,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getTasks, createTask, addSubtask, getTaskCategories } from '../api/task'
@@ -378,6 +385,16 @@ const filterCreator = ref<number | null>(null)
 const filterCategory = ref('')
 const parentTask = ref<any>(null)
 const activeTab = ref(userStore.isPM ? 'all' : 'assigned')
+const currentPage = ref(1)
+const pageSize = ref(20)
+const total = ref(0)
+const tabCounts = ref({ assigned: 0, created: 0, my: 0, all: 0 })
+
+// 筛选条件变化时重置到第一页并重新加载
+watch([activeTab, filterStatus, filterPriority, filterUser, filterCreator, filterCategory], () => {
+  currentPage.value = 1
+  loadTasks()
+})
 
 const taskForm = reactive({
   projectId: null as number | null,
@@ -408,76 +425,23 @@ const subtaskRules = {
 }
 
 const filteredTasks = computed(() => {
+  // assigned/created 已由后端处理，前端只需处理后端无法表达的 OR 逻辑（"我参与的"）
   const userId = userStore.user?.id
-  return tasks.value.filter(task => {
-    if (activeTab.value === 'my') {
-      const isAssignee = task.assignees?.some((a: any) => a.id === userId)
-      if (!isAssignee && task.creator?.id !== userId) return false
-    } else if (activeTab.value === 'created') {
-      if (task.creator?.id !== userId) return false
-    } else if (activeTab.value === 'assigned') {
-      if (!task.assignees?.some((a: any) => a.id === userId)) return false
-    }
-    if (filterStatus.value && task.status !== filterStatus.value) return false
-    if (filterPriority.value && task.priority !== filterPriority.value) return false
-    if (filterUser.value && !task.assignees?.some((a: any) => a.id === filterUser.value)) return false
-    if (filterCreator.value && task.creator?.id !== filterCreator.value) return false
-    if (filterCategory.value && task.category !== filterCategory.value) return false
-    return true
-  })
+  if (activeTab.value === 'my') {
+    return tasks.value.filter(task =>
+      task.assignees?.some((a: any) => a.id === userId) || task.creator?.id === userId
+    )
+  }
+  return tasks.value
 })
 
 const tabs = computed(() => {
-  const userId = userStore.user?.id
   return [
-    { key: 'assigned', label: '我负责的', count: tasks.value.filter((t: any) => t.assignees?.some((a: any) => a.id === userId)).length },
-    { key: 'created', label: '我创建的', count: tasks.value.filter((t: any) => t.creator?.id === userId).length },
-    { key: 'my', label: '我参与的', count: tasks.value.filter((t: any) => t.assignees?.some((a: any) => a.id === userId) || t.creator?.id === userId).length },
-    { key: 'all', label: '全部', count: tasks.value.length },
+    { key: 'assigned', label: '我负责的', count: tabCounts.value.assigned },
+    { key: 'created', label: '我创建的', count: tabCounts.value.created },
+    { key: 'my', label: '我参与的', count: tabCounts.value.my },
+    { key: 'all', label: '全部', count: tabCounts.value.all },
   ]
-})
-
-// 将任务列表转换为树形结构
-const treeTasks = computed(() => {
-  const taskMap = new Map<number, any>()
-  const roots: any[] = []
-  
-  // 首先创建所有任务的映射
-  filteredTasks.value.forEach(task => {
-    taskMap.set(task.id, { 
-      ...task, 
-      subtasks: [],
-      hasSubtasks: false
-    })
-  })
-  
-  // 构建树形结构
-  filteredTasks.value.forEach(task => {
-    const node = taskMap.get(task.id)
-    if (task.parentTask?.id && taskMap.has(task.parentTask.id)) {
-      const parent = taskMap.get(task.parentTask.id)
-      if (parent) {
-        parent.subtasks = parent.subtasks || []
-        parent.subtasks.push(node)
-        parent.hasSubtasks = true
-      }
-    } else {
-      roots.push(node)
-    }
-  })
-  
-  // 递归设置层级
-  const setLevels = (nodes: any[], level: number) => {
-    nodes.forEach(node => {
-      node.level = level
-      if (node.subtasks && node.subtasks.length > 0) {
-        setLevels(node.subtasks, level + 1)
-      }
-    })
-  }
-  setLevels(roots, 0)
-  
-  return roots
 })
 
 const getPriorityType = (priority: string) => {
@@ -549,8 +513,21 @@ const isOverdue = (dueDate: Date | string) => {
 
 const loadTasks = async () => {
   try {
-    const res = await getTasks()
-    tasks.value = res.data
+    const userId = userStore.user?.id
+    const params: any = { page: currentPage.value, pageSize: pageSize.value }
+    // 传筛选条件到后端做前置过滤（下拉筛选优先于 tab）
+    if (filterStatus.value) params.status = filterStatus.value
+    if (filterPriority.value) params.priority = filterPriority.value
+    if (filterCategory.value) params.category = filterCategory.value
+    if (filterUser.value) params.assigneeId = filterUser.value
+    else if (activeTab.value === 'assigned') params.assigneeId = userId
+    if (filterCreator.value) params.creatorId = filterCreator.value
+    else if (activeTab.value === 'created') params.creatorId = userId
+    // 'my'（OR 逻辑）和 'all' 不额外传参，由前端处理
+    const res = await getTasks(params)
+    tasks.value = res.data.data
+    total.value = res.data.total
+    if (res.data.tabs) tabCounts.value = res.data.tabs
   } catch (error) {
     ElMessage.error('加载任务列表失败')
   }

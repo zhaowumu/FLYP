@@ -110,7 +110,7 @@ export const bugController = {
 
   async getAllBugs(req: Request, res: Response) {
     try {
-      const { projectId, status, severity, assigneeId, reporterId, sortBy, sortOrder, category } = req.query;
+      const { projectId, status, severity, assigneeId, reporterId, sortBy, sortOrder, category, page, pageSize } = req.query;
       const where: any = {};
 
       if (projectId) where.project = { id: projectId };
@@ -123,6 +123,40 @@ export const bugController = {
       const validSortFields = ["createdAt", "updatedAt", "severity", "dueDate", "status", "title"];
       const sortField = sortBy && validSortFields.includes(sortBy as string) ? sortBy as string : "createdAt";
       const order = sortOrder === "ASC" ? "ASC" : "DESC";
+
+      // 分页支持
+      if (page) {
+        const take = Math.min(parseInt(pageSize as string) || 50, 200);
+        const skip = ((parseInt(page as string) || 1) - 1) * take;
+        const [bugs, total] = await bugRepository.findAndCount({
+          where,
+          relations: ["project", "project.managers", "assignee", "reporter"],
+          order: { [sortField]: order },
+          skip,
+          take,
+        });
+
+        // 计算各 tab 的计数（不受任何筛选条件影响，始终固定）
+        const uid = (req as any).user?.id;
+
+        const allTotal = await bugRepository.count();
+        let tabs = { assigned: 0, reported: 0, my: 0, all: allTotal };
+        if (uid) {
+          const [assigned, reported] = await Promise.all([
+            bugRepository.count({ where: { assignee: { id: uid } } }),
+            bugRepository.count({ where: { reporter: { id: uid } } }),
+          ]);
+          
+          tabs = { assigned, reported, my: await bugRepository
+            .createQueryBuilder("bug")
+            .leftJoin("bug.assignee", "tabAssignee")
+            .leftJoin("bug.reporter", "tabReporter")
+            .where("tabAssignee.id = :uid OR tabReporter.id = :uid", { uid })
+            .getCount(), all: allTotal };
+        }
+
+        return res.json({ data: bugs, total, page: parseInt(page as string), pageSize: take, tabs });
+      }
 
       const bugs = await bugRepository.find({
         where,

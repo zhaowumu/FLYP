@@ -133,6 +133,16 @@
           </template>
         </el-table-column>
       </el-table>
+      <el-pagination
+        v-if="total > 0"
+        v-model:current-page="currentPage"
+        v-model:page-size="pageSize"
+        :page-sizes="[20, 50, 100]"
+        :total="total"
+        layout="total, sizes, prev, pager, next"
+        background
+        style="margin-top: 16px; justify-content: flex-end; padding: 0 4px 4px;"
+      />
     </div>
 
     <el-dialog
@@ -232,7 +242,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getBugs, createBug, getBugCategories } from '../api/bug'
@@ -256,6 +266,16 @@ const filterUser = ref<number | null>(null)
 const filterReporter = ref<number | null>(null)
 const filterCategory = ref('')
 const activeTab = ref(userStore.isPM ? 'all' : 'assigned')
+const currentPage = ref(1)
+const pageSize = ref(20)
+const total = ref(0)
+const tabCounts = ref({ assigned: 0, reported: 0, my: 0, all: 0 })
+
+// 筛选条件变化时重置到第一页并重新加载
+watch([activeTab, filterStatus, filterSeverity, filterUser, filterReporter, filterCategory], () => {
+  currentPage.value = 1
+  loadBugs()
+})
 
 const bugForm = reactive({
   projectId: null as number | null,
@@ -274,31 +294,20 @@ const bugRules = {
 }
 
 const filteredBugs = computed(() => {
+  // assigned/reported 已由后端处理，前端只需处理后端无法表达的 OR 逻辑
   const userId = userStore.user?.id
-  return bugs.value.filter(bug => {
-    if (activeTab.value === 'my') {
-      if (bug.assignee?.id !== userId && bug.reporter?.id !== userId) return false
-    } else if (activeTab.value === 'reported') {
-      if (bug.reporter?.id !== userId) return false
-    } else if (activeTab.value === 'assigned') {
-      if (bug.assignee?.id !== userId) return false
-    }
-    if (filterStatus.value && bug.status !== filterStatus.value) return false
-    if (filterSeverity.value && bug.severity !== filterSeverity.value) return false
-    if (filterUser.value && bug.assignee?.id !== filterUser.value) return false
-    if (filterReporter.value && bug.reporter?.id !== filterReporter.value) return false
-    if (filterCategory.value && bug.category !== filterCategory.value) return false
-    return true
-  })
+  if (activeTab.value === 'my') {
+    return bugs.value.filter(bug => bug.assignee?.id === userId || bug.reporter?.id === userId)
+  }
+  return bugs.value
 })
 
 const tabs = computed(() => {
-  const userId = userStore.user?.id
   return [
-    { key: 'assigned', label: '我负责的', count: bugs.value.filter((b: any) => b.assignee?.id === userId).length },
-    { key: 'reported', label: '我报告的', count: bugs.value.filter((b: any) => b.reporter?.id === userId).length },
-    { key: 'my', label: '我参与的', count: bugs.value.filter((b: any) => b.assignee?.id === userId || b.reporter?.id === userId).length },
-    { key: 'all', label: '全部', count: bugs.value.length },
+    { key: 'assigned', label: '我负责的', count: tabCounts.value.assigned },
+    { key: 'reported', label: '我报告的', count: tabCounts.value.reported },
+    { key: 'my', label: '我参与的', count: tabCounts.value.my },
+    { key: 'all', label: '全部', count: tabCounts.value.all },
   ]
 })
 
@@ -383,8 +392,21 @@ const isOverdue = (dueDate: Date | string) => {
 
 const loadBugs = async () => {
   try {
-    const res = await getBugs()
-    bugs.value = res.data
+    const userId = userStore.user?.id
+    const params: any = { page: currentPage.value, pageSize: pageSize.value }
+    // 传筛选条件到后端做前置过滤（下拉筛选优先于 tab）
+    if (filterStatus.value) params.status = filterStatus.value
+    if (filterSeverity.value) params.severity = filterSeverity.value
+    if (filterCategory.value) params.category = filterCategory.value
+    if (filterUser.value) params.assigneeId = filterUser.value
+    else if (activeTab.value === 'assigned') params.assigneeId = userId
+    if (filterReporter.value) params.reporterId = filterReporter.value
+    else if (activeTab.value === 'reported') params.reporterId = userId
+    // 'my'（OR 逻辑）和 'all' 不额外传参，由前端处理
+    const res = await getBugs(params)
+    bugs.value = res.data.data
+    total.value = res.data.total
+    if (res.data.tabs) tabCounts.value = res.data.tabs
   } catch (error) {
     ElMessage.error('加载缺陷列表失败')
   }

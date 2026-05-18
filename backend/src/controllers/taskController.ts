@@ -125,7 +125,7 @@ export const taskController = {
 
   async getAllTasks(req: Request, res: Response) {
     try {
-      const { projectId, status, assigneeId, creatorId, priority, sortBy, sortOrder, category } = req.query;
+      const { projectId, status, assigneeId, creatorId, priority, sortBy, sortOrder, category, page, pageSize } = req.query;
       const where: any = {};
 
       if (projectId) where.project = { id: projectId };
@@ -137,10 +137,15 @@ export const taskController = {
       const validSortFields = ["createdAt", "updatedAt", "priority", "dueDate", "status", "title"];
       const sortField = sortBy && validSortFields.includes(sortBy as string) ? sortBy as string : "createdAt";
       const order = sortOrder === "ASC" ? "ASC" : "DESC";
+      
+      // 分页参数
+      const take = page ? Math.min(parseInt(pageSize as string) || 50, 200) : undefined;
+      const currentPage = page ? parseInt(page as string) || 1 : undefined;
+      const skip = currentPage ? (currentPage - 1) * (take || 50) : undefined;
 
       // 如果按 assigneeId 过滤，需要通过关联表查询
       if (assigneeId) {
-        const tasks = await taskRepository
+        const query = taskRepository
           .createQueryBuilder("task")
           .leftJoinAndSelect("task.project", "project")
           .leftJoinAndSelect("project.managers", "project_manager")
@@ -154,9 +159,62 @@ export const taskController = {
           .andWhere(status ? "task.status = :status" : "1=1", { status })
           .andWhere(priority ? "task.priority = :priority" : "1=1", { priority })
           .andWhere(category ? "task.category = :category" : "1=1", { category })
-          .orderBy(`task.${sortField}`, order)
-          .getMany();
+          .orderBy(`task.${sortField}`, order);
+        
+        if (page) {
+          const [tasks, total] = await query.skip(skip).take(take).getManyAndCount();
+          // 计算 tab 计数（不受任何筛选影响，始终固定）
+          const uid = (req as any).user?.id;
+          const allTotal = await taskRepository.count();
+          let tabs = { assigned: 0, created: 0, my: 0, all: allTotal };
+          if (uid) {
+            const [assigned, created] = await Promise.all([
+              taskRepository.createQueryBuilder("task")
+                .leftJoin("task.assignees", "tabA")
+                .where("tabA.id = :uid", { uid })
+                .getCount(),
+              taskRepository.count({ where: { creator: { id: uid } } }),
+            ]);
+            const myCount = await taskRepository.createQueryBuilder("task")
+              .leftJoin("task.assignees", "tabM")
+              .where("tabM.id = :uid OR task.creatorId = :uid", { uid })
+              .getCount();
+            tabs = { assigned, created, my: myCount, all: allTotal };
+          }
+          return res.json({ data: tasks, total, page: currentPage, pageSize: take, tabs });
+        }
+        
+        const tasks = await query.getMany();
         return res.json(tasks);
+      }
+
+      if (page) {
+        const [tasks, total] = await taskRepository.findAndCount({
+          where,
+          relations: ["project", "project.managers", "assignees", "creator", "parentTask", "subtasks"],
+          order: { [sortField]: order },
+          skip,
+          take,
+        });
+        // 计算 tab 计数（不受任何筛选影响，始终固定）
+        const uid = (req as any).user?.id;
+        const allTotal = await taskRepository.count();
+        let tabs = { assigned: 0, created: 0, my: 0, all: allTotal };
+        if (uid) {
+          const [assigned, created] = await Promise.all([
+            taskRepository.createQueryBuilder("task")
+              .leftJoin("task.assignees", "tabA")
+              .where("tabA.id = :uid", { uid })
+              .getCount(),
+            taskRepository.count({ where: { creator: { id: uid } } }),
+          ]);
+          const myCount = await taskRepository.createQueryBuilder("task")
+            .leftJoin("task.assignees", "tabM")
+            .where("tabM.id = :uid OR task.creatorId = :uid", { uid })
+            .getCount();
+          tabs = { assigned, created, my: myCount, all: allTotal };
+        }
+        return res.json({ data: tasks, total, page: currentPage, pageSize: take, tabs });
       }
 
       const tasks = await taskRepository.find({
