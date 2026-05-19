@@ -359,7 +359,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, watch, onMounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted, onActivated } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getTasks, createTask, addSubtask, getTaskCategories } from '../api/task'
@@ -367,6 +367,8 @@ import { getProjects } from '../api/project'
 import { getUsers } from '../api/user'
 import { useUserStore } from '../stores/user'
 import RichEditor from '../components/RichEditor.vue'
+
+defineOptions({ name: 'Tasks' })
 
 const router = useRouter()
 const route = useRoute()
@@ -391,6 +393,8 @@ const currentPage = ref(1)
 const pageSize = ref(20)
 const total = ref(0)
 const tabCounts = ref({ assigned: 0, created: 0, my: 0, all: 0 })
+const lastLoadTime = ref(0)
+const STALE_TTL = 60_000 // 数据缓存60秒
 
 // 筛选条件变化时重置到第一页并重新加载
 watch([activeTab, filterStatus, filterPriority, filterUser, filterCreator, filterCategory], () => {
@@ -427,13 +431,7 @@ const subtaskRules = {
 }
 
 const filteredTasks = computed(() => {
-  // assigned/created 已由后端处理，前端只需处理后端无法表达的 OR 逻辑（"我参与的"）
-  const userId = userStore.user?.id
-  if (activeTab.value === 'my') {
-    return tasks.value.filter(task =>
-      task.assignees?.some((a: any) => a.id === userId) || task.creator?.id === userId
-    )
-  }
+  // 所有 tab 过滤逻辑均已由后端处理，直接返回数据
   return tasks.value
 })
 
@@ -525,11 +523,15 @@ const loadTasks = async () => {
     else if (activeTab.value === 'assigned') params.assigneeId = userId
     if (filterCreator.value) params.creatorId = filterCreator.value
     else if (activeTab.value === 'created') params.creatorId = userId
-    // 'my'（OR 逻辑）和 'all' 不额外传参，由前端处理
+    // 'my' 传 myUserId 由后端做 OR 查询，不再前端过滤
+    if (activeTab.value === 'my' && !filterUser.value && !filterCreator.value) {
+      params.myUserId = userId
+    }
     const res = await getTasks(params)
     tasks.value = res.data.data
     total.value = res.data.total
     if (res.data.tabs) tabCounts.value = res.data.tabs
+    lastLoadTime.value = Date.now()
   } catch (error) {
     ElMessage.error('加载任务列表失败')
   }
@@ -647,14 +649,19 @@ const submitTask = async () => {
 }
 
 onMounted(() => {
-  loadTasks()
-  loadProjects()
-  loadUsers()
-  loadCategories()
-  // 支持从路由 query 传入 assigneeId 进行过滤
+  // 检查路由 query 传入 assigneeId 进行过滤（在加载前设置，避免 watch 触发两次）
   const queryAssigneeId = route.query.assigneeId
   if (queryAssigneeId) {
     filterUser.value = Number(queryAssigneeId)
+  }
+  // 并行加载所有数据
+  Promise.all([loadTasks(), loadProjects(), loadUsers(), loadCategories()])
+})
+
+// keep-alive 激活时，仅当数据过期才刷新列表（辅助数据不频繁变化，不刷新）
+onActivated(() => {
+  if (lastLoadTime.value && Date.now() - lastLoadTime.value > STALE_TTL) {
+    loadTasks()
   }
 })
 </script>

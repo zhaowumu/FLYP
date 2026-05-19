@@ -110,7 +110,7 @@ export const bugController = {
 
   async getAllBugs(req: Request, res: Response) {
     try {
-      const { projectId, status, severity, assigneeId, reporterId, sortBy, sortOrder, category, page, pageSize } = req.query;
+      const { projectId, status, severity, assigneeId, reporterId, sortBy, sortOrder, category, page, pageSize, myUserId } = req.query;
       const where: any = {};
 
       if (projectId) where.project = { id: projectId };
@@ -124,38 +124,86 @@ export const bugController = {
       const sortField = sortBy && validSortFields.includes(sortBy as string) ? sortBy as string : "createdAt";
       const order = sortOrder === "ASC" ? "ASC" : "DESC";
 
+      // "我参与的"：OR 逻辑（我是负责人 OR 我是报告人），需用 QueryBuilder
+      if (myUserId) {
+        const take = Math.min(parseInt(pageSize as string) || 50, 200);
+        const currentPage = parseInt(page as string) || 1;
+        const skip = (currentPage - 1) * take;
+
+        const query = bugRepository
+          .createQueryBuilder("bug")
+          .leftJoinAndSelect("bug.assignee", "assignee")
+          .leftJoinAndSelect("bug.reporter", "reporter")
+          .where("bug.assigneeId = :myUid OR bug.reporterId = :myUid", { myUid: myUserId })
+          .andWhere(projectId ? "bug.projectId = :pid" : "1=1", { pid: projectId })
+          .andWhere(status ? "bug.status = :status" : "1=1", { status })
+          .andWhere(severity ? "bug.severity = :severity" : "1=1", { severity })
+          .andWhere(category ? "bug.category = :category" : "1=1", { category })
+          .orderBy(`bug.${sortField}`, order);
+
+        if (page) {
+          const [bugs, total] = await query.skip(skip).take(take).getManyAndCount();
+          const uid = (req as any).user?.id;
+          let tabs;
+          if (currentPage === 1) {
+            const allTotal = await bugRepository.count();
+            tabs = { assigned: 0, reported: 0, my: 0, all: allTotal };
+            if (uid) {
+              const [assigned, reported] = await Promise.all([
+                bugRepository.count({ where: { assignee: { id: uid } } }),
+                bugRepository.count({ where: { reporter: { id: uid } } }),
+              ]);
+              const myCount = await bugRepository
+                .createQueryBuilder("bug")
+                .leftJoin("bug.assignee", "tabAssignee")
+                .leftJoin("bug.reporter", "tabReporter")
+                .where("tabAssignee.id = :uid OR tabReporter.id = :uid", { uid })
+                .getCount();
+              tabs = { assigned, reported, my: myCount, all: allTotal };
+            }
+          }
+          return res.json({ data: bugs, total, page: currentPage, pageSize: take, tabs });
+        }
+
+        const bugs = await query.getMany();
+        return res.json(bugs);
+      }
+
       // 分页支持
       if (page) {
         const take = Math.min(parseInt(pageSize as string) || 50, 200);
-        const skip = ((parseInt(page as string) || 1) - 1) * take;
+        const currentPage = parseInt(page as string) || 1;
+        const skip = (currentPage - 1) * take;
         const [bugs, total] = await bugRepository.findAndCount({
           where,
-          relations: ["project", "project.managers", "assignee", "reporter"],
+          relations: ["assignee", "reporter"],
           order: { [sortField]: order },
           skip,
           take,
         });
 
-        // 计算各 tab 的计数（不受任何筛选条件影响，始终固定）
+        // 首次加载才计算 tab 计数，翻页时复用
         const uid = (req as any).user?.id;
-
-        const allTotal = await bugRepository.count();
-        let tabs = { assigned: 0, reported: 0, my: 0, all: allTotal };
-        if (uid) {
-          const [assigned, reported] = await Promise.all([
-            bugRepository.count({ where: { assignee: { id: uid } } }),
-            bugRepository.count({ where: { reporter: { id: uid } } }),
-          ]);
-          
-          tabs = { assigned, reported, my: await bugRepository
-            .createQueryBuilder("bug")
-            .leftJoin("bug.assignee", "tabAssignee")
-            .leftJoin("bug.reporter", "tabReporter")
-            .where("tabAssignee.id = :uid OR tabReporter.id = :uid", { uid })
-            .getCount(), all: allTotal };
+        let tabs;
+        if (currentPage === 1) {
+          const allTotal = await bugRepository.count();
+          tabs = { assigned: 0, reported: 0, my: 0, all: allTotal };
+          if (uid) {
+            const [assigned, reported] = await Promise.all([
+              bugRepository.count({ where: { assignee: { id: uid } } }),
+              bugRepository.count({ where: { reporter: { id: uid } } }),
+            ]);
+            
+            tabs = { assigned, reported, my: await bugRepository
+              .createQueryBuilder("bug")
+              .leftJoin("bug.assignee", "tabAssignee")
+              .leftJoin("bug.reporter", "tabReporter")
+              .where("tabAssignee.id = :uid OR tabReporter.id = :uid", { uid })
+              .getCount(), all: allTotal };
+          }
         }
 
-        return res.json({ data: bugs, total, page: parseInt(page as string), pageSize: take, tabs });
+        return res.json({ data: bugs, total, page: currentPage, pageSize: take, tabs });
       }
 
       const bugs = await bugRepository.find({

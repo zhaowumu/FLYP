@@ -1,8 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, Index } from "typeorm";
 import { Project } from "./Project";
 import { User } from "./User";
 
 @Entity()
+@Index(["status"])
+@Index(["severity"])
+@Index(["category"])
+@Index(["dueDate"])
 export class Bug {
   @PrimaryGeneratedColumn()
   id: number;
@@ -23,12 +27,15 @@ export class Bug {
   reproduceSteps: string;
 
   @ManyToOne(() => Project, project => project.bugs)
+  @Index()
   project: Project;
 
   @ManyToOne(() => User, user => user.assignedBugs, { nullable: true })
+  @Index()
   assignee: User;
 
   @ManyToOne(() => User, user => user.reportedBugs)
+  @Index()
   reporter: User;
 
   @Column({ type: "varchar", nullable: true })

@@ -1,9 +1,13 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, ManyToMany, JoinTable } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, ManyToMany, JoinTable, Index } from "typeorm";
 import { Project } from "./Project";
 import { User } from "./User";
 import { OperationLog } from "./OperationLog";
 
 @Entity()
+@Index(["status"])
+@Index(["priority"])
+@Index(["category"])
+@Index(["dueDate"])
 export class Task {
   @PrimaryGeneratedColumn()
   id: number;
@@ -27,6 +31,7 @@ export class Task {
   dueDate: Date;
 
   @ManyToOne(() => Project, project => project.tasks)
+  @Index()
   project: Project;
 
   @ManyToMany(() => User, user => user.assignedTasks)
@@ -34,6 +39,7 @@ export class Task {
   assignees: User[];
 
   @ManyToOne(() => User, user => user.createdTasks)
+  @Index()
   creator: User;
 
   @ManyToOne(() => Task, task => task.subtasks, { nullable: true })
