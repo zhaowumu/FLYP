@@ -141,6 +141,8 @@
         :total="total"
         layout="total, sizes, prev, pager, next"
         background
+        @current-change="loadBugs"
+        @size-change="loadBugs"
         style="margin-top: 16px; justify-content: flex-end; padding: 0 4px 4px;"
       />
     </div>
