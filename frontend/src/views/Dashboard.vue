@@ -861,7 +861,7 @@ const getHealthColor = (progress: number) => {
 }
 
 const getRoleText = (role: string) => {
-  const map: Record<string, string> = { admin: '管理员', project_manager: '项目经理', developer: '程序', artist: '美术', designer: '策划', tester: '测试' }
+  const map: Record<string, string> = { admin: '管理员', project_manager: '项目经理', developer: '程序', designer: '策划', artist: '美术', model: '模型', vfx: '特效', animation: '动画', concept_art: '原画', ui: 'UI', level_design: '地编', sound: '音效', tech_art: '技美', tester: '测试', operations: '运营' }
   return map[role] || role
 }
 
@@ -872,7 +872,16 @@ const getRoleGradient = (role: string) => {
     developer: 'var(--nb-gradient-primary)',
     artist: 'var(--nb-gradient-artist)',
     designer: 'var(--nb-gradient-designer)',
-    tester: 'var(--nb-gradient-tester)'
+    model: 'linear-gradient(135deg, #8b5cf6, #6366f1)',
+    vfx: 'linear-gradient(135deg, #f59e0b, #ef4444)',
+    animation: 'linear-gradient(135deg, #06b6d4, #3b82f6)',
+    concept_art: 'linear-gradient(135deg, #ec4899, #a855f7)',
+    ui: 'linear-gradient(135deg, #10b981, #06b6d4)',
+    level_design: 'linear-gradient(135deg, #84cc16, #22c55e)',
+    sound: 'linear-gradient(135deg, #f97316, #eab308)',
+    tech_art: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+    tester: 'var(--nb-gradient-tester)',
+    operations: 'linear-gradient(135deg, #14b8a6, #0ea5e9)'
   }
   return map[role] || 'var(--nb-gradient-info)'
 }
@@ -882,7 +891,16 @@ const getRoleBadgeClass = (role: string) => {
     developer: 'badge-dev',
     artist: 'badge-artist',
     designer: 'badge-designer',
+    model: 'badge-artist',
+    vfx: 'badge-artist',
+    animation: 'badge-artist',
+    concept_art: 'badge-artist',
+    ui: 'badge-designer',
+    level_design: 'badge-designer',
+    sound: 'badge-artist',
+    tech_art: 'badge-dev',
     tester: 'badge-tester',
+    operations: 'badge-designer',
     project_manager: 'badge-pm'
   }
   return map[role] || ''

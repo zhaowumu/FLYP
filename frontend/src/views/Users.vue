@@ -91,7 +91,16 @@
             <el-option label="程序" value="developer" />
             <el-option label="策划" value="designer" />
             <el-option label="美术" value="artist" />
+            <el-option label="模型" value="model" />
+            <el-option label="特效" value="vfx" />
+            <el-option label="动画" value="animation" />
+            <el-option label="原画" value="concept_art" />
+            <el-option label="UI" value="ui" />
+            <el-option label="地编" value="level_design" />
+            <el-option label="音效" value="sound" />
+            <el-option label="技美" value="tech_art" />
             <el-option label="测试" value="tester" />
+            <el-option label="运营" value="operations" />
           </el-select>
         </el-form-item>
       </el-form>
@@ -150,7 +159,16 @@ const getRoleText = (role: string) => {
     developer: '程序',
     designer: '策划',
     artist: '美术',
-    tester: '测试'
+    model: '模型',
+    vfx: '特效',
+    animation: '动画',
+    concept_art: '原画',
+    ui: 'UI',
+    level_design: '地编',
+    sound: '音效',
+    tech_art: '技美',
+    tester: '测试',
+    operations: '运营'
   }
   return map[role] || role
 }

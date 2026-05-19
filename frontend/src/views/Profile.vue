@@ -3,7 +3,7 @@
     <div class="page-header">
       <div class="header-left">
         <h2>个人设置</h2>
-        <p>修改头像、姓名和密码</p>
+        <p>修改头像和密码</p>
       </div>
     </div>
 
@@ -38,28 +38,21 @@
 
       <!-- 右侧：表单区域 -->
       <div class="profile-main">
-        <!-- 基本信息 -->
+        <!-- 基本信息（只读展示） -->
         <div class="content-card">
           <div class="section-title">基本信息</div>
-          <el-form
-            ref="profileFormRef"
-            :model="profileForm"
-            :rules="profileRules"
-            label-width="100px"
-            class="profile-form"
-          >
+          <el-form label-width="100px" class="profile-form">
             <el-form-item label="用户名">
-              <el-input v-model="username" disabled class="disabled-input" />
+              <el-input :model-value="username" disabled class="disabled-input" />
               <span class="form-tip">用户名不可修改</span>
             </el-form-item>
-            <el-form-item label="姓名" prop="realName">
-              <el-input v-model="profileForm.realName" placeholder="请输入姓名" maxlength="20" show-word-limit />
+            <el-form-item label="姓名">
+              <el-input :model-value="userStore.user?.realName || ''" disabled class="disabled-input" />
+              <span class="form-tip">仅管理员可修改</span>
             </el-form-item>
-            <el-form-item label="手机号" prop="phone">
-              <el-input v-model="profileForm.phone" placeholder="请输入手机号" maxlength="11" />
-            </el-form-item>
-            <el-form-item>
-              <el-button type="primary" @click="saveProfile" :loading="savingProfile">保存修改</el-button>
+            <el-form-item label="手机号">
+              <el-input :model-value="userStore.user?.phone || ''" disabled class="disabled-input" />
+              <span class="form-tip">仅管理员可修改</span>
             </el-form-item>
           </el-form>
         </div>
@@ -117,9 +110,7 @@ import { changePassword as changePasswordApi, uploadAvatar as uploadAvatarApi } 
 
 const userStore = useUserStore()
 const fileInputRef = ref<HTMLInputElement>()
-const profileFormRef = ref()
 const passwordFormRef = ref()
-const savingProfile = ref(false)
 const changingPassword = ref(false)
 
 const username = computed(() => userStore.user?.username || '')
@@ -131,28 +122,22 @@ const roleText = computed(() => {
     developer: '程序',
     designer: '策划',
     artist: '美术',
+    model: '模型',
+    vfx: '特效',
+    animation: '动画',
+    concept_art: '原画',
+    ui: 'UI',
+    level_design: '地编',
+    sound: '音效',
+    tech_art: '技美',
     tester: '测试',
+    operations: '运营',
   }
   return map[userStore.user?.role || ''] || userStore.user?.role || ''
 })
 
 // 头像预览
 const avatarPreview = ref<string | null>(userStore.user?.avatar || null)
-
-const profileForm = reactive({
-  realName: userStore.user?.realName || '',
-  phone: userStore.user?.phone || '',
-})
-
-const profileRules = {
-  realName: [
-    { required: true, message: '请输入姓名', trigger: 'blur' },
-    { max: 20, message: '姓名不能超过20个字符', trigger: 'blur' },
-  ],
-  phone: [
-    { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' },
-  ],
-}
 
 const passwordForm = reactive({
   currentPassword: '',
@@ -225,24 +210,6 @@ async function handleFileChange(event: Event) {
   target.value = ''
 }
 
-// 保存姓名
-async function saveProfile() {
-  if (!profileFormRef.value) return
-  await profileFormRef.value.validate(async (valid: boolean) => {
-    if (!valid) return
-
-    savingProfile.value = true
-    try {
-      await userStore.updateProfileAction({ realName: profileForm.realName, phone: profileForm.phone })
-      ElMessage.success('姓名已更新')
-    } catch (err: any) {
-      ElMessage.error(err?.response?.data?.error || '保存失败')
-    } finally {
-      savingProfile.value = false
-    }
-  })
-}
-
 // 修改密码
 async function changeUserPassword() {
   if (!passwordFormRef.value) return
@@ -268,9 +235,6 @@ async function changeUserPassword() {
 }
 
 onMounted(() => {
-  // 初始化表单数据
-  profileForm.realName = userStore.user?.realName || ''
-  profileForm.phone = userStore.user?.phone || ''
   avatarPreview.value = userStore.user?.avatar || null
 })
 </script>

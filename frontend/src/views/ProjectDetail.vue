@@ -246,8 +246,19 @@ const getRoleText = (role: string) => {
   const map: Record<string, string> = {
     admin: '管理员',
     project_manager: '项目经理',
-    developer: '开发人员',
-    tester: '测试人员'
+    developer: '程序',
+    designer: '策划',
+    artist: '美术',
+    model: '模型',
+    vfx: '特效',
+    animation: '动画',
+    concept_art: '原画',
+    ui: 'UI',
+    level_design: '地编',
+    sound: '音效',
+    tech_art: '技美',
+    tester: '测试',
+    operations: '运营'
   }
   return map[role] || role
 }

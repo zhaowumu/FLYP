@@ -29,8 +29,8 @@ export const getCurrentUser = () => {
   return api.get('/users/me')
 }
 
-// 更新个人资料（姓名、头像、手机号）
-export const updateProfile = (data: { realName?: string; avatar?: string; phone?: string }) => {
+// 更新个人资料（头像，姓名/手机号仅管理员可修改）
+export const updateProfile = (data: { avatar?: string }) => {
   return api.put('/users/profile', data)
 }
 

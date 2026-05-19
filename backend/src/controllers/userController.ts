@@ -247,12 +247,10 @@ export const userController = {
   async updateProfile(req: Request, res: Response) {
     try {
       const userId = (req as any).user.id;
-      const { realName, avatar, phone } = req.body;
+      const { avatar } = req.body;
 
       const updateData: any = {};
-      if (realName !== undefined) updateData.realName = realName;
       if (avatar !== undefined) updateData.avatar = avatar;
-      if (phone !== undefined) updateData.phone = phone;
 
       if (Object.keys(updateData).length === 0) {
         return res.status(400).json({ error: "没有需要更新的字段" });

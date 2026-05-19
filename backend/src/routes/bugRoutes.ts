@@ -2,7 +2,7 @@ import { Router } from "express";
 import { bugController } from "../controllers/bugController";
 import { roleMiddleware } from "../middleware/authMiddleware";
 
-const ALL_ROLES = ["admin", "project_manager", "developer", "artist", "designer", "tester"];
+const ALL_ROLES = ["admin", "project_manager", "developer", "designer", "artist", "model", "vfx", "animation", "concept_art", "ui", "level_design", "sound", "tech_art", "tester", "operations"];
 const router = Router();
 
 router.post("/", roleMiddleware(ALL_ROLES), bugController.createBug);
