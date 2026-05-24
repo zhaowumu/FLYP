@@ -18,6 +18,13 @@
           <path d="M20 44L32 16L44 44H20Z" stroke="rgba(255,255,255,0.1)" stroke-width="3" fill="none" stroke-linejoin="round"/>
           <circle cx="32" cy="36" r="4" fill="rgba(255,255,255,0.1)"/>
         </svg>
+        <svg class="floating-icon float-5" viewBox="0 0 64 64" fill="none">
+          <circle cx="32" cy="32" r="10" stroke="rgba(255,255,255,0.08)" stroke-width="2" fill="none"/>
+          <circle cx="32" cy="32" r="4" fill="rgba(255,255,255,0.06)"/>
+        </svg>
+        <svg class="floating-icon float-6" viewBox="0 0 64 64" fill="none">
+          <path d="M32 4L36 24H56L40 36L46 56L32 44L18 56L24 36L8 24H28L32 4Z" fill="rgba(255,255,255,0.05)"/>
+        </svg>
       </div>
       <div class="banner-content">
         <div class="banner-left">
@@ -1278,37 +1285,208 @@ onMounted(async () => {
   margin-bottom: var(--nb-space-6);
   border-radius: var(--nb-radius-xl);
   overflow: hidden;
-  background: var(--nb-gradient-banner);
   color: white;
   animation: fadeInUp 0.4s ease both;
 }
 
-.banner.role-admin { background: var(--nb-gradient-banner-admin); }
-.banner.role-pm { background: var(--nb-gradient-banner-pm); }
-.banner.role-dev { background: var(--nb-gradient-banner-dev); }
+/* 七彩渐变基底（彩虹色 + 动态呼吸） */
+.banner {
+  background: linear-gradient(135deg,
+    #6366f1 0%, #818cf8 12%, #a78bfa 24%,
+    #c084fc 36%, #f472b6 48%, #fb923c 60%,
+    #facc15 72%, #4ade80 84%, #38bdf8 100%
+  );
+  background-size: 400% 400%;
+  animation: rainbowShift 12s ease-in-out infinite;
+}
 
+.banner.role-admin {
+  background: linear-gradient(135deg,
+    #4f46e5 0%, #6366f1 15%, #818cf8 30%,
+    #a78bfa 45%, #f472b6 60%, #f59e0b 75%,
+    #fbbf24 100%
+  );
+  background-size: 400% 400%;
+  animation: rainbowShift 12s ease-in-out infinite;
+}
+
+.banner.role-pm {
+  background: linear-gradient(135deg,
+    #db2777 0%, #ec4899 15%, #f472b6 30%,
+    #f59e0b 45%, #facc15 60%, #4ade80 75%,
+    #38bdf8 100%
+  );
+  background-size: 400% 400%;
+  animation: rainbowShift 12s ease-in-out infinite;
+}
+
+.banner.role-dev {
+  background: linear-gradient(135deg,
+    #64748b 0%, #94a3b8 12%, #818cf8 24%,
+    #a78bfa 36%, #c084fc 48%, #f472b6 60%,
+    #fbbf24 72%, #4ade80 84%, #38bdf8 100%
+  );
+  background-size: 400% 400%;
+  animation: rainbowShift 14s ease-in-out infinite;
+}
+
+/* 背景粒子层 */
 .banner-bg-pattern {
   position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
+  inset: 0;
   pointer-events: none;
   overflow: hidden;
 }
 
+/* 星星粒子 — 大量 + 彩色 */
+.banner-bg-pattern::before {
+  content: '';
+  position: absolute;
+  inset: -80%;
+  background-image:
+    /* 大星星 */
+    radial-gradient(3px 3px at 8% 12%, rgba(255,255,255,0.9) 0%, transparent 100%),
+    radial-gradient(2.5px 2.5px at 22% 55%, rgba(255,255,200,0.8) 0%, transparent 100%),
+    radial-gradient(4px 4px at 15% 75%, rgba(255,255,255,0.85) 0%, transparent 100%),
+    radial-gradient(2px 2px at 35% 18%, rgba(255,255,200,0.7) 0%, transparent 100%),
+    radial-gradient(3px 3px at 48% 88%, rgba(255,255,255,0.9) 0%, transparent 100%),
+    radial-gradient(2.5px 2.5px at 60% 25%, rgba(200,255,255,0.75) 0%, transparent 100%),
+    radial-gradient(3px 3px at 72% 60%, rgba(255,255,255,0.85) 0%, transparent 100%),
+    radial-gradient(2px 2px at 85% 10%, rgba(255,255,200,0.7) 0%, transparent 100%),
+    radial-gradient(4px 4px at 92% 45%, rgba(255,255,255,0.9) 0%, transparent 100%),
+    radial-gradient(3px 3px at 5% 90%, rgba(200,255,255,0.7) 0%, transparent 100%),
+    radial-gradient(2px 2px at 40% 5%, rgba(255,200,255,0.6) 0%, transparent 100%),
+    radial-gradient(3px 3px at 55% 95%, rgba(255,255,255,0.8) 0%, transparent 100%),
+    radial-gradient(2.5px 2.5px at 78% 30%, rgba(255,220,200,0.7) 0%, transparent 100%),
+    radial-gradient(2px 2px at 25% 40%, rgba(200,255,200,0.6) 0%, transparent 100%),
+    radial-gradient(3px 3px at 65% 75%, rgba(255,255,255,0.85) 0%, transparent 100%),
+    /* 中星星 */
+    radial-gradient(2px 2px at 12% 28%, rgba(255,255,255,0.6) 0%, transparent 100%),
+    radial-gradient(2px 2px at 18% 65%, rgba(255,255,200,0.5) 0%, transparent 100%),
+    radial-gradient(2px 2px at 28% 8%, rgba(255,255,255,0.65) 0%, transparent 100%),
+    radial-gradient(2px 2px at 42% 72%, rgba(200,255,255,0.5) 0%, transparent 100%),
+    radial-gradient(2px 2px at 50% 38%, rgba(255,255,255,0.6) 0%, transparent 100%),
+    radial-gradient(2px 2px at 68% 15%, rgba(255,200,255,0.5) 0%, transparent 100%),
+    radial-gradient(2px 2px at 75% 82%, rgba(255,255,200,0.55) 0%, transparent 100%),
+    radial-gradient(2px 2px at 88% 52%, rgba(255,255,255,0.6) 0%, transparent 100%),
+    radial-gradient(2px 2px at 95% 68%, rgba(200,255,200,0.5) 0%, transparent 100%),
+    radial-gradient(2px 2px at 32% 48%, rgba(255,220,255,0.5) 0%, transparent 100%),
+    /* 小星星 */
+    radial-gradient(1.5px 1.5px at 4% 35%, rgba(255,255,255,0.4) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 14% 4%, rgba(255,255,255,0.35) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 20% 82%, rgba(255,255,200,0.4) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 30% 22%, rgba(255,255,255,0.45) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 36% 60%, rgba(200,255,255,0.35) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 44% 28%, rgba(255,255,255,0.4) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 52% 48%, rgba(255,200,255,0.35) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 58% 8%, rgba(255,255,255,0.4) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 63% 35%, rgba(255,255,200,0.35) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 70% 68%, rgba(255,255,255,0.4) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 76% 5%, rgba(200,255,255,0.35) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 82% 45%, rgba(255,255,255,0.45) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 90% 78%, rgba(255,200,200,0.35) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 96% 22%, rgba(255,255,255,0.4) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 45% 68%, rgba(200,255,200,0.35) 0%, transparent 100%);
+  animation: starDrift 10s linear infinite;
+}
+
+@keyframes rainbowShift {
+  0% { background-position: 0% 50%; }
+  12.5% { background-position: 25% 0%; }
+  25% { background-position: 50% 25%; }
+  37.5% { background-position: 75% 50%; }
+  50% { background-position: 100% 75%; }
+  62.5% { background-position: 75% 50%; }
+  75% { background-position: 50% 25%; }
+  87.5% { background-position: 25% 0%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* 光线扫过 */
+.banner-bg-pattern::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
+  transform: skewX(-20deg);
+  animation: lightSweep 8s ease-in-out infinite;
+}
+
+/* 浮动图标 — 更多样 */
 .floating-icon {
   position: absolute;
-  opacity: 0.6;
-  animation: float 6s ease-in-out infinite;
+  opacity: 0.4;
   filter: blur(0.5px);
 }
 
-.float-1 { top: 10%; left: 5%; width: 48px; height: 48px; animation-delay: 0s; animation-duration: 6s; }
-.float-2 { top: 60%; left: 15%; width: 36px; height: 36px; animation-delay: 0.8s; animation-duration: 8s; opacity: 0.4; }
-.float-3 { top: 20%; right: 25%; width: 40px; height: 40px; animation-delay: 2s; animation-duration: 5.5s; }
-.float-4 { top: 65%; right: 10%; width: 32px; height: 32px; animation-delay: 3.5s; animation-duration: 7s; opacity: 0.35; }
+.float-1 {
+  top: 8%; left: 6%;
+  width: 48px; height: 48px;
+  animation: floatA 7s ease-in-out infinite;
+}
 
-@keyframes float {
+.float-2 {
+  top: 55%; left: 12%;
+  width: 30px; height: 30px;
+  opacity: 0.25;
+  animation: floatB 9s ease-in-out infinite 1s;
+}
+
+.float-3 {
+  top: 15%; right: 20%;
+  width: 36px; height: 36px;
+  animation: floatA 6s ease-in-out infinite 2.5s;
+}
+
+.float-4 {
+  top: 60%; right: 8%;
+  width: 28px; height: 28px;
+  opacity: 0.3;
+  animation: floatC 8s ease-in-out infinite 4s;
+}
+
+/* 新增浮动图标 */
+.float-5 {
+  top: 35%; left: 35%;
+  width: 20px; height: 20px;
+  opacity: 0.2;
+  animation: floatB 11s ease-in-out infinite 1.5s;
+}
+
+.float-6 {
+  top: 70%; left: 45%;
+  width: 16px; height: 16px;
+  opacity: 0.15;
+  animation: floatC 10s ease-in-out infinite 3s;
+}
+
+@keyframes starDrift {
+  from { transform: translateY(0); }
+  to { transform: translateY(-30%); }
+}
+
+@keyframes lightSweep {
+  0%, 100% { transform: skewX(-20deg) translateX(-100%); }
+  50% { transform: skewX(-20deg) translateX(200%); }
+}
+
+@keyframes floatA {
   0%, 100% { transform: translateY(0) rotate(0deg); }
-  50% { transform: translateY(-12px) rotate(5deg); }
+  50% { transform: translateY(-16px) rotate(6deg); }
+}
+
+@keyframes floatB {
+  0%, 100% { transform: translateY(0) translateX(0) rotate(0deg); }
+  33% { transform: translateY(-10px) translateX(8px) rotate(3deg); }
+  66% { transform: translateY(6px) translateX(-6px) rotate(-3deg); }
+}
+
+@keyframes floatC {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-20px) scale(1.1) rotate(-8deg); }
 }
 
 .banner-content {
