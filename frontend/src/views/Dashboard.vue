@@ -31,6 +31,20 @@
             <div class="banner-subtitle">{{ bannerSubtitle }}</div>
           </div>
         </div>
+        <div class="banner-center" @click="openLeaderboard">
+          <!-- 无头衔：鼓励 -->
+          <div v-if="weeklyTitles.length === 0" class="title-empty">
+            <span class="title-empty-icon">💎</span>
+            <span class="title-empty-text">继续努力</span>
+          </div>
+          <!-- 有头衔：徽章行 -->
+          <div v-else class="title-row">
+            <div v-for="t in weeklyTitles" :key="t" class="title-chip">
+              <span class="title-chip-icon">🏆</span>
+              <span class="title-chip-text">{{ t }}</span>
+            </div>
+          </div>
+        </div>
         <div class="banner-right">
           <div class="hero-image">
             <img src="/bee.png" alt="Hero" />
@@ -675,13 +689,46 @@
         </div>
       </div>
     </template>
+
+    <!-- 排行榜弹窗 -->
+    <el-dialog v-model="showLeaderboard" title="🏆 本周排行榜" width="680px" :close-on-click-modal="true" destroy-on-close>
+      <div class="leaderboard-table">
+        <div class="lb-header">
+          <span class="lb-col lb-col-action">操作类型</span>
+          <span class="lb-col lb-col-title">本周头衔</span>
+          <span class="lb-col lb-col-user">榜首</span>
+          <span class="lb-col lb-col-count">操作数</span>
+        </div>
+        <div
+          v-for="item in leaderboardData"
+          :key="item.action"
+          class="lb-row"
+          :class="{ 'lb-me': item.user?.id === userStore.user?.id }"
+        >
+          <span class="lb-col lb-col-action">
+            <span class="lb-action-dot" :style="{ background: getActionColor(getLbCategory(item.action)) }"></span>
+            {{ getActionLabel(item.action) }}
+          </span>
+          <span class="lb-col lb-col-title">{{ item.title }}</span>
+          <span class="lb-col lb-col-user">
+            <template v-if="item.user">
+              <img v-if="item.user.avatar" :src="item.user.avatar" class="lb-avatar" />
+              <span v-else class="lb-avatar-placeholder">{{ item.user.realName?.charAt(0) }}</span>
+              {{ item.user.realName }}
+            </template>
+            <span v-else class="lb-none">虚位以待</span>
+          </span>
+          <span class="lb-col lb-col-count">{{ item.count || '-' }}</span>
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useUserStore } from '../stores/user'
-import { getDashboard } from '../api/dashboard'
+import { getDashboard, getLeaderboard } from '../api/dashboard'
 import { useRouter } from 'vue-router'
 
 const userStore = useUserStore()
@@ -710,6 +757,9 @@ const myWorkloadCount = ref(0)
 const inProgressCount = ref(0)
 const pendingTaskCount = ref(0)
 const efficiencyRate = ref(0)
+const weeklyTitles = ref<string[]>([])
+const showLeaderboard = ref(false)
+const leaderboardData = ref<any[]>([])
 const myOpsThisWeek = ref(0)
 const totalOpsThisWeek = ref(0)
 
@@ -840,6 +890,36 @@ const maxTrendCount = computed(() => {
   if (dailyOps.value.length === 0) return 1
   return Math.max(...dailyOps.value.map(d => d.totalCount), 1)
 })
+// 排行榜辅助函数
+const actionCategoryMap: Record<string, string> = {
+  create: '创建', assign: '指派', fix: '修复', close: '查验', verify: '查验',
+  complete: '完成', partial_complete: '完成', comment: '沟通', reject: '查验',
+  feedback: '沟通', description_change: '沟通', submit_test: '查验', pass_test: '查验',
+  priority_change: '管理', restart: '指派', status_change: '管理',
+  reproduce_steps_change: '沟通', creator_change: '管理',
+}
+const actionLabelMap: Record<string, string> = {
+  create: '创建', assign: '指派', fix: '修复', close: '关闭',
+  verify: '验证', complete: '完成', partial_complete: '部分完成', comment: '评论',
+  reject: '打回', feedback: '反馈', description_change: '修改描述',
+  submit_test: '提测', pass_test: '测试通过', priority_change: '修改优先级',
+  restart: '重启', status_change: '修改状态',
+  reproduce_steps_change: '修改复现步骤', creator_change: '修改创建人',
+}
+const getLbCategory = (action: string) => actionCategoryMap[action] || '沟通'
+const getActionLabel = (action: string) => actionLabelMap[action] || action
+
+const openLeaderboard = async () => {
+  showLeaderboard.value = true
+  if (leaderboardData.value.length === 0) {
+    try {
+      const res = await getLeaderboard()
+      leaderboardData.value = res.data
+    } catch (e) {
+      console.error('Failed to load leaderboard', e)
+    }
+  }
+}
 
 const getTaskStatusPercent = (priority: string) => {
   const total = myActiveTaskCount.value
@@ -1146,6 +1226,7 @@ onMounted(async () => {
       totalOpsThisWeek.value = s.totalOpsThisWeek || 0
       actionBreakdown.value = data.actionBreakdown || []
       dailyOps.value = data.dailyOps || []
+      weeklyTitles.value = data.weeklyTitles || []
       workloadByPriority.value = data.workloadByPriority || { urgent: 0, high: 0, medium: 0, low: 0 }
       workloadBySeverity.value = data.workloadBySeverity || { critical: 0, high: 0, medium: 0, low: 0 }
     }
@@ -1344,6 +1425,132 @@ onMounted(async () => {
   width: 14px;
   height: 14px;
   fill: #ffd700;
+}
+
+/* ==================== Weekly Title Badge ==================== */
+.banner-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  min-width: 120px;
+}
+
+/* 无头衔：继续努力 */
+.title-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 20px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px dashed rgba(255, 255, 255, 0.25);
+  transition: all 0.3s;
+}
+
+.title-empty:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.title-empty-icon {
+  font-size: 22px;
+  filter: grayscale(0.3);
+}
+
+.title-empty-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.65);
+  letter-spacing: 2px;
+}
+
+/* 头衔行 */
+.title-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.title-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px;
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 165, 0, 0.1));
+  border: 1px solid rgba(255, 215, 0, 0.35);
+  border-radius: 20px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: all var(--nb-transition-normal);
+  animation: chipIn 0.4s ease both;
+  position: relative;
+  overflow: hidden;
+}
+
+.title-chip::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle at var(--mx, 0) var(--my, 0), rgba(255, 215, 0, 0.15), transparent 60%);
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+
+.title-chip:hover::after {
+  opacity: 1;
+}
+
+.title-chip:nth-child(1) { animation-delay: 0ms; }
+.title-chip:nth-child(2) { animation-delay: 80ms; }
+.title-chip:nth-child(3) { animation-delay: 160ms; }
+.title-chip:nth-child(4) { animation-delay: 240ms; }
+.title-chip:nth-child(5) { animation-delay: 320ms; }
+
+.title-chip:hover {
+  transform: translateY(-4px) scale(1.18);
+  border-color: rgba(255, 215, 0, 0.9);
+  box-shadow: 0 12px 32px rgba(255, 215, 0, 0.35), 0 0 60px rgba(255, 215, 0, 0.15);
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.35), rgba(255, 165, 0, 0.25));
+}
+
+.title-chip:hover .title-chip-icon {
+  animation: crownBounce 0.5s ease-in-out;
+}
+
+.title-chip-icon {
+  font-size: 16px;
+  line-height: 1;
+  transition: transform 0.3s;
+}
+
+.title-chip-text {
+  font-size: 13px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #ffd700, #ffa500);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: 1px;
+}
+
+@keyframes chipIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.9); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes crownBounce {
+  0% { transform: scale(1) rotate(0deg); }
+  25% { transform: scale(1.3) rotate(-8deg); }
+  50% { transform: scale(1.1) rotate(5deg); }
+  75% { transform: scale(1.2) rotate(-3deg); }
+  100% { transform: scale(1) rotate(0deg); }
 }
 
 /* ==================== Quick Quests ==================== */
@@ -2736,4 +2943,21 @@ onMounted(async () => {
     height: 60px;
   }
 }
+
+/* ==================== Leaderboard Dialog ==================== */
+.leaderboard-table { display: flex; flex-direction: column; }
+.lb-header { display: flex; align-items: center; padding: 10px 12px; background: var(--nb-bg-hover); border-radius: var(--nb-radius-md); font-size: 12px; font-weight: var(--nb-font-weight-semibold); color: var(--nb-text-secondary); margin-bottom: 8px; }
+.lb-row { display: flex; align-items: center; padding: 10px 12px; border-radius: var(--nb-radius-sm); transition: background 0.2s; }
+.lb-row:hover { background: var(--nb-bg-hover); }
+.lb-me { background: rgba(102, 126, 234, 0.08); border: 1px solid rgba(102, 126, 234, 0.3); }
+.lb-me:hover { background: rgba(102, 126, 234, 0.12); }
+.lb-col { padding: 0 4px; }
+.lb-col-action { flex: 0 0 130px; display: flex; align-items: center; gap: 8px; }
+.lb-action-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.lb-col-title { flex: 0 0 140px; font-weight: var(--nb-font-weight-bold); color: var(--nb-primary); }
+.lb-col-user { flex: 1; display: flex; align-items: center; gap: 8px; }
+.lb-avatar { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; }
+.lb-avatar-placeholder { width: 26px; height: 26px; border-radius: 50%; background: var(--nb-primary); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: var(--nb-font-weight-bold); }
+.lb-col-count { flex: 0 0 60px; text-align: right; font-weight: var(--nb-font-weight-bold); color: var(--nb-text-primary); }
+.lb-none { color: var(--nb-text-tertiary); font-style: italic; font-size: 13px; }
 </style>

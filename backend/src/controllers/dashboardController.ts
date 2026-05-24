@@ -523,7 +523,37 @@ export const getDashboard = async (req: Request, res: Response) => {
       });
     }
 
-    // 2. 我的任务（当前负责人是我 OR 我创建的）
+    // 2. 本周头衔（每类操作排名第一的用户获得对应头衔）
+    // prettier-ignore
+    const titleMap: Record<string, string> = {
+      create: '造物主', assign: '钦差大臣', fix: '补天匠人', close: '终结者',
+      verify: '鉴黄师', complete: '交卷狂人', partial_complete: '助攻王',
+      comment: '话痨评论家', reject: '冷面判官', feedback: '怼怼侠',
+      description_change: '说书先生', submit_test: '送检大师', pass_test: '真品收藏家',
+      priority_change: '插队艺术家', restart: '回档大师', status_change: '变脸艺人',
+      reproduce_steps_change: '考古学家', creator_change: '夺舍仙人',
+    };
+    const titlePriority = Object.keys(titleMap); // 靠前的优先级更高
+    const topUsersRaw = await AppDataSource.query(
+      `SELECT action, userId, COUNT(*) AS cnt
+       FROM operation_log WHERE createdAt >= ? GROUP BY action, userId
+       ORDER BY action, cnt DESC`,
+      [weekAgoStr]
+    );
+    const topByAction: Record<string, { userId: number; cnt: number }> = {};
+    for (const row of topUsersRaw) {
+      if (!topByAction[(row as any).action]) {
+        topByAction[(row as any).action] = { userId: Number((row as any).userId), cnt: Number((row as any).cnt) };
+      }
+    }
+    const weeklyTitles: string[] = [];
+    for (const action of titlePriority) {
+      if (topByAction[action] && topByAction[action].userId === uid) {
+        weeklyTitles.push(titleMap[action]);
+      }
+    }
+
+    // 3. 我的任务（当前负责人是我 OR 我创建的）
     const [myTasks, myBugs] = await Promise.all([
       taskRepository
         .createQueryBuilder("task")
@@ -583,6 +613,7 @@ export const getDashboard = async (req: Request, res: Response) => {
       },
       dailyOps,
       actionBreakdown,
+      weeklyTitles,
       workloadByPriority,
       workloadBySeverity,
       recentLogs,
@@ -590,5 +621,58 @@ export const getDashboard = async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Error loading dashboard:", error);
     res.status(500).json({ error: "Failed to load dashboard data" });
+  }
+};
+
+/**
+ * GET /api/dashboard/leaderboard
+ * 本周排行榜：每类操作的第一名用户
+ */
+export const getLeaderboard = async (req: Request, res: Response) => {
+  try {
+    const now = new Date();
+    const weekAgoStr = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+    // prettier-ignore
+    const titleMap: Record<string, string> = {
+      create: '造物主', assign: '钦差大臣', fix: '补天匠人', close: '终结者',
+      verify: '鉴黄师', complete: '交卷狂人', partial_complete: '助攻王',
+      comment: '话痨评论家', reject: '冷面判官', feedback: '怼怼侠',
+      description_change: '说书先生', submit_test: '送检大师', pass_test: '真品收藏家',
+      priority_change: '插队艺术家', restart: '回档大师', status_change: '变脸艺人',
+      reproduce_steps_change: '考古学家', creator_change: '夺舍仙人',
+    };
+    const titleOrder = Object.keys(titleMap);
+
+    const raw = await AppDataSource.query(
+      `SELECT ol.action, ol.userId, u.realName, u.avatar, COUNT(*) AS cnt
+       FROM operation_log ol
+       LEFT JOIN user u ON u.id = ol.userId
+       WHERE ol.createdAt >= ?
+       GROUP BY ol.action, ol.userId
+       ORDER BY ol.action, cnt DESC`,
+      [weekAgoStr]
+    );
+
+    // 取每类操作的第一名
+    const leaderboard = titleOrder.map(action => {
+      const tops = raw.filter((r: any) => r.action === action);
+      const first = tops[0];
+      return {
+        action,
+        title: titleMap[action],
+        user: first ? {
+          id: Number(first.userId),
+          realName: first.realName,
+          avatar: first.avatar,
+        } : null,
+        count: first ? Number(first.cnt) : 0,
+      };
+    });
+
+    return res.json(leaderboard);
+  } catch (error) {
+    console.error("Error loading leaderboard:", error);
+    res.status(500).json({ error: "Failed to load leaderboard" });
   }
 };
