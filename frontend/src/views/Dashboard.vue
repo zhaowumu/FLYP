@@ -40,7 +40,7 @@
           <!-- 有头衔：徽章行 -->
           <div v-else class="title-row">
             <div v-for="t in weeklyTitles" :key="t" class="title-chip">
-              <span class="title-chip-icon">🏆</span>
+              <span class="title-chip-crown">🏆</span>
               <span class="title-chip-text">{{ t }}</span>
             </div>
           </div>
@@ -1474,83 +1474,70 @@ onMounted(async () => {
   justify-content: center;
 }
 
+/* --- 现代玻璃态成就卡片 --- */
 .title-chip {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 16px;
-  background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 165, 0, 0.1));
-  border: 1px solid rgba(255, 215, 0, 0.35);
-  border-radius: 20px;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  transition: all var(--nb-transition-normal);
-  animation: chipIn 0.4s ease both;
+  padding: 5px 14px;
+  border-radius: var(--nb-radius-full);
+  cursor: pointer;
   position: relative;
-  overflow: hidden;
-}
-
-.title-chip::after {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(circle at var(--mx, 0) var(--my, 0), rgba(255, 215, 0, 0.15), transparent 60%);
-  opacity: 0;
-  transition: opacity 0.3s;
-  pointer-events: none;
-}
-
-.title-chip:hover::after {
-  opacity: 1;
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  transition: all var(--nb-transition-normal);
+  animation: chipIn 0.35s ease both;
 }
 
 .title-chip:nth-child(1) { animation-delay: 0ms; }
-.title-chip:nth-child(2) { animation-delay: 80ms; }
-.title-chip:nth-child(3) { animation-delay: 160ms; }
-.title-chip:nth-child(4) { animation-delay: 240ms; }
-.title-chip:nth-child(5) { animation-delay: 320ms; }
+.title-chip:nth-child(2) { animation-delay: 60ms; }
+.title-chip:nth-child(3) { animation-delay: 120ms; }
+.title-chip:nth-child(4) { animation-delay: 180ms; }
+.title-chip:nth-child(5) { animation-delay: 240ms; }
 
 .title-chip:hover {
-  transform: translateY(-4px) scale(1.18);
-  border-color: rgba(255, 215, 0, 0.9);
-  box-shadow: 0 12px 32px rgba(255, 215, 0, 0.35), 0 0 60px rgba(255, 215, 0, 0.15);
-  background: linear-gradient(135deg, rgba(255, 215, 0, 0.35), rgba(255, 165, 0, 0.25));
+  transform: translateY(-3px) scale(1.06);
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.5);
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.15),
+    0 0 0 3px rgba(255, 255, 255, 0.08);
 }
 
-.title-chip:hover .title-chip-icon {
-  animation: crownBounce 0.5s ease-in-out;
+.title-chip:hover .title-chip-crown {
+  animation: crownSwing 0.5s ease-in-out;
 }
 
-.title-chip-icon {
-  font-size: 16px;
+.title-chip-crown {
+  font-size: 15px;
   line-height: 1;
   transition: transform 0.3s;
+  flex-shrink: 0;
 }
 
 .title-chip-text {
   font-size: 13px;
   font-weight: 700;
-  background: linear-gradient(135deg, #ffd700, #ffa500);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: rgba(255, 255, 255, 0.95);
   letter-spacing: 1px;
+  white-space: nowrap;
 }
 
+/* 入场 */
 @keyframes chipIn {
-  from { opacity: 0; transform: translateY(8px) scale(0.9); }
+  from { opacity: 0; transform: translateY(8px) scale(0.92); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-@keyframes crownBounce {
-  0% { transform: scale(1) rotate(0deg); }
-  25% { transform: scale(1.3) rotate(-8deg); }
-  50% { transform: scale(1.1) rotate(5deg); }
-  75% { transform: scale(1.2) rotate(-3deg); }
-  100% { transform: scale(1) rotate(0deg); }
+/* 皇冠轻摆 */
+@keyframes crownSwing {
+  0% { transform: rotate(0deg); }
+  25% { transform: rotate(-12deg) scale(1.2); }
+  50% { transform: rotate(8deg) scale(1.15); }
+  75% { transform: rotate(-5deg); }
+  100% { transform: rotate(0deg); }
 }
 
 /* ==================== Quick Quests ==================== */
