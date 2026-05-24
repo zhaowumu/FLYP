@@ -5,6 +5,7 @@ import { Bug } from "../entities/Bug";
 import { Project } from "../entities/Project";
 import { User } from "../entities/User";
 import { OperationLog } from "../entities/OperationLog";
+import { MoreThanOrEqual } from "typeorm";
 
 const taskRepository = AppDataSource.getRepository(Task);
 const bugRepository = AppDataSource.getRepository(Bug);
@@ -22,6 +23,7 @@ export const getDashboard = async (req: Request, res: Response) => {
     const role = (req as any).user.role;
     const now = new Date();
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const weekAgoStr = weekAgo.toISOString();
 
     // ===== 各角色通用的日志 =====
     const recentLogs = await operationLogRepository.find({
@@ -423,6 +425,105 @@ export const getDashboard = async (req: Request, res: Response) => {
     }
 
     // ===== Developer/Designer/Artist/Tester 视图 =====
+    // 1. 本周操作统计 + 每日趋势 + 操作分类
+    const [myOpsThisWeek, totalOpsThisWeek, dailyRaw, actionRaw] = await Promise.all([
+      operationLogRepository.count({ where: { user: { id: uid } as any, createdAt: MoreThanOrEqual(weekAgo) } }),
+      operationLogRepository.count({ where: { createdAt: MoreThanOrEqual(weekAgo) } }),
+      // 7日操作趋势（每日我的操作数+总操作数）
+      AppDataSource.query(
+        `SELECT DATE(createdAt) AS day,
+                SUM(CASE WHEN userId = ${uid} THEN 1 ELSE 0 END) AS myCount,
+                COUNT(*) AS totalCount
+         FROM operation_log
+         WHERE createdAt >= ?
+         GROUP BY DATE(createdAt)
+         ORDER BY day ASC`,
+        [weekAgoStr]
+      ),
+      // 操作分类：按 action 分组的我的+团队统计
+      AppDataSource.query(
+        `SELECT action,
+                COUNT(*) AS totalCount,
+                SUM(CASE WHEN userId = ${uid} THEN 1 ELSE 0 END) AS myCount
+         FROM operation_log
+         WHERE createdAt >= ?
+         GROUP BY action
+         ORDER BY totalCount DESC`,
+        [weekAgoStr]
+      ),
+    ]);
+
+    // 操作分类归组（补全全部18种操作类型）
+    const actionCategories: Record<string, string[]> = {
+      '创建': ['create'],
+      '指派': ['assign', 'restart', 'transfer'],
+      '修复': ['fix'],
+      '完成': ['complete', 'partial_complete'],
+      '查验': ['verify', 'close', 'reject', 'pass_test', 'submit_test', 'reject_test'],
+      '沟通': ['comment', 'feedback', 'description_change', 'reproduce_steps_change'],
+      '管理': ['priority_change', 'creator_change', 'status_change', 'severity_change'],
+    };
+    // 每个分类包含的具体 action 列表（中文，用于前端 tooltip）
+    const actionLabels: Record<string, string> = {
+      '创建': '创建',
+      '指派': '指派、重启、转交',
+      '修复': '修复',
+      '完成': '完成、部分完成',
+      '查验': '验证、关闭、打回、提测、测试通过、驳回测试',
+      '沟通': '评论、反馈、修改描述、修改复现步骤',
+      '管理': '修改优先级、修改创建人、修改状态、修改严重度',
+    };
+    const categoryMyCounts: Record<string, number> = {};
+    const categoryTotalCounts: Record<string, number> = {};
+    for (const cat of Object.keys(actionCategories)) {
+      categoryMyCounts[cat] = 0;
+      categoryTotalCounts[cat] = 0;
+    }
+    for (const row of actionRaw) {
+      const action = (row as any).action;
+      const my = Number((row as any).myCount);
+      const total = Number((row as any).totalCount);
+      for (const [cat, actions] of Object.entries(actionCategories)) {
+        if (actions.includes(action)) {
+          categoryMyCounts[cat] += my;
+          categoryTotalCounts[cat] += total;
+          break;
+        }
+      }
+    }
+    const actionBreakdown = Object.entries(categoryMyCounts)
+      .filter(([cat]) => categoryTotalCounts[cat] > 0)
+      .sort(([, a], [, b]) => b - a)
+      .map(([category, myCount]) => ({
+        category,
+        myCount,
+        totalCount: categoryTotalCounts[category],
+        actions: actionLabels[category] || '',
+      }));
+
+    // 格式化每日趋势（补齐7天空白天）
+    const dayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+    const dailyMap: Record<string, { myCount: number; totalCount: number }> = {};
+    for (const row of dailyRaw) {
+      dailyMap[(row as any).day] = {
+        myCount: Number((row as any).myCount),
+        totalCount: Number((row as any).totalCount),
+      };
+    }
+    const dailyOps: { day: string; label: string; myCount: number; totalCount: number }[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const key = d.toISOString().slice(0, 10);
+      dailyOps.push({
+        day: key,
+        label: dayNames[d.getDay()],
+        myCount: dailyMap[key]?.myCount || 0,
+        totalCount: dailyMap[key]?.totalCount || 0,
+      });
+    }
+
+    // 2. 我的任务（当前负责人是我 OR 我创建的）
     const [myTasks, myBugs] = await Promise.all([
       taskRepository
         .createQueryBuilder("task")
@@ -448,16 +549,6 @@ export const getDashboard = async (req: Request, res: Response) => {
     // 统计数据
     const activeTasks = myTasks.filter(t => t.status !== "completed" && t.status !== "closed");
     const activeBugs = myBugs.filter(b => b.status !== "closed" && b.status !== "verified" && b.status !== "fixed");
-    const completedTasksThisWeek = myTasks.filter(
-      t => (t.status === "completed" || t.status === "closed") && t.updatedAt >= weekAgo
-    ).length;
-
-    // 按优先级/严重程度分组
-    const workloadByPriority: Record<string, number> = { urgent: 0, high: 0, medium: 0, low: 0 };
-    activeTasks.forEach(t => { if (workloadByPriority[t.priority] !== undefined) workloadByPriority[t.priority]++; });
-
-    const workloadBySeverity: Record<string, number> = { critical: 0, high: 0, medium: 0, low: 0 };
-    activeBugs.forEach(b => { if (workloadBySeverity[b.severity] !== undefined) workloadBySeverity[b.severity]++; });
 
     // 待办列表（排序后取 10 条）
     const severityOrder: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
@@ -468,25 +559,30 @@ export const getDashboard = async (req: Request, res: Response) => {
       .sort((a, b) => (severityOrder[a.severity] || 99) - (severityOrder[b.severity] || 99) || new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(0, 10);
 
-    const totalTasksThisWeek = myTasks.length;
-    const taskCompletionRate = totalTasksThisWeek > 0
-      ? Math.round((myTasks.filter(t => t.status === "completed" || t.status === "closed").length / totalTasksThisWeek) * 100)
-      : 0;
+    // 按优先级/严重程度分组
+    const workloadByPriority: Record<string, number> = { urgent: 0, high: 0, medium: 0, low: 0 };
+    activeTasks.forEach(t => { if (workloadByPriority[t.priority] !== undefined) workloadByPriority[t.priority]++; });
+
+    const workloadBySeverity: Record<string, number> = { critical: 0, high: 0, medium: 0, low: 0 };
+    activeBugs.forEach(b => { if (workloadBySeverity[b.severity] !== undefined) workloadBySeverity[b.severity]++; });
+
+    const efficiencyRate = totalOpsThisWeek > 0 ? Math.round((myOpsThisWeek / totalOpsThisWeek) * 100) : 0;
 
     return res.json({
       myPendingTasks,
       myPendingBugs,
       stats: {
-        pendingTaskCount: activeTasks.filter(t => t.status === "pending").length,
-        inProgressCount: activeTasks.filter(t => t.status === "in_progress").length,
-        completedTaskCount: myTasks.filter(t => t.status === "completed").length,
-        closedTaskCount: myTasks.filter(t => t.status === "closed").length,
         activeTaskCount: activeTasks.length,
         activeBugCount: activeBugs.length,
-        totalTasksThisWeek,
-        completedTasksThisWeek,
-        taskCompletionRate,
+        workloadCount: activeTasks.length + activeBugs.length,
+        pendingTaskCount: activeTasks.filter(t => t.status === "pending").length,
+        inProgressCount: activeTasks.filter(t => t.status === "in_progress").length,
+        myOpsThisWeek,
+        totalOpsThisWeek,
+        efficiencyRate,
       },
+      dailyOps,
+      actionBreakdown,
       workloadByPriority,
       workloadBySeverity,
       recentLogs,

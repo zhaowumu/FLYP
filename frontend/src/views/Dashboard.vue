@@ -454,7 +454,7 @@
             <div class="stat-inner">
               <div class="stat-icon-box"><el-icon :size="22"><List /></el-icon></div>
               <div class="stat-content">
-                <div class="stat-value">{{ myPendingTasks.length }}</div>
+                <div class="stat-value">{{ myActiveTaskCount }}</div>
                 <div class="stat-label">我的任务</div>
               </div>
             </div>
@@ -464,7 +464,7 @@
             <div class="stat-inner">
               <div class="stat-icon-box"><el-icon :size="22"><Warning /></el-icon></div>
               <div class="stat-content">
-                <div class="stat-value">{{ myPendingBugs.length }}</div>
+                <div class="stat-value">{{ myActiveBugCount }}</div>
                 <div class="stat-label">我的Bug</div>
               </div>
             </div>
@@ -474,7 +474,7 @@
             <div class="stat-inner">
               <div class="stat-icon-box"><el-icon :size="22"><TrendCharts /></el-icon></div>
               <div class="stat-content">
-                <div class="stat-value">{{ myActiveTaskCount }}</div>
+                <div class="stat-value">{{ myWorkloadCount }}</div>
                 <div class="stat-label">我的负载</div>
               </div>
             </div>
@@ -484,7 +484,7 @@
             <div class="stat-inner">
               <div class="stat-icon-box"><el-icon :size="22"><CircleCheck /></el-icon></div>
               <div class="stat-content">
-                <div class="stat-value">{{ taskCompletionRate }}%</div>
+                <div class="stat-value">{{ efficiencyRate }}%</div>
                 <div class="stat-label">我的效率</div>
               </div>
             </div>
@@ -613,59 +613,61 @@
               <span>我的效率</span>
             </div>
             <div class="efficiency-panel">
+              <!-- 环形图 + 本周操作占比 -->
               <div class="efficiency-main">
                 <div class="efficiency-ring-container">
                   <svg class="efficiency-ring-svg" viewBox="0 0 36 36">
                     <circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--nb-border-light)" stroke-width="2.5"/>
-                    <circle cx="18" cy="18" r="15.5" fill="none" :stroke="taskCompletionRate >= 60 ? 'var(--nb-success)' : taskCompletionRate >= 30 ? 'var(--nb-warning)' : 'var(--nb-danger)'" stroke-width="2.5" :stroke-dasharray="97.4" :stroke-dashoffset="97.4 - (97.4 * taskCompletionRate / 100)" stroke-linecap="round" transform="rotate(-90 18 18)"/>
+                    <circle cx="18" cy="18" r="15.5" fill="none" :stroke="efficiencyRate >= 60 ? 'var(--nb-success)' : efficiencyRate >= 30 ? 'var(--nb-warning)' : 'var(--nb-danger)'" stroke-width="2.5" :stroke-dasharray="97.4" :stroke-dashoffset="97.4 * (1 - efficiencyRate / 100)" stroke-linecap="round" transform="rotate(-90 18 18)"/>
                   </svg>
                   <div class="efficiency-ring-center">
-                    <span class="efficiency-ring-value" :style="{ color: taskCompletionRate >= 60 ? 'var(--nb-success)' : taskCompletionRate >= 30 ? 'var(--nb-warning)' : 'var(--nb-danger)' }">{{ taskCompletionRate }}</span>
+                    <span class="efficiency-ring-value" :style="{ color: efficiencyRate >= 60 ? 'var(--nb-success)' : efficiencyRate >= 30 ? 'var(--nb-warning)' : 'var(--nb-danger)' }">{{ efficiencyRate }}</span>
                     <span class="efficiency-ring-unit">%</span>
                   </div>
                 </div>
                 <div class="efficiency-main-info">
-                  <div class="efficiency-main-label">总完成率</div>
-                  <div class="efficiency-main-desc">{{ completedTasksThisWeek }} / {{ totalTasksThisWeek }} 任务已完成</div>
+                  <div class="efficiency-main-label">本周操作占比</div>
+                  <div class="efficiency-main-desc">我 {{ myOpsThisWeek }} / 团队 {{ totalOpsThisWeek }} 次</div>
                 </div>
               </div>
-              <div class="efficiency-breakdown">
-                <div class="efficiency-row">
-                  <div class="efficiency-row-header">
-                    <span class="efficiency-row-label">待处理</span>
-                    <span class="efficiency-row-value">{{ pendingTaskCount }}</span>
+
+              <!-- 操作分类 -->
+              <div class="eff-section">
+                <div class="eff-section-title">操作分类</div>
+                <div class="eff-action-list">
+                  <div v-for="item in actionBreakdown" :key="item.category" class="eff-action-row">
+                    <el-tooltip :content="item.actions" placement="left" effect="dark" :show-after="400">
+                      <span class="eff-action-label" :style="{ color: getActionColor(item.category), cursor: 'pointer' }">{{ item.category }}</span>
+                    </el-tooltip>
+                    <div class="eff-action-track">
+                      <div class="eff-action-fill" :style="{ width: item.totalCount > 0 ? (item.myCount / item.totalCount * 100) + '%' : '0%', background: getActionColor(item.category) + '33', borderLeft: '2px solid ' + getActionColor(item.category) }"></div>
+                    </div>
+                    <span class="eff-action-count" :style="{ color: getActionColor(item.category) }">{{ item.myCount }}<span class="eff-action-total">/{{ item.totalCount }}</span></span>
                   </div>
-                  <div class="efficiency-row-track"><div class="efficiency-row-fill" style="background: var(--nb-primary)" :style="{ width: (pendingTaskCount / Math.max(myActiveTaskCount + myCompletedTaskCount, 1) * 100) + '%' }"></div></div>
-                </div>
-                <div class="efficiency-row">
-                  <div class="efficiency-row-header">
-                    <span class="efficiency-row-label">进行中</span>
-                    <span class="efficiency-row-value">{{ inProgressCount }}</span>
-                  </div>
-                  <div class="efficiency-row-track"><div class="efficiency-row-fill" style="background: var(--nb-warning)" :style="{ width: (inProgressCount / Math.max(myActiveTaskCount + myCompletedTaskCount, 1) * 100) + '%' }"></div></div>
-                </div>
-                <div class="efficiency-row">
-                  <div class="efficiency-row-header">
-                    <span class="efficiency-row-label">已完成</span>
-                    <span class="efficiency-row-value">{{ myCompletedTaskCount }}</span>
-                  </div>
-                  <div class="efficiency-row-track"><div class="efficiency-row-fill" style="background: var(--nb-success)" :style="{ width: (myCompletedTaskCount / Math.max(myActiveTaskCount + myCompletedTaskCount, 1) * 100) + '%' }"></div></div>
-                </div>
-                <div class="efficiency-row">
-                  <div class="efficiency-row-header">
-                    <span class="efficiency-row-label">已关闭</span>
-                    <span class="efficiency-row-value">{{ myClosedTaskCount }}</span>
-                  </div>
-                  <div class="efficiency-row-track"><div class="efficiency-row-fill" style="background: var(--nb-text-secondary)" :style="{ width: (myClosedTaskCount / Math.max(myActiveTaskCount + myCompletedTaskCount, 1) * 100) + '%' }"></div></div>
+                  <div v-if="actionBreakdown.length === 0" class="empty" style="padding:12px 0">暂无本周操作数据</div>
                 </div>
               </div>
-              <div class="efficiency-weekly">
-                <div class="efficiency-weekly-label">本周完成</div>
-                <div class="efficiency-weekly-progress">
-                  <div class="efficiency-weekly-track">
-                    <div class="efficiency-weekly-fill" :style="{ width: Math.min((completedTasksThisWeek / Math.max(totalTasksThisWeek, 1)) * 100, 100) + '%' }"></div>
+
+              <!-- 7日趋势 -->
+              <div class="eff-section">
+                <div class="eff-section-title">7日趋势</div>
+                <div class="eff-trend">
+                  <div class="eff-trend-bars">
+                    <div v-for="d in dailyOps" :key="d.day" class="eff-trend-col">
+                      <el-tooltip :content="d.label + '：我' + d.myCount + ' / 团队' + d.totalCount" placement="top" effect="dark">
+                        <div class="eff-trend-bar-wrapper">
+                          <div class="eff-trend-total" :style="{ height: maxTrendCount > 0 ? (d.totalCount / maxTrendCount * 100) + '%' : '0%' }">
+                            <div class="eff-trend-mine" :style="{ height: d.totalCount > 0 ? (d.myCount / d.totalCount * 100) + '%' : '0%' }"></div>
+                          </div>
+                        </div>
+                      </el-tooltip>
+                      <span class="eff-trend-label">{{ d.label }}</span>
+                    </div>
                   </div>
-                  <span class="efficiency-weekly-num">{{ completedTasksThisWeek }} / {{ totalTasksThisWeek }}</span>
+                  <div class="eff-trend-legend">
+                    <span class="eff-legend-item"><i class="eff-legend-dot" style="background:var(--nb-primary)"></i>我</span>
+                    <span class="eff-legend-item"><i class="eff-legend-dot" style="background:var(--nb-border-light)"></i>团队</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -703,14 +705,17 @@ const pmCloseableBugs = ref(0)
 
 // Developer stats
 const myActiveTaskCount = ref(0)
+const myActiveBugCount = ref(0)
+const myWorkloadCount = ref(0)
 const inProgressCount = ref(0)
 const pendingTaskCount = ref(0)
-const myActiveBugCount = ref(0)
-const myCompletedTaskCount = ref(0)
-const myClosedTaskCount = ref(0)
-const taskCompletionRate = ref(0)
-const completedTasksThisWeek = ref(0)
-const totalTasksThisWeek = ref(0)
+const efficiencyRate = ref(0)
+const myOpsThisWeek = ref(0)
+const totalOpsThisWeek = ref(0)
+
+// 效率面板数据
+const actionBreakdown = ref<{ category: string; myCount: number; totalCount: number; actions: string }[]>([])
+const dailyOps = ref<{ day: string; label: string; myCount: number; totalCount: number }[]>([])
 
 // Workload data (used by template functions)
 const workloadByPriority = ref<Record<string, number>>({ urgent: 0, high: 0, medium: 0, low: 0 })
@@ -809,36 +814,32 @@ const quickQuests = computed(() => {
       }
     ]
   }
-  // developer/designer/artist/tester
-  return [
-    {
-      key: 'myTasks',
-      title: '我的任务',
-      desc: `${d?.stats?.activeTaskCount || 0} 个进行中`,
-      click: () => router.push('/tasks'),
-      svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect x="8" y="6" width="32" height="36" rx="4" stroke="#667eea" stroke-width="2.5" fill="none"/><path d="M16 18H32M16 26H28M16 34H24" stroke="#667eea" stroke-width="2" stroke-linecap="round"/></svg>'
-    },
-    {
-      key: 'myBugs',
-      title: '我的Bug',
-      desc: `${d?.stats?.activeBugCount || 0} 个活跃`,
-      click: () => router.push('/bugs'),
-      svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><circle cx="24" cy="26" r="14" stroke="#ff6b6b" stroke-width="2.5" fill="none"/><path d="M18 12V6M24 10V4M30 12V6" stroke="#ff6b6b" stroke-width="2.5" stroke-linecap="round"/><path d="M14 20H34M14 32H34" stroke="#ff6b6b" stroke-width="2" stroke-linecap="round"/></svg>'
-    },
-    {
-      key: 'efficiency',
-      title: '我的效率',
-      desc: `${d?.stats?.taskCompletionRate || 0}% 完成率`,
-      click: () => router.push('/tasks'),
-      svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><circle cx="24" cy="24" r="18" stroke="#43e97b" stroke-width="2.5" fill="none"/><path d="M24 12V24L32 30" stroke="#43e97b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'
-    }
-  ]
+  // developer/designer/artist/tester — no quick quests
+  return []
 })
 
 // ==================== Template helper functions (use API data) ====================
 
 const myTasksByPriority = (p: string) => workloadByPriority.value[p] || 0
 const myBugsBySeverity = (s: string) => workloadBySeverity.value[s] || 0
+
+// 操作分类颜色映射
+const actionColors: Record<string, string> = {
+  '创建': '#667eea',
+  '指派': '#f59e0b',
+  '修复': '#e74c3c',
+  '完成': '#27ae60',
+  '查验': '#8e44ad',
+  '沟通': '#3498db',
+  '管理': '#d35400',
+}
+const getActionColor = (cat: string) => actionColors[cat] || '#95a5a6'
+
+// 7日趋势全局最大值（基于总操作数）
+const maxTrendCount = computed(() => {
+  if (dailyOps.value.length === 0) return 1
+  return Math.max(...dailyOps.value.map(d => d.totalCount), 1)
+})
 
 const getTaskStatusPercent = (priority: string) => {
   const total = myActiveTaskCount.value
@@ -1136,14 +1137,15 @@ onMounted(async () => {
       myPendingBugs.value = data.myPendingBugs || []
       const s = data.stats || {}
       myActiveTaskCount.value = s.activeTaskCount || 0
+      myActiveBugCount.value = s.activeBugCount || 0
+      myWorkloadCount.value = s.workloadCount || 0
       inProgressCount.value = s.inProgressCount || 0
       pendingTaskCount.value = s.pendingTaskCount || 0
-      myActiveBugCount.value = s.activeBugCount || 0
-      myCompletedTaskCount.value = s.completedTaskCount || 0
-      myClosedTaskCount.value = s.closedTaskCount || 0
-      taskCompletionRate.value = s.taskCompletionRate || 0
-      completedTasksThisWeek.value = s.completedTasksThisWeek || 0
-      totalTasksThisWeek.value = s.totalTasksThisWeek || 0
+      efficiencyRate.value = s.efficiencyRate || 0
+      myOpsThisWeek.value = s.myOpsThisWeek || 0
+      totalOpsThisWeek.value = s.totalOpsThisWeek || 0
+      actionBreakdown.value = data.actionBreakdown || []
+      dailyOps.value = data.dailyOps || []
       workloadByPriority.value = data.workloadByPriority || { urgent: 0, high: 0, medium: 0, low: 0 }
       workloadBySeverity.value = data.workloadBySeverity || { critical: 0, high: 0, medium: 0, low: 0 }
     }
@@ -2526,92 +2528,147 @@ onMounted(async () => {
   color: var(--nb-text-secondary);
 }
 
-.efficiency-breakdown {
+/* --- 操作分类 & 7日趋势 --- */
+.eff-section {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-.efficiency-row {
+.eff-section-title {
+  font-size: 11px;
+  font-weight: var(--nb-font-weight-semibold);
+  color: var(--nb-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.eff-action-list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8px;
 }
 
-.efficiency-row-header {
+.eff-action-row {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 8px;
 }
 
-.efficiency-row-label {
+.eff-action-label {
+  width: 32px;
   font-size: 12px;
-  color: var(--nb-text-secondary);
+  font-weight: var(--nb-font-weight-semibold);
+  text-align: right;
+  flex-shrink: 0;
 }
 
-.efficiency-row-value {
-  font-size: 13px;
-  font-weight: var(--nb-font-weight-bold);
-  color: var(--nb-text-primary);
-}
-
-.efficiency-row-track {
-  height: 6px;
-  border-radius: 3px;
-  background: var(--nb-border-light);
-  overflow: hidden;
-}
-
-.efficiency-row-fill {
-  height: 100%;
-  border-radius: 3px;
-  transition: width 0.5s ease;
-  min-width: 2px;
-}
-
-.efficiency-weekly {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  background: var(--nb-bg-hover);
-  border-radius: var(--nb-radius-md);
-}
-
-.efficiency-weekly-label {
-  font-size: 12px;
-  color: var(--nb-text-secondary);
-  white-space: nowrap;
-}
-
-.efficiency-weekly-progress {
+.eff-action-track {
   flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.efficiency-weekly-track {
-  flex: 1;
-  height: 8px;
+  height: 18px;
   border-radius: 4px;
   background: var(--nb-border-light);
   overflow: hidden;
 }
 
-.efficiency-weekly-fill {
+.eff-action-fill {
   height: 100%;
   border-radius: 4px;
-  background: var(--nb-success);
   transition: width 0.5s ease;
   min-width: 0;
 }
 
-.efficiency-weekly-num {
+.eff-action-count {
+  min-width: 56px;
   font-size: 13px;
   font-weight: var(--nb-font-weight-bold);
-  color: var(--nb-success);
-  white-space: nowrap;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.eff-action-total {
+  font-size: 11px;
+  font-weight: var(--nb-font-weight-normal);
+  color: var(--nb-text-tertiary);
+}
+
+/* --- 7日趋势 --- */
+.eff-trend {
+  padding-top: 4px;
+}
+
+.eff-trend-bars {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  height: 80px;
+  gap: 10px;
+  padding: 0 2px;
+}
+
+.eff-trend-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.eff-trend-bar-wrapper {
+  width: 100%;
+  height: 55px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  cursor: pointer;
+}
+
+.eff-trend-total {
+  width: 100%;
+  border-radius: 4px 4px 0 0;
+  background: var(--nb-border-light);
+  min-height: 2px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  transition: height 0.5s ease;
+}
+
+.eff-trend-mine {
+  width: 100%;
+  border-radius: 4px 4px 0 0;
+  background: linear-gradient(180deg, var(--nb-primary), rgba(102, 126, 234, 0.5));
+  min-height: 2px;
+  transition: height 0.5s ease;
+}
+
+.eff-trend-label {
+  font-size: 10px;
+  color: var(--nb-text-tertiary);
+  text-align: center;
+}
+
+.eff-trend-legend {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  padding-top: 8px;
+  font-size: 10px;
+  color: var(--nb-text-tertiary);
+}
+
+.eff-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.eff-legend-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
 }
 
 /* ==================== Role Extra ==================== */
