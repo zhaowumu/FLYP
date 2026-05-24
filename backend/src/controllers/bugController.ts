@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { AppDataSource } from "../config/database";
+import { Between, LessThanOrEqual, MoreThanOrEqual } from "typeorm";
 import { Bug } from "../entities/Bug";
 import { OperationLog } from "../entities/OperationLog";
 import { User } from "../entities/User";
@@ -110,7 +111,7 @@ export const bugController = {
 
   async getAllBugs(req: Request, res: Response) {
     try {
-      const { projectId, status, severity, assigneeId, reporterId, sortBy, sortOrder, category, page, pageSize, myUserId } = req.query;
+      const { projectId, status, severity, assigneeId, reporterId, sortBy, sortOrder, category, page, pageSize, myUserId, updatedAfter, updatedBefore } = req.query;
       const where: any = {};
 
       if (projectId) where.project = { id: projectId };
@@ -119,6 +120,13 @@ export const bugController = {
       if (assigneeId) where.assignee = { id: assigneeId };
       if (reporterId) where.reporter = { id: reporterId };
       if (category) where.category = category;
+      if (updatedAfter && updatedBefore) {
+        where.updatedAt = Between(new Date(updatedAfter as string), new Date(updatedBefore as string));
+      } else if (updatedAfter) {
+        where.updatedAt = MoreThanOrEqual(new Date(updatedAfter as string));
+      } else if (updatedBefore) {
+        where.updatedAt = LessThanOrEqual(new Date(updatedBefore as string));
+      }
 
       const validSortFields = ["createdAt", "updatedAt", "severity", "dueDate", "status", "title"];
       const sortField = sortBy && validSortFields.includes(sortBy as string) ? sortBy as string : "createdAt";
@@ -139,6 +147,8 @@ export const bugController = {
           .andWhere(status ? "bug.status = :status" : "1=1", { status })
           .andWhere(severity ? "bug.severity = :severity" : "1=1", { severity })
           .andWhere(category ? "bug.category = :category" : "1=1", { category })
+          .andWhere(updatedAfter ? "bug.updatedAt >= :updatedAfter" : "1=1", { updatedAfter: updatedAfter ? new Date(updatedAfter as string) : undefined })
+          .andWhere(updatedBefore ? "bug.updatedAt <= :updatedBefore" : "1=1", { updatedBefore: updatedBefore ? new Date(updatedBefore as string) : undefined })
           .orderBy(`bug.${sortField}`, order);
 
         if (page) {

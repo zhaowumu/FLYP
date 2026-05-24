@@ -72,6 +72,17 @@
             :value="cat"
           />
         </el-select>
+        <el-date-picker
+          v-model="filterUpdatedRange"
+          type="datetimerange"
+          range-separator="至"
+          start-placeholder="更新开始"
+          end-placeholder="更新结束"
+          style="width: 360px"
+          clearable
+          format="YYYY-MM-DD HH:mm"
+          value-format="YYYY-MM-DDTHH:mm:ss"
+        />
       </div>
 
       <el-table :data="filteredBugs" style="width: 100%">
@@ -119,9 +130,9 @@
             {{ row.reporter?.realName || '-' }}
           </template>
         </el-table-column>
-        <el-table-column prop="createdAt" label="创建时间" width="180">
+        <el-table-column prop="updatedAt" label="更新时间" width="180">
           <template #default="{ row }">
-            {{ new Date(row.createdAt).toLocaleString() }}
+            {{ new Date(row.updatedAt).toLocaleString() }}
           </template>
         </el-table-column>
         <el-table-column label="剩余时间" width="130">
@@ -269,6 +280,7 @@ const filterSeverity = ref('')
 const filterUser = ref<number | null>(null)
 const filterReporter = ref<number | null>(null)
 const filterCategory = ref('')
+const filterUpdatedRange = ref<[string, string] | null>(null)
 const activeTab = ref(userStore.isPM ? 'all' : 'assigned')
 const currentPage = ref(1)
 const pageSize = ref(20)
@@ -278,7 +290,7 @@ const lastLoadTime = ref(0)
 const STALE_TTL = 60_000 // 数据缓存60秒
 
 // 筛选条件变化时重置到第一页并重新加载
-watch([activeTab, filterStatus, filterSeverity, filterUser, filterReporter, filterCategory], () => {
+watch([activeTab, filterStatus, filterSeverity, filterUser, filterReporter, filterCategory, filterUpdatedRange], () => {
   currentPage.value = 1
   loadBugs()
 })
@@ -407,6 +419,10 @@ const loadBugs = async () => {
     // 'my' 传 myUserId 由后端做 OR 查询，不再前端过滤
     if (activeTab.value === 'my' && !filterUser.value && !filterReporter.value) {
       params.myUserId = userId
+    }
+    if (filterUpdatedRange.value) {
+      params.updatedAfter = filterUpdatedRange.value[0]
+      params.updatedBefore = filterUpdatedRange.value[1]
     }
     const res = await getBugs(params)
     bugs.value = res.data.data

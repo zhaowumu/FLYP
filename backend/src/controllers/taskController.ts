@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { AppDataSource } from "../config/database";
+import { Between, LessThanOrEqual, MoreThanOrEqual } from "typeorm";
 import { Task } from "../entities/Task";
 import { OperationLog } from "../entities/OperationLog";
 import { User } from "../entities/User";
@@ -125,7 +126,7 @@ export const taskController = {
 
   async getAllTasks(req: Request, res: Response) {
     try {
-      const { projectId, status, assigneeId, creatorId, priority, sortBy, sortOrder, category, page, pageSize, myUserId } = req.query;
+      const { projectId, status, assigneeId, creatorId, priority, sortBy, sortOrder, category, page, pageSize, myUserId, updatedAfter, updatedBefore } = req.query;
       const where: any = {};
 
       if (projectId) where.project = { id: projectId };
@@ -133,6 +134,13 @@ export const taskController = {
       if (creatorId) where.creator = { id: creatorId };
       if (priority) where.priority = priority;
       if (category) where.category = category;
+      if (updatedAfter && updatedBefore) {
+        where.updatedAt = Between(new Date(updatedAfter as string), new Date(updatedBefore as string));
+      } else if (updatedAfter) {
+        where.updatedAt = MoreThanOrEqual(new Date(updatedAfter as string));
+      } else if (updatedBefore) {
+        where.updatedAt = LessThanOrEqual(new Date(updatedBefore as string));
+      }
 
       const validSortFields = ["createdAt", "updatedAt", "priority", "dueDate", "status", "title"];
       const sortField = sortBy && validSortFields.includes(sortBy as string) ? sortBy as string : "createdAt";
@@ -156,6 +164,8 @@ export const taskController = {
           .andWhere(status ? "task.status = :status" : "1=1", { status })
           .andWhere(priority ? "task.priority = :priority" : "1=1", { priority })
           .andWhere(category ? "task.category = :category" : "1=1", { category })
+          .andWhere(updatedAfter ? "task.updatedAt >= :updatedAfter" : "1=1", { updatedAfter: updatedAfter ? new Date(updatedAfter as string) : undefined })
+          .andWhere(updatedBefore ? "task.updatedAt <= :updatedBefore" : "1=1", { updatedBefore: updatedBefore ? new Date(updatedBefore as string) : undefined })
           .orderBy(`task.${sortField}`, order);
         
         if (page) {
@@ -201,6 +211,8 @@ export const taskController = {
           .andWhere(status ? "task.status = :status" : "1=1", { status })
           .andWhere(priority ? "task.priority = :priority" : "1=1", { priority })
           .andWhere(category ? "task.category = :category" : "1=1", { category })
+          .andWhere(updatedAfter ? "task.updatedAt >= :updatedAfter" : "1=1", { updatedAfter: updatedAfter ? new Date(updatedAfter as string) : undefined })
+          .andWhere(updatedBefore ? "task.updatedAt <= :updatedBefore" : "1=1", { updatedBefore: updatedBefore ? new Date(updatedBefore as string) : undefined })
           .orderBy(`task.${sortField}`, order);
 
         if (page) {
