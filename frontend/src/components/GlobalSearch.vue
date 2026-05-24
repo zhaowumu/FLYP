@@ -24,33 +24,6 @@
     <div v-loading="loading" class="search-results">
       <template v-if="query.trim().length > 0">
         <div v-if="hasResults" class="results-container">
-          <!-- Projects -->
-          <div v-if="results.projects.length > 0" class="result-group">
-            <div class="result-group-title">
-              <el-icon><Folder /></el-icon>
-              <span>项目 ({{ results.projects.length }})</span>
-            </div>
-            <div
-              v-for="project in results.projects"
-              :key="'project-' + project.id"
-              class="result-item"
-              @click="handleSelect('project', project)"
-            >
-              <div class="result-icon project-icon">
-                <el-icon><Folder /></el-icon>
-              </div>
-              <div class="result-content">
-                <div class="result-title" v-html="highlightText(project.name)"></div>
-                <div class="result-meta">
-                  <span class="result-type">项目</span>
-                  <span v-if="project.managers?.length" class="result-separator">·</span>
-                  <span v-if="project.managers?.length" class="result-assignee">{{ project.managers[0].realName }}</span>
-                </div>
-              </div>
-              <el-icon class="result-arrow"><ArrowRight /></el-icon>
-            </div>
-          </div>
-
           <!-- Tasks -->
           <div v-if="results.tasks.length > 0" class="result-group">
             <div class="result-group-title">
@@ -139,7 +112,6 @@ import { globalSearch } from '../api/search'
 import { ElMessage } from 'element-plus'
 import {
   Search,
-  Folder,
   List,
   Warning,
   ArrowRight,
@@ -166,17 +138,14 @@ const inputRef = ref()
 const results = ref<{
   tasks: any[]
   bugs: any[]
-  projects: any[]
 }>({
   tasks: [],
-  bugs: [],
-  projects: []
+  bugs: []
 })
 
 const hasResults = computed(() => {
   return results.value.tasks.length > 0 ||
-    results.value.bugs.length > 0 ||
-    results.value.projects.length > 0
+    results.value.bugs.length > 0
 })
 
 let searchTimer: ReturnType<typeof setTimeout> | null = null
