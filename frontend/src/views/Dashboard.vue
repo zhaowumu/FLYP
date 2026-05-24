@@ -456,7 +456,7 @@
     </template>
 
     <!-- ==================== Developer / Designer / Artist / Tester Unified View ==================== -->
-    <template v-if="['developer','designer','artist','tester'].includes(userRole)">
+    <template v-if="userRole !== 'admin' && userRole !== 'project_manager'">
       <div class="section">
         <div class="section-title">
           <svg class="section-icon" viewBox="0 0 24 24" fill="none"><path d="M16 4H18C19.1 4 20 4.9 20 6V20C20 21.1 19.1 22 18 22H6C4.9 22 4 21.1 4 20V6C4 4.9 4.9 4 6 4H8M12 2V10L15 7M12 10L9 7" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
