@@ -96,11 +96,11 @@ export const uploadAvatar = multer({
  * - GIF 跳过压缩
  * - BMP 转为 JPEG
  */
-async function compressImage(filePath: string, isAvatar: boolean): Promise<void> {
+async function compressImage(filePath: string, isAvatar: boolean): Promise<string> {
   const ext = path.extname(filePath).toLowerCase();
 
   // GIF 动图不压缩
-  if (ext === ".gif") return;
+  if (ext === ".gif") return filePath;
 
   const maxSize = isAvatar ? 400 : 1920;
 
@@ -151,12 +151,15 @@ async function compressImage(filePath: string, isAvatar: boolean): Promise<void>
     console.log(
       `[compress] ${path.basename(filePath)}: ${(originalSize / 1024).toFixed(1)}KB → ${(compressedSize / 1024).toFixed(1)}KB (${Math.round((1 - compressedSize / originalSize) * 100)}% saved)`
     );
+    return outputPath;
   } else {
     // 压缩后反而更大，保留原始文件
     fs.unlinkSync(tmpPath);
     if (outputPath !== filePath && fs.existsSync(filePath)) {
       fs.renameSync(filePath, outputPath);
+      return outputPath;
     }
+    return filePath;
   }
 }
 
@@ -175,9 +178,8 @@ export const uploadController = {
         return res.status(400).json({ errno: 1, message: "没有上传文件" });
       }
 
-      const filePath = req.file.path;
-      await compressImage(filePath, false);
-      const imageUrl = getUrlPath("images", req.file.path);
+      const finalPath = await compressImage(req.file.path, false);
+      const imageUrl = getUrlPath("images", finalPath);
 
       res.json({
         errno: 0,
@@ -196,17 +198,15 @@ export const uploadController = {
         return res.status(400).json({ errno: 1, message: "没有上传文件" });
       }
 
-      // 并行压缩所有图片
-      await Promise.all(
-        req.files.map(async (file) => {
-          await compressImage(file.path, false);
-        })
+      // 并行压缩所有图片，收集最终路径
+      const finalPaths = await Promise.all(
+        req.files.map(async (file) => compressImage(file.path, false))
       );
 
-      const urls = req.files.map((file) => ({
-        url: getUrlPath("images", file.path),
-        alt: file.originalname,
-        href: getUrlPath("images", file.path),
+      const urls = finalPaths.map((fp) => ({
+        url: getUrlPath("images", fp),
+        alt: "",
+        href: getUrlPath("images", fp),
       }));
 
       res.json({ errno: 0, data: urls });
@@ -242,8 +242,8 @@ export const uploadController = {
         return res.status(400).json({ error: "没有上传文件" });
       }
 
-      await compressImage(req.file.path, true);
-      const avatarUrl = getUrlPath("avatars", req.file.path);
+      const finalPath = await compressImage(req.file.path, true);
+      const avatarUrl = getUrlPath("avatars", finalPath);
 
       res.json({ url: avatarUrl });
     } catch (error) {
