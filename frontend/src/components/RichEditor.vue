@@ -201,7 +201,7 @@ const editorConfig = {
     uploadVideo: {
       fieldName: 'file',
       server: '/api/upload/video',
-      maxFileSize: 100 * 1024 * 1024,
+      maxFileSize: 50 * 1024 * 1024,
       headers: {
         Authorization: `Bearer ${localStorage.getItem('token')}`
       },

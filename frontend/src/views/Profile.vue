@@ -32,7 +32,7 @@
             <div class="summary-name">{{ userStore.user?.realName || '用户' }}</div>
             <div class="summary-role">{{ roleText }}</div>
           </div>
-          <p class="avatar-tip">支持 JPG / PNG / GIF / WebP<br/>最大 5MB</p>
+          <p class="avatar-tip">支持 JPG / PNG / GIF / WebP<br/>最大 10MB，自动压缩</p>
         </div>
       </div>
 
@@ -180,8 +180,8 @@ async function handleFileChange(event: Event) {
   if (!file) return
 
   // 文件大小验证
-  if (file.size > 5 * 1024 * 1024) {
-    ElMessage.warning('图片大小不能超过 5MB')
+  if (file.size > 10 * 1024 * 1024) {
+    ElMessage.warning('图片大小不能超过 10MB')
     return
   }
 
