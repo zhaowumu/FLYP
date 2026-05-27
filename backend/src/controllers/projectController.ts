@@ -1,9 +1,13 @@
 import { Request, Response } from "express";
 import { AppDataSource } from "../config/database";
 import { Project } from "../entities/Project";
+import { Task } from "../entities/Task";
+import { Bug } from "../entities/Bug";
 import { User } from "../entities/User";
 
 const projectRepository = AppDataSource.getRepository(Project);
+const taskRepository = AppDataSource.getRepository(Task);
+const bugRepository = AppDataSource.getRepository(Bug);
 
 export const projectController = {
   // 创建项目
@@ -37,16 +41,67 @@ export const projectController = {
     }
   },
 
-  // 获取所有项目
+  // 获取所有项目（轻量：仅 manager 关联 + 聚合计数）
   async getAllProjects(req: Request, res: Response) {
     try {
       const projects = await projectRepository.find({
-        relations: ["managers", "tasks", "bugs"],
+        relations: ["managers"],
+        order: { updatedAt: "DESC" },
       });
-      res.json(projects);
+
+      if (projects.length === 0) {
+        return res.json(projects);
+      }
+
+      const projectIds = projects.map(p => p.id);
+
+      // 批量统计每个项目的任务数和 Bug 数
+      const [taskCounts, bugCounts] = await Promise.all([
+        taskRepository
+          .createQueryBuilder("task")
+          .select("task.projectId", "projectId")
+          .addSelect("COUNT(*)", "count")
+          .where("task.projectId IN (:...ids)", { ids: projectIds })
+          .groupBy("task.projectId")
+          .getRawMany(),
+        bugRepository
+          .createQueryBuilder("bug")
+          .select("bug.projectId", "projectId")
+          .addSelect("COUNT(*)", "count")
+          .where("bug.projectId IN (:...ids)", { ids: projectIds })
+          .groupBy("bug.projectId")
+          .getRawMany(),
+      ]);
+
+      const taskCountMap: Record<number, number> = {};
+      const bugCountMap: Record<number, number> = {};
+      taskCounts.forEach((r: any) => { taskCountMap[Number(r.projectId)] = Number(r.count); });
+      bugCounts.forEach((r: any) => { bugCountMap[Number(r.projectId)] = Number(r.count); });
+
+      const result = projects.map(p => ({
+        ...p,
+        taskCount: taskCountMap[p.id] || 0,
+        bugCount: bugCountMap[p.id] || 0,
+      }));
+
+      res.json(result);
     } catch (error) {
       console.error("Error getting projects:", error);
       res.status(500).json({ error: "Failed to get projects" });
+    }
+  },
+
+  // 获取项目下拉选项（仅 id + name，供前端下拉框使用）
+  async getProjectOptions(req: Request, res: Response) {
+    try {
+      const projects = await projectRepository.find({
+        select: ["id", "name"],
+        order: { updatedAt: "DESC" },
+      });
+      res.json(projects);
+    } catch (error) {
+      console.error("Error getting project options:", error);
+      res.status(500).json({ error: "Failed to get project options" });
     }
   },
 

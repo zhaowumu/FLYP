@@ -168,34 +168,32 @@ export const taskController = {
           .andWhere(updatedBefore ? "task.updatedAt <= :updatedBefore" : "1=1", { updatedBefore: updatedBefore ? new Date(updatedBefore as string) : undefined })
           .orderBy(`task.${sortField}`, order);
         
-        if (page) {
-          const [tasks, total] = await query.skip(skip).take(take).getManyAndCount();
-          // 首次加载才计算 tab 计数，翻页时复用
-          const uid = (req as any).user?.id;
-          let tabs;
-          if (currentPage === 1) {
-            const allTotal = await taskRepository.count();
-            tabs = { assigned: 0, created: 0, my: 0, all: allTotal };
-            if (uid) {
-              const [assigned, created] = await Promise.all([
-                taskRepository.createQueryBuilder("task")
-                  .leftJoin("task.assignees", "tabA")
-                  .where("tabA.id = :uid", { uid })
-                  .getCount(),
-                taskRepository.count({ where: { creator: { id: uid } } }),
-              ]);
-              const myCount = await taskRepository.createQueryBuilder("task")
-                .leftJoin("task.assignees", "tabM")
-                .where("tabM.id = :uid OR task.creatorId = :uid", { uid })
-                .getCount();
-              tabs = { assigned, created, my: myCount, all: allTotal };
-            }
+        const finalTake = Math.min(take || 50, 200);
+        const finalSkip = skip || 0;
+        const finalPage = currentPage || 1;
+
+        const [tasks, total] = await query.skip(finalSkip).take(finalTake).getManyAndCount();
+        const uid = (req as any).user?.id;
+        let tabs;
+        if (finalPage === 1) {
+          const allTotal = await taskRepository.count();
+          tabs = { assigned: 0, created: 0, my: 0, all: allTotal };
+          if (uid) {
+            const [assigned, created] = await Promise.all([
+              taskRepository.createQueryBuilder("task")
+                .leftJoin("task.assignees", "tabA")
+                .where("tabA.id = :uid", { uid })
+                .getCount(),
+              taskRepository.count({ where: { creator: { id: uid } } }),
+            ]);
+            const myCount = await taskRepository.createQueryBuilder("task")
+              .leftJoin("task.assignees", "tabM")
+              .where("tabM.id = :uid OR task.creatorId = :uid", { uid })
+              .getCount();
+            tabs = { assigned, created, my: myCount, all: allTotal };
           }
-          return res.json({ data: tasks, total, page: currentPage, pageSize: take, tabs });
         }
-        
-        const tasks = await query.getMany();
-        return res.json(tasks);
+        return res.json({ data: tasks, total, page: finalPage, pageSize: finalTake, tabs });
       }
 
       // "我参与的"：OR 逻辑（我是负责人 OR 我是创建人），必须用 QueryBuilder
@@ -215,47 +213,14 @@ export const taskController = {
           .andWhere(updatedBefore ? "task.updatedAt <= :updatedBefore" : "1=1", { updatedBefore: updatedBefore ? new Date(updatedBefore as string) : undefined })
           .orderBy(`task.${sortField}`, order);
 
-        if (page) {
-          const [tasks, total] = await query.skip(skip).take(take).getManyAndCount();
-          const uid = (req as any).user?.id;
-          let tabs;
-          if (currentPage === 1) {
-            const allTotal = await taskRepository.count();
-            tabs = { assigned: 0, created: 0, my: 0, all: allTotal };
-            if (uid) {
-              const [assigned, created] = await Promise.all([
-                taskRepository.createQueryBuilder("task")
-                  .leftJoin("task.assignees", "tabA")
-                  .where("tabA.id = :uid", { uid })
-                  .getCount(),
-                taskRepository.count({ where: { creator: { id: uid } } }),
-              ]);
-              const myCount = await taskRepository.createQueryBuilder("task")
-                .leftJoin("task.assignees", "tabM")
-                .where("tabM.id = :uid OR task.creatorId = :uid", { uid })
-                .getCount();
-              tabs = { assigned, created, my: myCount, all: allTotal };
-            }
-          }
-          return res.json({ data: tasks, total, page: currentPage, pageSize: take, tabs });
-        }
+        const finalTake = Math.min(take || 50, 200);
+        const finalSkip = skip || 0;
+        const finalPage = currentPage || 1;
 
-        const tasks = await query.getMany();
-        return res.json(tasks);
-      }
-
-      if (page) {
-        const [tasks, total] = await taskRepository.findAndCount({
-          where,
-          relations: ["assignees", "creator", "subtasks"],
-          order: { [sortField]: order },
-          skip,
-          take,
-        });
-        // 首次加载才计算 tab 计数，翻页时复用
+        const [tasks, total] = await query.skip(finalSkip).take(finalTake).getManyAndCount();
         const uid = (req as any).user?.id;
         let tabs;
-        if (currentPage === 1) {
+        if (finalPage === 1) {
           const allTotal = await taskRepository.count();
           tabs = { assigned: 0, created: 0, my: 0, all: allTotal };
           if (uid) {
@@ -273,16 +238,43 @@ export const taskController = {
             tabs = { assigned, created, my: myCount, all: allTotal };
           }
         }
-        return res.json({ data: tasks, total, page: currentPage, pageSize: take, tabs });
+        return res.json({ data: tasks, total, page: finalPage, pageSize: finalTake, tabs });
       }
 
-      const tasks = await taskRepository.find({
+      // 始终分页，默认 pageSize=50
+      const finalTake = take || 50;
+      const finalSkip = skip || 0;
+      const finalPage = currentPage || 1;
+
+      const [tasks, total] = await taskRepository.findAndCount({
         where,
-        relations: ["project", "project.managers", "assignees", "creator", "parentTask", "subtasks"],
+        relations: ["assignees", "creator", "subtasks"],
         order: { [sortField]: order },
+        skip: finalSkip,
+        take: finalTake,
       });
 
-      res.json(tasks);
+      const uid = (req as any).user?.id;
+      let tabs;
+      if (finalPage === 1) {
+        const allTotal = await taskRepository.count();
+        tabs = { assigned: 0, created: 0, my: 0, all: allTotal };
+        if (uid) {
+          const [assigned, created] = await Promise.all([
+            taskRepository.createQueryBuilder("task")
+              .leftJoin("task.assignees", "tabA")
+              .where("tabA.id = :uid", { uid })
+              .getCount(),
+            taskRepository.count({ where: { creator: { id: uid } } }),
+          ]);
+          const myCount = await taskRepository.createQueryBuilder("task")
+            .leftJoin("task.assignees", "tabM")
+            .where("tabM.id = :uid OR task.creatorId = :uid", { uid })
+            .getCount();
+          tabs = { assigned, created, my: myCount, all: allTotal };
+        }
+      }
+      return res.json({ data: tasks, total, page: finalPage, pageSize: finalTake, tabs });
     } catch (error) {
       console.error("Error getting tasks:", error);
       res.status(500).json({ error: "Failed to get tasks" });

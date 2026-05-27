@@ -4,6 +4,10 @@ export const getProjects = () => {
   return api.get('/projects')
 }
 
+export const getProjectOptions = () => {
+  return api.get('/projects/options')
+}
+
 export const getProject = (id: number) => {
   return api.get(`/projects/${id}`)
 }

@@ -6,6 +6,7 @@ const router = Router();
 
 router.post("/", roleMiddleware(["admin", "project_manager"]), projectController.createProject);
 router.get("/", projectController.getAllProjects);
+router.get("/options", projectController.getProjectOptions);
 router.get("/:id", projectController.getProjectById);
 router.put("/:id", projectController.updateProject);
 router.patch("/:id/archive", projectController.archiveProject);

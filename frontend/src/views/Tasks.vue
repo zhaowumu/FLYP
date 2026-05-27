@@ -374,7 +374,7 @@ import { ref, reactive, computed, watch, onMounted, onActivated } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getTasks, createTask, addSubtask, getTaskCategories } from '../api/task'
-import { getProjects } from '../api/project'
+import { getProjectOptions } from '../api/project'
 import { getUsers } from '../api/user'
 import { useUserStore } from '../stores/user'
 import RichEditor from '../components/RichEditor.vue'
@@ -564,7 +564,7 @@ const loadCategories = async () => {
 
 const loadProjects = async () => {
   try {
-    const res = await getProjects()
+    const res = await getProjectOptions()
     projects.value = res.data
   } catch (error) {
     console.error('Failed to load projects:', error)

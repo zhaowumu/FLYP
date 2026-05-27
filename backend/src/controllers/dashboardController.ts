@@ -13,6 +13,23 @@ const projectRepository = AppDataSource.getRepository(Project);
 const userRepository = AppDataSource.getRepository(User);
 const operationLogRepository = AppDataSource.getRepository(OperationLog);
 
+// 简单的内存缓存
+const cache = new Map<string, { data: any; expiry: number }>();
+const CACHE_TTL = 30_000; // 30 秒
+
+function getCached(key: string): any | undefined {
+  const entry = cache.get(key);
+  if (entry && entry.expiry > Date.now()) {
+    return entry.data;
+  }
+  cache.delete(key);
+  return undefined;
+}
+
+function setCache(key: string, data: any): void {
+  cache.set(key, { data, expiry: Date.now() + CACHE_TTL });
+}
+
 /**
  * GET /api/dashboard
  * 返回工作台数据，按角色返回不同内容
@@ -21,6 +38,12 @@ export const getDashboard = async (req: Request, res: Response) => {
   try {
     const uid = (req as any).user.id;
     const role = (req as any).user.role;
+    const cacheKey = `dashboard_${uid}_${role}`;
+
+    const cached = getCached(cacheKey);
+    if (cached) {
+      return res.json(cached);
+    }
     const now = new Date();
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const weekAgoStr = weekAgo.toISOString();
@@ -188,7 +211,7 @@ export const getDashboard = async (req: Request, res: Response) => {
         };
       }).sort((a, b) => b.completionRate - a.completionRate);
 
-      return res.json({
+      const data = {
         stats: {
           activeProjects,
           totalTasks,
@@ -216,7 +239,9 @@ export const getDashboard = async (req: Request, res: Response) => {
           project: t.project ? { id: t.project.id, name: t.project.name } : null,
         })),
         recentLogs,
-      });
+      };
+      setCache(cacheKey, data);
+      return res.json(data);
     }
 
     // ===== PM 视图 =====
@@ -400,7 +425,7 @@ export const getDashboard = async (req: Request, res: Response) => {
             .getMany()
         : [];
 
-      return res.json({
+      const data = {
         stats: { unassignedTasks, closeableTasks, unassignedBugs, closeableBugs },
         recentProjects,
         teamMembers,
@@ -421,7 +446,9 @@ export const getDashboard = async (req: Request, res: Response) => {
           project: t.project ? { id: t.project.id, name: t.project.name } : null,
         })),
         recentLogs,
-      });
+      };
+      setCache(cacheKey, data);
+      return res.json(data);
     }
 
     // ===== Developer/Designer/Artist/Tester 视图 =====
@@ -598,7 +625,7 @@ export const getDashboard = async (req: Request, res: Response) => {
 
     const efficiencyRate = totalOpsThisWeek > 0 ? Math.round((myOpsThisWeek / totalOpsThisWeek) * 100) : 0;
 
-    return res.json({
+    const data = {
       myPendingTasks,
       myPendingBugs,
       stats: {
@@ -617,7 +644,9 @@ export const getDashboard = async (req: Request, res: Response) => {
       workloadByPriority,
       workloadBySeverity,
       recentLogs,
-    });
+    };
+    setCache(cacheKey, data);
+    return res.json(data);
   } catch (error) {
     console.error("Error loading dashboard:", error);
     res.status(500).json({ error: "Failed to load dashboard data" });

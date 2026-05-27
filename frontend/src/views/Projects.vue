@@ -28,11 +28,11 @@
         <div class="card-stats">
           <div class="stat-item">
             <el-icon><Document /></el-icon>
-            <span>{{ project.tasks?.length || 0 }} 任务</span>
+            <span>{{ project.taskCount || 0 }} 任务</span>
           </div>
           <div class="stat-item">
             <el-icon><Warning /></el-icon>
-            <span>{{ project.bugs?.length || 0 }} 缺陷</span>
+            <span>{{ project.bugCount || 0 }} 缺陷</span>
           </div>
           <div class="stat-item">
             <el-icon><Clock /></el-icon>

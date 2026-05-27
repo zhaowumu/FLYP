@@ -134,10 +134,6 @@ export const bugController = {
 
       // "我参与的"：OR 逻辑（我是负责人 OR 我是报告人），需用 QueryBuilder
       if (myUserId) {
-        const take = Math.min(parseInt(pageSize as string) || 50, 200);
-        const currentPage = parseInt(page as string) || 1;
-        const skip = (currentPage - 1) * take;
-
         const query = bugRepository
           .createQueryBuilder("bug")
           .leftJoinAndSelect("bug.assignee", "assignee")
@@ -151,51 +147,14 @@ export const bugController = {
           .andWhere(updatedBefore ? "bug.updatedAt <= :updatedBefore" : "1=1", { updatedBefore: updatedBefore ? new Date(updatedBefore as string) : undefined })
           .orderBy(`bug.${sortField}`, order);
 
-        if (page) {
-          const [bugs, total] = await query.skip(skip).take(take).getManyAndCount();
-          const uid = (req as any).user?.id;
-          let tabs;
-          if (currentPage === 1) {
-            const allTotal = await bugRepository.count();
-            tabs = { assigned: 0, reported: 0, my: 0, all: allTotal };
-            if (uid) {
-              const [assigned, reported] = await Promise.all([
-                bugRepository.count({ where: { assignee: { id: uid } } }),
-                bugRepository.count({ where: { reporter: { id: uid } } }),
-              ]);
-              const myCount = await bugRepository
-                .createQueryBuilder("bug")
-                .leftJoin("bug.assignee", "tabAssignee")
-                .leftJoin("bug.reporter", "tabReporter")
-                .where("tabAssignee.id = :uid OR tabReporter.id = :uid", { uid })
-                .getCount();
-              tabs = { assigned, reported, my: myCount, all: allTotal };
-            }
-          }
-          return res.json({ data: bugs, total, page: currentPage, pageSize: take, tabs });
-        }
+        const finalTake = Math.min(parseInt(pageSize as string) || 50, 200);
+        const finalPage = parseInt(page as string) || 1;
+        const finalSkip = (finalPage - 1) * finalTake;
 
-        const bugs = await query.getMany();
-        return res.json(bugs);
-      }
-
-      // 分页支持
-      if (page) {
-        const take = Math.min(parseInt(pageSize as string) || 50, 200);
-        const currentPage = parseInt(page as string) || 1;
-        const skip = (currentPage - 1) * take;
-        const [bugs, total] = await bugRepository.findAndCount({
-          where,
-          relations: ["assignee", "reporter"],
-          order: { [sortField]: order },
-          skip,
-          take,
-        });
-
-        // 首次加载才计算 tab 计数，翻页时复用
+        const [bugs, total] = await query.skip(finalSkip).take(finalTake).getManyAndCount();
         const uid = (req as any).user?.id;
         let tabs;
-        if (currentPage === 1) {
+        if (finalPage === 1) {
           const allTotal = await bugRepository.count();
           tabs = { assigned: 0, reported: 0, my: 0, all: allTotal };
           if (uid) {
@@ -203,26 +162,51 @@ export const bugController = {
               bugRepository.count({ where: { assignee: { id: uid } } }),
               bugRepository.count({ where: { reporter: { id: uid } } }),
             ]);
-            
-            tabs = { assigned, reported, my: await bugRepository
+            const myCount = await bugRepository
               .createQueryBuilder("bug")
               .leftJoin("bug.assignee", "tabAssignee")
               .leftJoin("bug.reporter", "tabReporter")
               .where("tabAssignee.id = :uid OR tabReporter.id = :uid", { uid })
-              .getCount(), all: allTotal };
+              .getCount();
+            tabs = { assigned, reported, my: myCount, all: allTotal };
           }
         }
-
-        return res.json({ data: bugs, total, page: currentPage, pageSize: take, tabs });
+        return res.json({ data: bugs, total, page: finalPage, pageSize: finalTake, tabs });
       }
 
-      const bugs = await bugRepository.find({
+      // 始终分页，默认 pageSize=50
+      const finalTake = Math.min(parseInt(pageSize as string) || 50, 200);
+      const finalPage = parseInt(page as string) || 1;
+      const finalSkip = (finalPage - 1) * finalTake;
+
+      const [bugs, total] = await bugRepository.findAndCount({
         where,
-        relations: ["project", "project.managers", "assignee", "reporter"],
+        relations: ["assignee", "reporter"],
         order: { [sortField]: order },
+        skip: finalSkip,
+        take: finalTake,
       });
 
-      res.json(bugs);
+      const uid = (req as any).user?.id;
+      let tabs;
+      if (finalPage === 1) {
+        const allTotal = await bugRepository.count();
+        tabs = { assigned: 0, reported: 0, my: 0, all: allTotal };
+        if (uid) {
+          const [assigned, reported] = await Promise.all([
+            bugRepository.count({ where: { assignee: { id: uid } } }),
+            bugRepository.count({ where: { reporter: { id: uid } } }),
+          ]);
+          const myCount = await bugRepository
+            .createQueryBuilder("bug")
+            .leftJoin("bug.assignee", "tabAssignee")
+            .leftJoin("bug.reporter", "tabReporter")
+            .where("tabAssignee.id = :uid OR tabReporter.id = :uid", { uid })
+            .getCount();
+          tabs = { assigned, reported, my: myCount, all: allTotal };
+        }
+      }
+      return res.json({ data: bugs, total, page: finalPage, pageSize: finalTake, tabs });
     } catch (error) {
       console.error("Error getting bugs:", error);
       res.status(500).json({ error: "Failed to get bugs" });
@@ -802,18 +786,27 @@ export const bugController = {
   async getBugStats(req: Request, res: Response) {
     try {
       const { projectId } = req.query;
-      const where: any = {};
-      if (projectId) where.project = { id: projectId };
 
-      const bugs = await bugRepository.find({ where });
+      const qb = bugRepository.createQueryBuilder("bug")
+        .select("COUNT(*)", "total")
+        .addSelect("SUM(CASE WHEN bug.status = 'pending' THEN 1 ELSE 0 END)", "pending")
+        .addSelect("SUM(CASE WHEN bug.status = 'in_progress' THEN 1 ELSE 0 END)", "in_progress")
+        .addSelect("SUM(CASE WHEN bug.status = 'fixed' THEN 1 ELSE 0 END)", "fixed")
+        .addSelect("SUM(CASE WHEN bug.status = 'verified' THEN 1 ELSE 0 END)", "verified")
+        .addSelect("SUM(CASE WHEN bug.status = 'closed' THEN 1 ELSE 0 END)", "closed");
 
+      if (projectId) {
+        qb.where("bug.projectId = :pid", { pid: projectId });
+      }
+
+      const raw = await qb.getRawOne();
       const stats = {
-        total: bugs.length,
-        pending: bugs.filter(b => b.status === "pending").length,
-        in_progress: bugs.filter(b => b.status === "in_progress").length,
-        fixed: bugs.filter(b => b.status === "fixed").length,
-        verified: bugs.filter(b => b.status === "verified").length,
-        closed: bugs.filter(b => b.status === "closed").length,
+        total: Number(raw.total),
+        pending: Number(raw.pending),
+        in_progress: Number(raw.in_progress),
+        fixed: Number(raw.fixed),
+        verified: Number(raw.verified),
+        closed: Number(raw.closed),
       };
 
       res.json(stats);
