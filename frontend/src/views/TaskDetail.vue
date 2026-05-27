@@ -46,7 +46,7 @@
                 {{ task.description ? '编辑' : '添加描述' }}
               </el-button>
             </div>
-            <div v-if="!isEditingDescription" class="description-content" v-html="task.description || '<span style=color:var(--nb-text-secondary)>暂无描述</span>'" @click="handleImageClick"></div>
+            <div v-if="!isEditingDescription" class="description-content" v-html="sanitizeHtml(task.description) || '<span style=color:var(--nb-text-secondary)>暂无描述</span>'" @click="handleImageClick"></div>
             <div v-else class="description-editor">
               <RichEditor
                 v-model="editDescription"
@@ -767,11 +767,12 @@
 import { ref, computed, watch, onMounted, nextTick, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ImageViewer } from 'element-plus'
+
 import { getTask, updateTaskStatus, addComment as addTaskComment, updateTask, deleteTask, extendDueDate as extendTaskDueDate, getTaskCategories, rejectTask, restartTask, submitForTest, passTestTask, rejectTestTask } from '../api/task'
 import { getUsers } from '../api/user'
 import { useUserStore } from '../stores/user'
 import RichEditor from '../components/RichEditor.vue'
+import { sanitizeHtml } from '../utils/sanitize'
 
 const route = useRoute()
 const router = useRouter()
@@ -1081,7 +1082,7 @@ const formatTime = (time: string | Date) => {
 const renderRemark = (remark: string) => {
   if (!remark) return ''
   if (remark.includes('<') && remark.includes('>')) {
-    return remark
+    return sanitizeHtml(remark)
   }
   return remark.replace(/\[图片\]/g, '<span style="color:var(--nb-primary)">[图片]</span>')
 }

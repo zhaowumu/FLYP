@@ -42,7 +42,7 @@ export const markdownController = {
       res.json({
         message: "上传成功",
         filename: req.file.filename,
-        path: req.file.path,
+        path: req.file.filename,
         originalName: req.file.originalname,
       });
     });
@@ -56,28 +56,33 @@ export const markdownController = {
         return;
       }
 
-      const normalizedPath = path.normalize(filePath);
+      // 安全：将路径限制在 uploads/markdown 目录内
+      const resolvedPath = path.resolve(uploadDir, filePath);
+      if (!resolvedPath.startsWith(path.resolve(uploadDir))) {
+        res.status(403).json({ error: "禁止访问目录外的文件" });
+        return;
+      }
 
-      if (!fs.existsSync(normalizedPath)) {
+      if (!fs.existsSync(resolvedPath)) {
         res.status(404).json({ error: "文件不存在" });
         return;
       }
 
-      const stat = fs.statSync(normalizedPath);
+      const stat = fs.statSync(resolvedPath);
       if (!stat.isFile()) {
         res.status(400).json({ error: "路径不是文件" });
         return;
       }
 
-      const content = fs.readFileSync(normalizedPath, "utf-8");
+      const content = fs.readFileSync(resolvedPath, "utf-8");
       res.json({
         content,
-        filename: path.basename(normalizedPath),
+        filename: path.basename(resolvedPath),
         updatedAt: stat.mtime.toISOString(),
       });
     } catch (error: any) {
       console.error("Error reading markdown:", error);
-      res.status(500).json({ error: error.message || "读取文件失败" });
+      res.status(500).json({ error: "读取文件失败" });
     }
   },
 
@@ -91,7 +96,7 @@ export const markdownController = {
           const stat = fs.statSync(fullPath);
           return {
             name: e.name,
-            path: fullPath,
+            path: e.name,
             size: stat.size,
             updatedAt: stat.mtime.toISOString(),
           };

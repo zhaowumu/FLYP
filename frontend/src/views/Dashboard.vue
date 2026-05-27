@@ -245,7 +245,7 @@
           项目经理工作台
         </div>
         <div class="stats-grid">
-          <div class="stat-card stat-blue" @click="router.push('/tasks')">
+          <div class="stat-card stat-blue" @click="router.push({ path: '/tasks', query: { status: 'pending' } })">
             <div class="stat-accent"></div>
             <div class="stat-inner">
               <div class="stat-icon-box"><el-icon :size="22"><List /></el-icon></div>
@@ -255,7 +255,7 @@
               </div>
             </div>
           </div>
-          <div class="stat-card stat-green" @click="router.push('/tasks')">
+          <div class="stat-card stat-green" @click="router.push({ path: '/tasks', query: { status: 'completed,testing' } })">
             <div class="stat-accent"></div>
             <div class="stat-inner">
               <div class="stat-icon-box"><el-icon :size="22"><CircleCheck /></el-icon></div>
@@ -265,7 +265,7 @@
               </div>
             </div>
           </div>
-          <div class="stat-card stat-orange" @click="router.push('/bugs')">
+          <div class="stat-card stat-orange" @click="router.push({ path: '/bugs', query: { status: 'pending,in_progress,fixed', unassigned: 'true' } })">
             <div class="stat-accent"></div>
             <div class="stat-inner">
               <div class="stat-icon-box"><el-icon :size="22"><Warning /></el-icon></div>
@@ -275,7 +275,7 @@
               </div>
             </div>
           </div>
-          <div class="stat-card stat-red" @click="router.push('/bugs')">
+          <div class="stat-card stat-red" @click="router.push({ path: '/bugs', query: { status: 'verified' } })">
             <div class="stat-accent"></div>
             <div class="stat-inner">
               <div class="stat-icon-box"><el-icon :size="22"><CircleCheckFilled /></el-icon></div>
@@ -852,14 +852,22 @@ const quickQuests = computed(() => {
         key: 'unassigned',
         title: '待指派',
         desc: `${(s.unassignedTasks || 0) + (s.unassignedBugs || 0)} 个待指派`,
-        click: () => router.push('/tasks'),
+        click: () => {
+          const t = s.unassignedTasks || 0, b = s.unassignedBugs || 0
+          if (t > 0) router.push({ path: '/tasks', query: { status: 'pending' } })
+          else if (b > 0) router.push({ path: '/bugs', query: { status: 'pending,in_progress,fixed', unassigned: 'true' } })
+        },
         svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><circle cx="24" cy="14" r="7" stroke="#f59e0b" stroke-width="2.5" fill="none"/><path d="M8 42C8 34.27 15.16 28 24 28C32.84 28 40 34.27 40 42" stroke="#f59e0b" stroke-width="2.5" fill="none"/><path d="M32 8L40 16M40 8L32 16" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round"/></svg>'
       },
       {
         key: 'closeable',
         title: '待关闭',
         desc: `${(s.closeableTasks || 0) + (s.closeableBugs || 0)} 个可关闭`,
-        click: () => router.push('/tasks'),
+        click: () => {
+          const t = s.closeableTasks || 0, b = s.closeableBugs || 0
+          if (t > 0) router.push({ path: '/tasks', query: { status: 'completed,testing' } })
+          else if (b > 0) router.push({ path: '/bugs', query: { status: 'verified' } })
+        },
         svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><circle cx="24" cy="24" r="18" stroke="#43e97b" stroke-width="2.5" fill="none"/><path d="M16 24L22 30L34 18" stroke="#43e97b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'
       },
       {
@@ -2384,6 +2392,27 @@ onMounted(async () => {
 /* ==================== Team List ==================== */
 .team-list {
   padding: var(--nb-space-3);
+  max-height: 170px;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+}
+
+.team-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.team-list::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 3px;
+}
+
+.team-list::-webkit-scrollbar-thumb {
+  background: var(--nb-border);
+  border-radius: 3px;
+}
+
+.team-list::-webkit-scrollbar-thumb:hover {
+  background: var(--nb-text-secondary);
 }
 
 .team-member {

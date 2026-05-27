@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { AppDataSource } from "../config/database";
-import { Between, LessThanOrEqual, MoreThanOrEqual } from "typeorm";
+import { Between, LessThanOrEqual, MoreThanOrEqual, In } from "typeorm";
 import { Task } from "../entities/Task";
 import { OperationLog } from "../entities/OperationLog";
 import { User } from "../entities/User";
@@ -129,8 +129,14 @@ export const taskController = {
       const { projectId, status, assigneeId, creatorId, priority, sortBy, sortOrder, category, page, pageSize, myUserId, updatedAfter, updatedBefore } = req.query;
       const where: any = {};
 
+      const statuses = status ? (status as string).split(",").filter(Boolean) : [];
+
       if (projectId) where.project = { id: projectId };
-      if (status) where.status = status;
+      if (statuses.length === 1) {
+        where.status = statuses[0];
+      } else if (statuses.length > 1) {
+        where.status = In(statuses);
+      }
       if (creatorId) where.creator = { id: creatorId };
       if (priority) where.priority = priority;
       if (category) where.category = category;
@@ -161,7 +167,7 @@ export const taskController = {
           .leftJoin("task.assignees", "filterAssignee", "filterAssignee.id = :aid", { aid: assigneeId })
           .where("filterAssignee.id IS NOT NULL")
           .andWhere(projectId ? "project.id = :pid" : "1=1", { pid: projectId })
-          .andWhere(status ? "task.status = :status" : "1=1", { status })
+          .andWhere(statuses.length === 1 ? "task.status = :status" : statuses.length > 1 ? "task.status IN (:...statuses)" : "1=1", statuses.length === 1 ? { status: statuses[0] } : statuses.length > 1 ? { statuses } : {})
           .andWhere(priority ? "task.priority = :priority" : "1=1", { priority })
           .andWhere(category ? "task.category = :category" : "1=1", { category })
           .andWhere(updatedAfter ? "task.updatedAt >= :updatedAfter" : "1=1", { updatedAfter: updatedAfter ? new Date(updatedAfter as string) : undefined })
@@ -206,7 +212,7 @@ export const taskController = {
           .leftJoin("task.assignees", "myAssignee", "myAssignee.id = :myUid", { myUid: myUserId })
           .where("myAssignee.id IS NOT NULL OR task.creatorId = :myUid", { myUid: myUserId })
           .andWhere(projectId ? "task.projectId = :pid" : "1=1", { pid: projectId })
-          .andWhere(status ? "task.status = :status" : "1=1", { status })
+          .andWhere(statuses.length === 1 ? "task.status = :status" : statuses.length > 1 ? "task.status IN (:...statuses)" : "1=1", statuses.length === 1 ? { status: statuses[0] } : statuses.length > 1 ? { statuses } : {})
           .andWhere(priority ? "task.priority = :priority" : "1=1", { priority })
           .andWhere(category ? "task.category = :category" : "1=1", { category })
           .andWhere(updatedAfter ? "task.updatedAt >= :updatedAfter" : "1=1", { updatedAfter: updatedAfter ? new Date(updatedAfter as string) : undefined })

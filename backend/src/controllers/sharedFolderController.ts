@@ -2,32 +2,40 @@ import { Request, Response } from "express";
 import fs from "fs";
 import path from "path";
 
+// 共享文件夹根目录，默认指向项目下的 uploads 目录
+const sharedRoot = path.resolve(
+  process.env.SHARED_FOLDER_ROOT || path.join(process.cwd(), "uploads")
+);
+
+function resolveSafe(subPath: string): string {
+  if (!subPath) return sharedRoot;
+  const resolved = path.resolve(sharedRoot, subPath);
+  if (!resolved.startsWith(sharedRoot)) {
+    throw new Error("禁止访问目录外的路径");
+  }
+  return resolved;
+}
+
 export const sharedFolderController = {
   async listFolder(req: Request, res: Response) {
     try {
-      const folderPath = req.query.path as string;
+      const folderPath = (req.query.path as string) || "";
+      const safePath = resolveSafe(folderPath);
 
-      if (!folderPath) {
-        res.status(400).json({ error: "缺少路径参数" });
-        return;
-      }
-
-      const normalizedPath = path.normalize(folderPath);
-
-      if (!fs.existsSync(normalizedPath)) {
+      if (!fs.existsSync(safePath)) {
         res.status(404).json({ error: "文件夹不存在" });
         return;
       }
 
-      const stat = fs.statSync(normalizedPath);
+      const stat = fs.statSync(safePath);
       if (!stat.isDirectory()) {
         res.status(400).json({ error: "路径不是文件夹" });
         return;
       }
 
-      const entries = fs.readdirSync(normalizedPath, { withFileTypes: true });
+      const entries = fs.readdirSync(safePath, { withFileTypes: true });
       const items = entries.map((entry) => {
-        const fullPath = path.join(normalizedPath, entry.name);
+        const fullPath = path.join(safePath, entry.name);
         let size = 0;
         let modifiedAt = "";
         try {
@@ -42,7 +50,8 @@ export const sharedFolderController = {
           isDirectory: entry.isDirectory(),
           size,
           modifiedAt,
-          path: fullPath,
+          // 返回相对于 sharedRoot 的路径，而非服务器绝对路径
+          path: path.relative(sharedRoot, fullPath),
         };
       });
 
@@ -53,43 +62,37 @@ export const sharedFolderController = {
       });
 
       res.json({
-        path: normalizedPath,
+        path: path.relative(sharedRoot, safePath),
         items,
       });
     } catch (error: any) {
       console.error("Error listing folder:", error);
-      res.status(500).json({ error: error.message || "读取文件夹失败" });
+      res.status(403).json({ error: error.message || "读取文件夹失败" });
     }
   },
 
   async downloadFile(req: Request, res: Response) {
     try {
-      const filePath = req.query.path as string;
+      const filePath = (req.query.path as string) || "";
+      const safePath = resolveSafe(filePath);
 
-      if (!filePath) {
-        res.status(400).json({ error: "缺少路径参数" });
-        return;
-      }
-
-      const normalizedPath = path.normalize(filePath);
-
-      if (!fs.existsSync(normalizedPath)) {
+      if (!fs.existsSync(safePath)) {
         res.status(404).json({ error: "文件不存在" });
         return;
       }
 
-      const stat = fs.statSync(normalizedPath);
+      const stat = fs.statSync(safePath);
       if (stat.isDirectory()) {
         res.status(400).json({ error: "不能下载文件夹" });
         return;
       }
 
-      res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(path.basename(normalizedPath))}"`);
+      res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(path.basename(safePath))}"`);
       res.setHeader("Content-Length", stat.size.toString());
-      res.sendFile(normalizedPath);
+      res.sendFile(safePath);
     } catch (error: any) {
       console.error("Error downloading file:", error);
-      res.status(500).json({ error: error.message || "下载失败" });
+      res.status(403).json({ error: error.message || "下载失败" });
     }
   },
 };

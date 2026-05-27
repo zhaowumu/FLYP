@@ -489,6 +489,7 @@ const statusOptions = [
   { label: '进行中', value: 'in_progress' },
   { label: '已完成', value: 'completed' },
   { label: '测试中', value: 'testing' },
+  { label: '待关闭', value: 'completed,testing' },
   { label: '已关闭', value: 'closed' }
 ]
 
@@ -665,13 +666,8 @@ const submitTask = async () => {
 }
 
 onMounted(() => {
-  // 检查路由 query 传入 assigneeId 进行过滤（在加载前设置，避免 watch 触发两次）
-  const queryAssigneeId = route.query.assigneeId
-  if (queryAssigneeId) {
-    filterUser.value = Number(queryAssigneeId)
-  }
-  // 并行加载所有数据
-  Promise.all([loadTasks(), loadProjects(), loadUsers(), loadCategories()])
+  // 并行加载辅助数据（用户列表、项目列表、分类）
+  Promise.all([loadProjects(), loadUsers(), loadCategories()])
 })
 
 // keep-alive 激活时，仅当数据过期才刷新列表（辅助数据不频繁变化，不刷新）
@@ -680,6 +676,14 @@ onActivated(() => {
     loadTasks()
   }
 })
+
+// 统一处理：首次挂载 + 路由变化 → 同步筛选并加载
+watch(() => route.fullPath, () => {
+  filterStatus.value = (route.query.status as string) || ''
+  filterPriority.value = (route.query.priority as string) || ''
+  if (route.query.assigneeId) filterUser.value = Number(route.query.assigneeId)
+  loadTasks()
+}, { immediate: true })
 </script>
 
 <style scoped>

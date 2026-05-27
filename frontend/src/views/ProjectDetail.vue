@@ -41,7 +41,7 @@
             <div class="info-item full-width">
               <div class="info-label">项目描述</div>
               <div v-if="!isEditingDescription">
-                <div class="info-value rich-content" v-html="project?.description || '<span style=color:var(--nb-text-secondary)>暂无描述</span>'"></div>
+                <div class="info-value rich-content" v-html="sanitizeHtml(project?.description) || '<span style=color:var(--nb-text-secondary)>暂无描述</span>'"></div>
               </div>
               <div v-else class="description-editor">
                 <RichEditor
@@ -185,6 +185,7 @@ import { getProject, updateProject, updateProjectManagers } from '../api/project
 import { getUsers } from '../api/user'
 import { useUserStore } from '../stores/user'
 import RichEditor from '../components/RichEditor.vue'
+import { sanitizeHtml } from '../utils/sanitize'
 
 const route = useRoute()
 const router = useRouter()

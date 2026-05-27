@@ -266,12 +266,12 @@ export const getDashboard = async (req: Request, res: Response) => {
               .andWhere("uaAssignee.id IS NULL")
               .getCount()
           : Promise.resolve(0),
-        // 待关闭的任务：completed 状态
+        // 待关闭的任务：completed 或 testing 状态
         pmProjectIds.length
           ? taskRepository
               .createQueryBuilder("task")
               .where("task.projectId IN (:...ids)", { ids: pmProjectIds })
-              .andWhere("task.status = :status", { status: "completed" })
+              .andWhere("task.status IN (:...statuses)", { statuses: ["completed", "testing"] })
               .getCount()
           : Promise.resolve(0),
         // 待指派的 Bug：非关闭状态且无 assignee
@@ -459,24 +459,24 @@ export const getDashboard = async (req: Request, res: Response) => {
       // 7日操作趋势（每日我的操作数+总操作数）
       AppDataSource.query(
         `SELECT DATE(createdAt) AS day,
-                SUM(CASE WHEN userId = ${uid} THEN 1 ELSE 0 END) AS myCount,
+                SUM(CASE WHEN userId = ? THEN 1 ELSE 0 END) AS myCount,
                 COUNT(*) AS totalCount
          FROM operation_log
          WHERE createdAt >= ?
          GROUP BY DATE(createdAt)
          ORDER BY day ASC`,
-        [weekAgoStr]
+        [uid, weekAgoStr]
       ),
       // 操作分类：按 action 分组的我的+团队统计
       AppDataSource.query(
         `SELECT action,
                 COUNT(*) AS totalCount,
-                SUM(CASE WHEN userId = ${uid} THEN 1 ELSE 0 END) AS myCount
+                SUM(CASE WHEN userId = ? THEN 1 ELSE 0 END) AS myCount
          FROM operation_log
          WHERE createdAt >= ?
          GROUP BY action
          ORDER BY totalCount DESC`,
-        [weekAgoStr]
+        [uid, weekAgoStr]
       ),
     ]);
 

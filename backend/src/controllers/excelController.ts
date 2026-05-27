@@ -34,7 +34,6 @@ export const excelController = {
         const usersData = users.map(u => ({
           id: u.id,
           username: u.username,
-          password: u.password,
           realName: u.realName,
           phone: u.phone,
           role: u.role,
@@ -121,7 +120,6 @@ export const excelController = {
         const usersData = users.map(u => ({
           id: u.id,
           username: u.username,
-          password: u.password,
           realName: u.realName,
           phone: u.phone,
           role: u.role,

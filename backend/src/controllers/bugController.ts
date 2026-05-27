@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { AppDataSource } from "../config/database";
-import { Between, LessThanOrEqual, MoreThanOrEqual } from "typeorm";
+import { Between, LessThanOrEqual, MoreThanOrEqual, In, IsNull } from "typeorm";
 import { Bug } from "../entities/Bug";
 import { OperationLog } from "../entities/OperationLog";
 import { User } from "../entities/User";
@@ -111,12 +111,19 @@ export const bugController = {
 
   async getAllBugs(req: Request, res: Response) {
     try {
-      const { projectId, status, severity, assigneeId, reporterId, sortBy, sortOrder, category, page, pageSize, myUserId, updatedAfter, updatedBefore } = req.query;
+      const { projectId, status, severity, assigneeId, reporterId, sortBy, sortOrder, category, page, pageSize, myUserId, updatedAfter, updatedBefore, unassigned } = req.query;
       const where: any = {};
+      const statuses = status ? (status as string).split(",").filter(Boolean) : [];
+      const isUnassigned = unassigned === "true" || unassigned === "1";
 
       if (projectId) where.project = { id: projectId };
-      if (status) where.status = status;
+      if (statuses.length === 1) {
+        where.status = statuses[0];
+      } else if (statuses.length > 1) {
+        where.status = In(statuses);
+      }
       if (severity) where.severity = severity;
+      if (isUnassigned) where.assignee = IsNull();
       if (assigneeId) where.assignee = { id: assigneeId };
       if (reporterId) where.reporter = { id: reporterId };
       if (category) where.category = category;
@@ -140,7 +147,8 @@ export const bugController = {
           .leftJoinAndSelect("bug.reporter", "reporter")
           .where("bug.assigneeId = :myUid OR bug.reporterId = :myUid", { myUid: myUserId })
           .andWhere(projectId ? "bug.projectId = :pid" : "1=1", { pid: projectId })
-          .andWhere(status ? "bug.status = :status" : "1=1", { status })
+          .andWhere(statuses.length === 1 ? "bug.status = :status" : statuses.length > 1 ? "bug.status IN (:...statuses)" : "1=1", statuses.length === 1 ? { status: statuses[0] } : statuses.length > 1 ? { statuses } : {})
+          .andWhere(isUnassigned ? "bug.assigneeId IS NULL" : "1=1")
           .andWhere(severity ? "bug.severity = :severity" : "1=1", { severity })
           .andWhere(category ? "bug.category = :category" : "1=1", { category })
           .andWhere(updatedAfter ? "bug.updatedAt >= :updatedAfter" : "1=1", { updatedAfter: updatedAfter ? new Date(updatedAfter as string) : undefined })

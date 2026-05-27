@@ -256,7 +256,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, watch, onMounted, onActivated } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getBugs, createBug, getBugCategories } from '../api/bug'
 import { getProjectOptions } from '../api/project'
@@ -267,6 +267,7 @@ import RichEditor from '../components/RichEditor.vue'
 defineOptions({ name: 'Bugs' })
 
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
 const bugs = ref<any[]>([])
 const projects = ref<any[]>([])
@@ -276,6 +277,7 @@ const dialogVisible = ref(false)
 const bugFormRef = ref()
 const submitting = ref(false)
 const filterStatus = ref('')
+const filterUnassigned = ref(false)
 const filterSeverity = ref('')
 const filterUser = ref<number | null>(null)
 const filterReporter = ref<number | null>(null)
@@ -369,7 +371,9 @@ const statusOptions = [
   { label: '待处理', value: 'pending' },
   { label: '处理中', value: 'in_progress' },
   { label: '已修复', value: 'fixed' },
+  { label: '待指派', value: 'pending,in_progress,fixed' },
   { label: '已验证', value: 'verified' },
+  { label: '待关闭', value: 'verified' },
   { label: '已关闭', value: 'closed' }
 ]
 
@@ -410,6 +414,7 @@ const loadBugs = async () => {
     const params: any = { page: currentPage.value, pageSize: pageSize.value }
     // 传筛选条件到后端做前置过滤（下拉筛选优先于 tab）
     if (filterStatus.value) params.status = filterStatus.value
+    if (filterUnassigned.value) params.unassigned = 'true'
     if (filterSeverity.value) params.severity = filterSeverity.value
     if (filterCategory.value) params.category = filterCategory.value
     if (filterUser.value) params.assigneeId = filterUser.value
@@ -500,8 +505,8 @@ const submitBug = async () => {
 }
 
 onMounted(() => {
-  // 并行加载所有数据
-  Promise.all([loadBugs(), loadProjects(), loadUsers(), loadCategories()])
+  // 并行加载辅助数据（用户列表、项目列表、分类）
+  Promise.all([loadProjects(), loadUsers(), loadCategories()])
 })
 
 // keep-alive 激活时，仅当数据过期才刷新列表（辅助数据不频繁变化，不刷新）
@@ -510,6 +515,14 @@ onActivated(() => {
     loadBugs()
   }
 })
+
+// 统一处理：首次挂载 + 路由变化 → 同步筛选并加载
+watch(() => route.fullPath, () => {
+  filterStatus.value = (route.query.status as string) || ''
+  filterSeverity.value = (route.query.severity as string) || ''
+  filterUnassigned.value = route.query.unassigned === 'true'
+  loadBugs()
+}, { immediate: true })
 </script>
 
 <style scoped>
