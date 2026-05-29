@@ -170,12 +170,12 @@ export class FeishuService {
       case "create_task":
         lines.push(`优先级：**${vars.priority || "-"}**`);
         lines.push(`创建人：**${vars.creator || "-"}**`);
-        lines.push(`负责人：**${vars.assigneeName || "未分配"}**`);
+        lines.push(`负责人：${vars.feishuAt || "**" + (vars.assigneeName || "未分配") + "**"}`);
         break;
       case "create_bug":
         lines.push(`严重程度：**${vars.severity || "-"}**`);
         lines.push(`报告人：**${vars.creator || "-"}**`);
-        lines.push(`负责人：**${vars.assigneeName || "未分配"}**`);
+        lines.push(`负责人：${vars.feishuAt || "**" + (vars.assigneeName || "未分配") + "**"}`);
         break;
       case "assign_task":
       case "feedback_task":

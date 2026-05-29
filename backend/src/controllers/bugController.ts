@@ -16,6 +16,13 @@ function sendNotifications(type: string, variables: Record<string, string>, atMo
   feishuService.sendNotification(type, variables);
 }
 
+/** 单个负责人飞书 @ 文本 */
+function feishuAtOne(user: User | null | undefined): string {
+  if (!user) return "未分配";
+  if (user.phone) return `<at id=${user.phone}>${user.realName}</at>`;
+  return `**${user.realName}**`;
+}
+
 const bugRepository = AppDataSource.getRepository(Bug);
 const userRepository = AppDataSource.getRepository(User);
 const operationLogRepository = AppDataSource.getRepository(OperationLog);
@@ -82,11 +89,12 @@ export const bugController = {
         "create"
       );
 
-      // 构建钉钉通知用的负责人信息
+      // 构建通知用的负责人信息
       let assigneePhone = "";
       let assigneeName = "未分配";
+      let assigneeUser: User | null = null;
       if (assigneeId) {
-        const assigneeUser = await userRepository.findOne({ where: { id: assigneeId } });
+        assigneeUser = await userRepository.findOne({ where: { id: assigneeId } });
         if (assigneeUser) {
           assigneePhone = assigneeUser.phone || "";
           assigneeName = assigneeUser.realName || "未分配";
@@ -101,6 +109,7 @@ export const bugController = {
         creator: reporter?.realName || "未知用户",
         assigneeName: assigneeName,
         assigneePhones: formatAtPhone(assigneePhone),
+        feishuAt: feishuAtOne(assigneeUser),
         time: new Date().toLocaleString("zh-CN")
       }, assigneePhone ? [assigneePhone] : undefined);
 

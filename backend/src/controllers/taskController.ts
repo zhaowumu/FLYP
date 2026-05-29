@@ -64,6 +64,12 @@ function getAssigneePhones(assignees: User[] | undefined): string[] {
   return assignees.map(u => u.phone).filter(Boolean);
 }
 
+/** 辅助：将负责人列表格式化为飞书 @ 文本（<at id=phone>name</at>，无手机号则返回名字） */
+function formatFeishuAt(assignees: User[] | undefined): string {
+  if (!assignees || assignees.length === 0) return "未分配";
+  return assignees.map(u => u.phone ? `<at id=${u.phone}>${u.realName}</at>` : u.realName).join(" ");
+}
+
 /** 辅助：将手机号列表格式化为钉钉 @ 文本（@phone1 @phone2 加末尾空格，无手机号则返回空字符串） */
 function formatAtPhones(phones: string[]): string {
   if (!phones || phones.length === 0) return '';
@@ -116,6 +122,7 @@ export const taskController = {
         creator: creator?.realName || "未知用户",
         assigneeName: assigneeNames,
         assigneePhones: formatAtPhones(assigneePhones),
+        feishuAt: formatFeishuAt(assignees),
         time: new Date().toLocaleString("zh-CN")
       }, assigneePhones.length > 0 ? assigneePhones : undefined);
 
