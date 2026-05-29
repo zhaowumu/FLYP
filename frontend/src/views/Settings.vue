@@ -690,6 +690,137 @@
           </div>
         </div>
       </el-tab-pane>
+
+      <el-tab-pane label="飞书通知" name="feishu">
+        <div class="content-card">
+          <el-alert
+            title="飞书机器人配置说明"
+            type="info"
+            :closable="false"
+            show-icon
+            style="margin-bottom: 20px"
+          >
+            <template #default>
+              <p><strong>配置步骤：</strong></p>
+              <p>1. 打开飞书电脑版，进入需要接收通知的群聊</p>
+              <p>2. 点击右上角「设置」→「群机器人」→「添加机器人」</p>
+              <p>3. 选择「自定义机器人」，设置机器人名称</p>
+              <p>4. 复制机器人Webhook地址，粘贴到下方输入框</p>
+              <p>5. <strong>Webhook地址格式：</strong> https://open.feishu.cn/open-apis/bot/v2/hook/xxxxx</p>
+            </template>
+          </el-alert>
+
+          <el-divider content-position="left">基础配置</el-divider>
+
+          <el-form label-width="120px" style="margin-bottom: 24px">
+            <el-form-item label="Webhook地址">
+              <el-input
+                v-model="feishuWebhook"
+                placeholder="https://open.feishu.cn/open-apis/bot/v2/hook/xxxxx"
+                style="width: 500px"
+                clearable
+              />
+            </el-form-item>
+            <el-form-item label="签名密钥">
+              <el-input
+                v-model="feishuSecret"
+                placeholder="输入机器人安全设置的签名密钥（可选）"
+                style="width: 500px"
+                clearable
+              />
+              <span style="margin-left: 12px; color: var(--nb-text-secondary); font-size: var(--nb-font-size-sm);">勾选"签名校验"时填写</span>
+            </el-form-item>
+            <el-form-item label="关键词">
+              <el-input
+                v-model="feishuKeyword"
+                placeholder="instruct"
+                style="width: 200px"
+                clearable
+              />
+              <span style="margin-left: 12px; color: var(--nb-text-secondary); font-size: var(--nb-font-size-sm);">勾选"自定义关键词"时填写，消息会自动携带</span>
+            </el-form-item>
+            <el-form-item label="系统地址">
+              <el-input
+                v-model="feishuBaseUrl"
+                placeholder="http://192.168.1.100:3000"
+                style="width: 500px"
+                clearable
+              />
+              <span style="margin-left: 12px; color: var(--nb-text-secondary); font-size: var(--nb-font-size-sm);">用于生成通知中的详情链接</span>
+            </el-form-item>
+          </el-form>
+
+          <el-divider content-position="left">通知模板配置</el-divider>
+
+          <el-alert
+            title="模板变量说明"
+            type="warning"
+            :closable="false"
+            show-icon
+            style="margin-bottom: 20px"
+          >
+            <template #default>
+              <p><strong>通用变量：</strong> {type}（任务/BUG）、{title}、{id}、{detailLink}</p>
+              <p><strong>创建类</strong>（create_task / create_bug）：{creator}、{assigneeName}，任务额外有 {priority}，缺陷额外有 {severity}</p>
+              <p><strong>负责人变更类</strong>（assign_task / assign_bug / feedback_task / feedback_bug）：{oldAssignee}、{newAssignee}、{operator}</p>
+              <p><strong>需跟进操作类</strong>（reject / submit_test / reject_test / restart 等）：{assigneeName}、{operator}</p>
+              <p><strong>状态通知类</strong>（complete / pass_test / fix / verify）：{operator}</p>
+              <p style="margin-top: 8px; color: var(--nb-text-secondary);">
+                飞书使用交互式卡片消息，模板内容为 Markdown 格式，留空则使用系统默认模板。
+              </p>
+            </template>
+          </el-alert>
+
+          <div class="notify-config-list">
+            <div v-for="(item, key) in feishuNotifyConfigs" :key="key" class="notify-config-item">
+              <div class="notify-header">
+                <div class="notify-header-left">
+                  <el-switch
+                    v-model="item.enabled"
+                    active-text=""
+                    style="--el-switch-on-color: #13ce66"
+                  />
+                  <span class="notify-type-label">{{ item.label }}</span>
+                </div>
+                <el-button
+                  size="small"
+                  type="primary"
+                  plain
+                  :loading="testLoadingByType[key]"
+                  :disabled="!feishuWebhook"
+                  @click="testFeishuByTypeHandler(key)"
+                >
+                  <el-icon style="margin-right: 4px"><VideoPlay /></el-icon>
+                  测试发送
+                </el-button>
+              </div>
+              <div class="template-preview" v-if="item.enabled">
+                <div class="template-preview-header">
+                  <span class="template-label">自定义模板</span>
+                  <span class="template-label-hint">留空使用默认模板</span>
+                </div>
+              <el-input
+                v-if="item.enabled"
+                v-model="item.template"
+                type="textarea"
+                :rows="3"
+                :placeholder="'默认模板：' + item.defaultTemplate"
+                style="margin-top: 0"
+              />
+              </div>
+            </div>
+          </div>
+
+          <div class="dingtalk-actions">
+            <el-button type="primary" @click="saveFeishuConfig" :loading="savingFeishu" :disabled="!feishuWebhook">
+              保存配置
+            </el-button>
+            <el-button @click="testFeishu" :loading="testingFeishu" :disabled="!feishuWebhook">
+              发送通用测试
+            </el-button>
+          </div>
+        </div>
+      </el-tab-pane>
     </el-tabs>
   </div>
 </template>
@@ -723,6 +854,12 @@ const dingtalkWebhook = ref('')
 const dingtalkSecret = ref('')
 const dingtalkKeyword = ref('')
 const dingtalkBaseUrl = ref('')
+const feishuWebhook = ref('')
+const feishuSecret = ref('')
+const feishuKeyword = ref('')
+const feishuBaseUrl = ref('')
+const savingFeishu = ref(false)
+const testingFeishu = ref(false)
 
 // Gitee 云备份
 const giteeConfig = ref({ enabled: false, token: '', owner: '', repo: '', branch: 'main' })
@@ -769,6 +906,7 @@ const notifyConfigLabels = {
 }
 
 const notifyConfigs = ref<Record<string, { enabled: boolean; template: string; label: string; defaultTemplate: string }>>({})
+const feishuNotifyConfigs = ref<Record<string, { enabled: boolean; template: string; label: string; defaultTemplate: string }>>({})
 
 async function addLink() {
   customLinks.value.push({ name: '', url: '', icon: 'Link', type: 'url' })
@@ -1222,10 +1360,95 @@ async function handleDeleteBackup(filename: string) {
   }
 }
 
+async function loadFeishuConfig() {
+  try {
+    const res = await api.get('/system-config')
+    if (res.data) {
+      feishuWebhook.value = res.data.feishu_webhook || ''
+      feishuSecret.value = res.data.feishu_secret || ''
+      feishuKeyword.value = res.data.feishu_keyword || ''
+      feishuBaseUrl.value = res.data.feishu_base_url || ''
+
+      // 加载通知模板配置（复用 notifyConfigs，key 前缀为 feishu_notify_）
+      const configs: Record<string, any> = {}
+      for (const [key, label] of Object.entries(notifyConfigLabels)) {
+        const raw = res.data[`feishu_notify_${key}`]
+        const cfg = raw ? JSON.parse(raw) : { enabled: true, template: '' }
+        configs[key] = {
+          enabled: cfg.enabled !== false,
+          template: cfg.template || '',
+          label,
+          defaultTemplate: defaultTemplates[key as keyof typeof defaultTemplates]
+        }
+      }
+      feishuNotifyConfigs.value = configs
+    }
+  } catch (error) {
+    console.error('加载飞书配置失败:', error)
+  }
+}
+
+async function saveFeishuConfig() {
+  savingFeishu.value = true
+  try {
+    await api.put('/system-config', { key: 'feishu_webhook', value: feishuWebhook.value })
+    await api.put('/system-config', { key: 'feishu_secret', value: feishuSecret.value })
+    await api.put('/system-config', { key: 'feishu_keyword', value: feishuKeyword.value })
+    await api.put('/system-config', { key: 'feishu_base_url', value: feishuBaseUrl.value })
+    // 保存通知模板
+    for (const [key, item] of Object.entries(feishuNotifyConfigs.value)) {
+      await api.put('/system-config', {
+        key: `feishu_notify_${key}`,
+        value: JSON.stringify({ enabled: item.enabled, template: item.template })
+      })
+    }
+    ElMessage.success('飞书配置已保存')
+  } catch (error) {
+    ElMessage.error('保存飞书配置失败')
+  } finally {
+    savingFeishu.value = false
+  }
+}
+
+async function testFeishu() {
+  testingFeishu.value = true
+  try {
+    await saveFeishuConfig()
+    const res = await api.post('/system-config/feishu/test')
+    if (res.data.success) {
+      ElMessage.success('飞书测试消息发送成功，请到群聊中查看')
+    } else {
+      ElMessage.error(res.data.message || '飞书测试消息发送失败')
+    }
+  } catch (error: any) {
+    ElMessage.error(error?.response?.data?.message || '飞书测试消息发送失败')
+  } finally {
+    testingFeishu.value = false
+  }
+}
+
+async function testFeishuByTypeHandler(type: string) {
+  testLoadingByType.value[type] = true
+  try {
+    await saveFeishuConfig()
+    const res = await api.post('/system-config/feishu/test', { type })
+    if (res.data.success) {
+      ElMessage.success(`[${notifyConfigLabels[type as keyof typeof notifyConfigLabels]}] 测试通知已发送，请检查飞书`)
+    } else {
+      ElMessage.error('发送失败：' + (res.data.message || '未知错误'))
+    }
+  } catch (err: any) {
+    ElMessage.error('发送失败：' + (err?.response?.data?.message || '网络错误'))
+  } finally {
+    testLoadingByType.value[type] = false
+  }
+}
+
 onMounted(() => {
   loadCustomLinks()
   loadMarkdownFiles()
   loadDingTalkConfig()
+  loadFeishuConfig()
   loadGiteeBackupConfig()
   loadBackupStatus()
   loadBackupList()

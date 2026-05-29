@@ -5,9 +5,16 @@ import { Task } from "../entities/Task";
 import { OperationLog } from "../entities/OperationLog";
 import { User } from "../entities/User";
 import { DingTalkService } from "../services/dingtalkService";
+import { FeishuService } from "../services/feishuService";
 import { extractUploadUrls, deleteUnreferencedFiles } from "../utils/orphanCleaner";
 
 const dingTalkService = new DingTalkService();
+const feishuService = new FeishuService();
+
+function sendNotifications(type: string, variables: Record<string, string>, atMobiles?: string[]) {
+  dingTalkService.sendNotification(type, variables, atMobiles);
+  feishuService.sendNotification(type, variables);
+}
 
 const taskRepository = AppDataSource.getRepository(Task);
 const userRepository = AppDataSource.getRepository(User);
@@ -101,7 +108,7 @@ export const taskController = {
       const assigneeNames = getAssigneeNames(assignees);
       const assigneePhones = getAssigneePhones(assignees);
 
-      dingTalkService.sendNotification("create_task", {
+      sendNotifications("create_task", {
         type: "任务",
         id: String(task.id),
         title: task.title,
@@ -353,7 +360,7 @@ export const taskController = {
 
         const newAssigneePhones = getAssigneePhones(newAssignees);
 
-        dingTalkService.sendNotification("assign_task", {
+        sendNotifications("assign_task", {
           type: "任务",
           id: String(task.id),
           title: task.title,
@@ -623,7 +630,7 @@ export const taskController = {
       // 根据实际状态发送对应的通知
       const currentAssigneePhones = getAssigneePhones(task.assignees);
       if (status === "completed") {
-        dingTalkService.sendNotification("complete_task", {
+        sendNotifications("complete_task", {
           type: "任务",
           id: String(task.id),
           title: task.title,
@@ -631,7 +638,7 @@ export const taskController = {
           time: new Date().toLocaleString("zh-CN")
         });
       } else if (status === "testing") {
-        dingTalkService.sendNotification("submit_test_task", {
+        sendNotifications("submit_test_task", {
           type: "任务",
           id: String(task.id),
           title: task.title,
@@ -686,7 +693,7 @@ export const taskController = {
         // 反馈操作发钉钉通知
         if (log.action === "feedback") {
           const newAssigneePhones = getAssigneePhones(newAssignees);
-          dingTalkService.sendNotification("feedback_task", {
+          sendNotifications("feedback_task", {
             type: "任务",
             id: String(task.id),
             title: task.title,
@@ -807,7 +814,7 @@ export const taskController = {
 
       const newAssigneePhones = getAssigneePhones(newAssignees);
 
-      dingTalkService.sendNotification("reject_task", {
+      sendNotifications("reject_task", {
         type: "任务",
         id: String(task.id),
         title: task.title,
@@ -878,7 +885,7 @@ export const taskController = {
 
       const newAssigneePhones = getAssigneePhones(newAssignees);
 
-      dingTalkService.sendNotification("restart_task", {
+      sendNotifications("restart_task", {
         type: "任务",
         id: String(task.id),
         title: task.title,
@@ -941,7 +948,7 @@ export const taskController = {
         }
       );
 
-      dingTalkService.sendNotification("pass_test_task", {
+      sendNotifications("pass_test_task", {
         type: "任务",
         id: String(task.id),
         title: task.title,
@@ -1009,7 +1016,7 @@ export const taskController = {
 
       const newAssigneePhones = getAssigneePhones(newAssignees);
 
-      dingTalkService.sendNotification("reject_test_task", {
+      sendNotifications("reject_test_task", {
         type: "任务",
         id: String(task.id),
         title: task.title,

@@ -5,9 +5,16 @@ import { Bug } from "../entities/Bug";
 import { OperationLog } from "../entities/OperationLog";
 import { User } from "../entities/User";
 import { DingTalkService } from "../services/dingtalkService";
+import { FeishuService } from "../services/feishuService";
 import { extractUploadUrls, deleteUnreferencedFiles } from "../utils/orphanCleaner";
 
 const dingTalkService = new DingTalkService();
+const feishuService = new FeishuService();
+
+function sendNotifications(type: string, variables: Record<string, string>, atMobiles?: string[]) {
+  dingTalkService.sendNotification(type, variables, atMobiles);
+  feishuService.sendNotification(type, variables);
+}
 
 const bugRepository = AppDataSource.getRepository(Bug);
 const userRepository = AppDataSource.getRepository(User);
@@ -86,7 +93,7 @@ export const bugController = {
         }
       }
 
-      dingTalkService.sendNotification("create_bug", {
+      sendNotifications("create_bug", {
         type: "BUG",
         id: String(bug.id),
         title: bug.title,
@@ -285,7 +292,7 @@ export const bugController = {
 
         const newAssigneePhone = newAssignee?.phone || "";
 
-        dingTalkService.sendNotification("assign_bug", {
+        sendNotifications("assign_bug", {
           type: "BUG",
           id: String(bug.id),
           title: bug.title,
@@ -337,7 +344,7 @@ export const bugController = {
 
         // 根据状态发送对应的通知
         if (targetStatus === "fixed") {
-          dingTalkService.sendNotification("fix_bug", {
+          sendNotifications("fix_bug", {
             type: "BUG",
             id: String(bug.id),
             title: bug.title,
@@ -345,7 +352,7 @@ export const bugController = {
             time: new Date().toLocaleString("zh-CN")
           });
         } else if (targetStatus === "verified") {
-          dingTalkService.sendNotification("verify_bug", {
+          sendNotifications("verify_bug", {
             type: "BUG",
             id: String(bug.id),
             title: bug.title,
@@ -448,7 +455,7 @@ export const bugController = {
 
       // 根据状态发送对应的通知
       if (status === "fixed") {
-        dingTalkService.sendNotification("fix_bug", {
+        sendNotifications("fix_bug", {
           type: "BUG",
           id: String(bug.id),
           title: bug.title,
@@ -456,7 +463,7 @@ export const bugController = {
           time: new Date().toLocaleString("zh-CN")
         });
       } else if (status === "verified") {
-        dingTalkService.sendNotification("verify_bug", {
+        sendNotifications("verify_bug", {
           type: "BUG",
           id: String(bug.id),
           title: bug.title,
@@ -509,7 +516,7 @@ export const bugController = {
         // 反馈操作发钉钉通知
         if (log.action === "feedback") {
           const newAssigneePhone = newAssignee?.phone || "";
-          dingTalkService.sendNotification("feedback_bug", {
+          sendNotifications("feedback_bug", {
             type: "BUG",
             id: String(bug.id),
             title: bug.title,
@@ -604,7 +611,7 @@ export const bugController = {
 
       const assigneePhone = assignee.phone || "";
 
-      dingTalkService.sendNotification("assign_bug", {
+      sendNotifications("assign_bug", {
         type: "BUG",
         id: String(bug.id),
         title: bug.title,
@@ -705,7 +712,7 @@ export const bugController = {
 
       const newAssigneePhone = newAssignee?.phone || "";
 
-      dingTalkService.sendNotification("reject_bug", {
+      sendNotifications("reject_bug", {
         type: "BUG", id: String(bug.id), title: bug.title,
         assigneeName: newAssigneeName, assigneePhones: formatAtPhone(newAssigneePhone), operator: userName, time: new Date().toLocaleString("zh-CN")
       }, newAssigneePhone ? [newAssigneePhone] : undefined);
@@ -769,7 +776,7 @@ export const bugController = {
 
       const newAssigneePhone = newAssignee?.phone || "";
 
-      dingTalkService.sendNotification("restart_bug", {
+      sendNotifications("restart_bug", {
         type: "BUG",
         id: String(bug.id),
         title: bug.title,

@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { AppDataSource } from "../config/database";
 import { SystemConfig } from "../entities/SystemConfig";
 import { DingTalkService } from "../services/dingtalkService";
+import { FeishuService } from "../services/feishuService";
 import {
   getGiteeBackupConfig,
   saveGiteeBackupConfig,
@@ -12,6 +13,7 @@ import crypto from "crypto";
 
 const configRepository = AppDataSource.getRepository(SystemConfig);
 const dingTalkService = new DingTalkService();
+const feishuService = new FeishuService();
 
 export const systemConfigController = {
   async getConfig(req: Request, res: Response) {
@@ -386,6 +388,40 @@ export const systemConfigController = {
       res.json(result);
     } catch (error: any) {
       console.error("Error testing Gitee connection:", error);
+      res.json({ success: false, message: error.message || "测试失败" });
+    }
+  },
+
+  async testFeishuNotification(req: Request, res: Response) {
+    try {
+      const webhookCfg = await configRepository.findOne({ where: { key: "feishu_webhook" } });
+      if (!webhookCfg?.value) {
+        return res.json({ success: false, error: "飞书 Webhook 地址未配置" });
+      }
+
+      const now = new Date().toLocaleString("zh-CN");
+      const { type } = req.body;
+      const testType = type || "create_task";
+      const isTaskType = testType.includes("task");
+      const testVars: Record<string, string> = {
+        type: isTaskType ? "任务" : "BUG",
+        id: "123",
+        title: "这是一条飞书测试通知",
+        priority: "medium",
+        severity: "high",
+        creator: "测试用户",
+        assigneeName: "张三",
+        oldAssignee: "张三",
+        newAssignee: "李四",
+        operator: "测试用户",
+        time: now,
+      };
+
+      const result = await feishuService.sendNotification(testType, testVars);
+
+      res.json({ success: result.success, message: result.success ? "发送成功" : (result.error || "发送失败") });
+    } catch (error: any) {
+      console.error("Error testing Feishu notification:", error);
       res.json({ success: false, message: error.message || "测试失败" });
     }
   },

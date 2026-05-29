@@ -12,6 +12,7 @@ router.put("/", authMiddleware, systemConfigController.updateConfig);
 router.get("/dingtalk", authMiddleware, systemConfigController.getDingTalkConfig);
 router.put("/dingtalk", authMiddleware, systemConfigController.updateDingTalkConfig);
 router.post("/dingtalk/test", authMiddleware, systemConfigController.testDingTalkNotification);
+router.post("/feishu/test", authMiddleware, systemConfigController.testFeishuNotification);
 
 // Gitee 云备份（仅管理员，涉及敏感 Token）
 router.get("/gitee-backup", authMiddleware, roleMiddleware(["admin"]), systemConfigController.getGiteeBackupConfig);
