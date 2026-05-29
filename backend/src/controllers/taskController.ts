@@ -374,6 +374,7 @@ export const taskController = {
           oldAssignee: oldAssigneeNames,
           newAssignee: newAssigneeNames,
           newAssigneePhones: formatAtPhones(newAssigneePhones),
+          feishuAt: formatFeishuAt(newAssignees),
           operator: userName,
           time: new Date().toLocaleString("zh-CN")
         }, newAssigneePhones.length > 0 ? newAssigneePhones : undefined);
@@ -651,6 +652,7 @@ export const taskController = {
           title: task.title,
           assigneeName: log?.newAssignee || "未分配",
           assigneePhones: formatAtPhones(currentAssigneePhones),
+          feishuAt: formatFeishuAt(task.assignees),
           operator: userName,
           time: new Date().toLocaleString("zh-CN")
         }, currentAssigneePhones.length > 0 ? currentAssigneePhones : undefined);
@@ -707,6 +709,7 @@ export const taskController = {
             oldAssignee: oldAssigneeNames,
             newAssignee: newAssigneeNames,
             newAssigneePhones: formatAtPhones(newAssigneePhones),
+            feishuAt: formatFeishuAt(newAssignees),
             operator: userName,
             time: new Date().toLocaleString("zh-CN")
           }, newAssigneePhones.length > 0 ? newAssigneePhones : undefined);
@@ -827,6 +830,7 @@ export const taskController = {
         title: task.title,
         assigneeName: newAssigneeNames || "未分配",
         assigneePhones: formatAtPhones(newAssigneePhones),
+        feishuAt: formatFeishuAt(newAssignees),
         operator: userName,
         time: new Date().toLocaleString("zh-CN")
       }, newAssigneePhones.length > 0 ? newAssigneePhones : undefined);
@@ -898,6 +902,7 @@ export const taskController = {
         title: task.title,
         assigneeName: newAssigneeNames,
         assigneePhones: formatAtPhones(newAssigneePhones),
+        feishuAt: formatFeishuAt(newAssignees),
         operator: userName,
         time: new Date().toLocaleString("zh-CN")
       }, newAssigneePhones.length > 0 ? newAssigneePhones : undefined);
@@ -1029,6 +1034,7 @@ export const taskController = {
         title: task.title,
         assigneeName: newAssigneeNames,
         assigneePhones: formatAtPhones(newAssigneePhones),
+        feishuAt: formatFeishuAt(newAssignees),
         operator: userName,
         time: new Date().toLocaleString("zh-CN")
       }, newAssigneePhones.length > 0 ? newAssigneePhones : undefined);

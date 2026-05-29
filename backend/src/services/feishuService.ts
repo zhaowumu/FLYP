@@ -158,6 +158,14 @@ export class FeishuService {
     return titles[type] || "通知";
   }
 
+  private t(key: string): string {
+    const map: Record<string, string> = {
+      urgent: "紧急", high: "高", medium: "中", low: "低",
+      critical: "严重",
+    };
+    return map[key] || key;
+  }
+
   private getDefaultContent(type: string, vars: Record<string, string>): string {
     const detailLink = vars.detailLink || "";
     const titleLine = detailLink
@@ -168,18 +176,18 @@ export class FeishuService {
 
     switch (type) {
       case "create_task":
-        lines.push(`优先级：**${vars.priority || "-"}**`);
+        lines.push(`优先级：**${this.t(vars.priority || "") || "-"}**`);
         lines.push(`创建人：**${vars.creator || "-"}**`);
         lines.push(`负责人：${vars.feishuAt || "**" + (vars.assigneeName || "未分配") + "**"}`);
         break;
       case "create_bug":
-        lines.push(`严重程度：**${vars.severity || "-"}**`);
+        lines.push(`严重程度：**${this.t(vars.severity || "") || "-"}**`);
         lines.push(`报告人：**${vars.creator || "-"}**`);
         lines.push(`负责人：${vars.feishuAt || "**" + (vars.assigneeName || "未分配") + "**"}`);
         break;
       case "assign_task":
       case "feedback_task":
-        lines.push(`负责人：**${vars.oldAssignee || "-"}** → **${vars.newAssignee || "-"}**`);
+        lines.push(`负责人：${vars.feishuAt || "**" + (vars.newAssignee || "-") + "**"}`);
         lines.push(`操作人：**${vars.operator || "-"}**`);
         break;
       case "complete_task":
@@ -190,25 +198,25 @@ export class FeishuService {
         break;
       case "reject_task":
       case "reject_test_task":
-        lines.push(`新负责人：**${vars.assigneeName || "未分配"}**`);
+        lines.push(`新负责人：${vars.feishuAt || "**" + (vars.assigneeName || "未分配") + "**"}`);
         lines.push(`操作人：**${vars.operator || "-"}**`);
         break;
       case "submit_test_task":
-        lines.push(`测试负责人：**${vars.assigneeName || "未分配"}**`);
+        lines.push(`测试负责人：${vars.feishuAt || "**" + (vars.assigneeName || "未分配") + "**"}`);
         lines.push(`操作人：**${vars.operator || "-"}**`);
         break;
       case "restart_task":
-        lines.push(`新负责人：**${vars.assigneeName || "未分配"}**`);
+        lines.push(`新负责人：${vars.feishuAt || "**" + (vars.assigneeName || "未分配") + "**"}`);
         lines.push(`操作人：**${vars.operator || "-"}**`);
         break;
       case "assign_bug":
       case "feedback_bug":
       case "reject_bug":
-        lines.push(`负责人：**${vars.oldAssignee || "-"}** → **${vars.newAssignee || "-"}**`);
+        lines.push(`负责人：${vars.feishuAt || "**" + (vars.newAssignee || "-") + "**"}`);
         lines.push(`操作人：**${vars.operator || "-"}**`);
         break;
       case "restart_bug":
-        lines.push(`新负责人：**${vars.assigneeName || "未分配"}**`);
+        lines.push(`新负责人：${vars.feishuAt || "**" + (vars.assigneeName || "未分配") + "**"}`);
         lines.push(`操作人：**${vars.operator || "-"}**`);
         break;
       default:

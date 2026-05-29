@@ -308,6 +308,7 @@ export const bugController = {
           oldAssignee: oldAssignee?.realName || "未处理",
           newAssignee: newAssignee?.realName || "未知",
           newAssigneePhones: formatAtPhone(newAssigneePhone),
+          feishuAt: feishuAtOne(newAssignee),
           operator: userName,
           time: new Date().toLocaleString("zh-CN")
         }, newAssigneePhone ? [newAssigneePhone] : undefined);
@@ -532,6 +533,7 @@ export const bugController = {
             oldAssignee: oldAssigneeName,
             newAssignee: newAssigneeName,
             newAssigneePhones: formatAtPhone(newAssigneePhone),
+            feishuAt: feishuAtOne(newAssignee),
             operator: userName,
             time: new Date().toLocaleString("zh-CN")
           }, newAssigneePhone ? [newAssigneePhone] : undefined);
@@ -627,6 +629,7 @@ export const bugController = {
         oldAssignee: "未分配",
         newAssignee: assignee.realName,
         newAssigneePhones: formatAtPhone(assigneePhone),
+        feishuAt: feishuAtOne(assignee),
         operator: user?.realName || "未知用户",
         time: new Date().toLocaleString("zh-CN")
       }, assigneePhone ? [assigneePhone] : undefined);
@@ -723,7 +726,7 @@ export const bugController = {
 
       sendNotifications("reject_bug", {
         type: "BUG", id: String(bug.id), title: bug.title,
-        assigneeName: newAssigneeName, assigneePhones: formatAtPhone(newAssigneePhone), operator: userName, time: new Date().toLocaleString("zh-CN")
+        assigneeName: newAssigneeName, assigneePhones: formatAtPhone(newAssigneePhone), feishuAt: feishuAtOne(newAssignee), operator: userName, time: new Date().toLocaleString("zh-CN")
       }, newAssigneePhone ? [newAssigneePhone] : undefined);
 
       const updatedBug = await bugRepository.findOne({
@@ -791,6 +794,7 @@ export const bugController = {
         title: bug.title,
         assigneeName: newAssigneeName,
         assigneePhones: formatAtPhone(newAssigneePhone),
+        feishuAt: feishuAtOne(newAssignee),
         operator: userName,
         time: new Date().toLocaleString("zh-CN")
       }, newAssigneePhone ? [newAssigneePhone] : undefined);
