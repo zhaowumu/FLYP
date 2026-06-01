@@ -371,8 +371,8 @@
               <div class="backup-info">
                 <div class="backup-title">
                   <span>自动备份</span>
-                  <el-tag v-if="backupStatus.running" type="success" size="small" style="margin-left: 8px;">运行中</el-tag>
-                  <el-tag v-else type="info" size="small" style="margin-left: 8px;">未运行</el-tag>
+                  <el-switch v-model="backupStatus.running" @change="handleToggleAutoBackup" active-text="开" inactive-text="关" style="margin-left: 12px" />
+                  <el-tag v-if="backupToggleLoading" type="warning" size="small" style="margin-left: 8px;">切换中...</el-tag>
                 </div>
                 <div class="backup-desc">
                   每天凌晨 3:00 自动备份，保留最近 30 份 &nbsp;|&nbsp; 当前已有 <strong>{{ backupStatus.backupCount }}</strong> 份备份
@@ -837,7 +837,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Delete, Download, Upload, Refresh, RefreshRight, VideoPlay } from '@element-plus/icons-vue'
-import { backupData as backupDataApi, restoreData as restoreDataApi, exportAll as exportAllApi, clearDatabase as clearDatabaseApi, clearAllDatabase as clearAllDatabaseApi, getBackupStatus as getBackupStatusApi, getBackupList as getBackupListApi, downloadBackup as downloadBackupApi, deleteBackupFile as deleteBackupFileApi, backupNow as backupNowApi } from '../api/excel'
+import { backupData as backupDataApi, restoreData as restoreDataApi, exportAll as exportAllApi, clearDatabase as clearDatabaseApi, clearAllDatabase as clearAllDatabaseApi, getBackupStatus as getBackupStatusApi, getBackupList as getBackupListApi, downloadBackup as downloadBackupApi, deleteBackupFile as deleteBackupFileApi, backupNow as backupNowApi, toggleAutoBackup as toggleAutoBackupApi } from '../api/excel'
 import { getCustomLinks, updateCustomLinks, listMarkdownFiles } from '../api/customLink'
 import { getDingTalkConfig, updateDingTalkConfig, testDingTalkByType, getGiteeBackupConfig, updateGiteeBackupConfig, testGiteeBackupConnection } from '../api/systemConfig'
 import api from '../api'
@@ -852,6 +852,7 @@ const backupStatus = ref<{ running: boolean; schedule: string; backupCount: numb
 const backupFiles = ref<Array<{ name: string; size: number; date: string }>>([])
 const backupListLoading = ref(false)
 const backupNowLoading = ref(false)
+const backupToggleLoading = ref(false)
 const savingCustomLinks = ref(false)
 const savingDingtalk = ref(false)
 const testingDingtalk = ref(false)
@@ -1310,6 +1311,19 @@ async function loadBackupList() {
     backupFiles.value = []
   } finally {
     backupListLoading.value = false
+  }
+}
+
+async function handleToggleAutoBackup(enabled: boolean) {
+  backupToggleLoading.value = true
+  try {
+    await toggleAutoBackupApi(enabled)
+    ElMessage.success(enabled ? '自动备份已开启' : '自动备份已停止')
+    await loadBackupStatus()
+  } catch {
+    ElMessage.error('操作失败')
+  } finally {
+    backupToggleLoading.value = false
   }
 }
 

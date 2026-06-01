@@ -17,4 +17,7 @@ export const config = {
   cors: {
     origin: process.env.CORS_ORIGIN || "http://localhost:5173",
   },
+  backup: {
+    autoBackup: process.env.AUTO_BACKUP_ENABLED !== "false",
+  },
 };

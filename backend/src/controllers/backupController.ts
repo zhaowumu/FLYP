@@ -8,6 +8,8 @@ import {
   getBackupFile,
   getAutoBackupStatus,
   performBackup,
+  startAutoBackup,
+  stopAutoBackup,
 } from "../services/backupService";
 
 // 数据库文件路径
@@ -135,6 +137,21 @@ export const backupController = {
       res.json(status);
     } catch (error) {
       res.status(500).json({ error: "获取备份状态失败" });
+    }
+  },
+
+  async toggleAutoBackup(req: Request, res: Response) {
+    try {
+      const { enabled } = req.body;
+      if (enabled) {
+        const ok = startAutoBackup("0 3 * * *");
+        res.json({ success: ok, running: true, message: "自动备份已开启" });
+      } else {
+        const ok = stopAutoBackup();
+        res.json({ success: ok, running: false, message: "自动备份已停止" });
+      }
+    } catch (error) {
+      res.status(500).json({ error: "切换自动备份失败" });
     }
   },
 

@@ -57,6 +57,11 @@ export const deleteBackupFile = (filename: string) => {
   return api.delete(`/backup/file/${filename}`)
 }
 
+// 开关自动备份
+export const toggleAutoBackup = (enabled: boolean) => {
+  return api.post('/backup/toggle', { enabled })
+}
+
 // 立即执行一次备份
 export const backupNow = () => {
   return api.post('/backup/backup-now')

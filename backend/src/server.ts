@@ -35,8 +35,12 @@ const startServer = async () => {
       console.log("  test05 / 123456 / 测试 / tester");
     }
 
-    // 启动定时自动备份（每天凌晨 3 点）
-    startAutoBackup("0 3 * * *");
+    // 启动定时自动备份（每天凌晨 3 点），测试环境可通过 AUTO_BACKUP_ENABLED=false 关闭
+    if (config.backup.autoBackup) {
+      startAutoBackup("0 3 * * *");
+    } else {
+      console.log("Auto backup disabled (AUTO_BACKUP_ENABLED=false)");
+    }
 
     // 启动服务器
     app.listen(config.server.port, "0.0.0.0", () => {

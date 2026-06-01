@@ -516,11 +516,8 @@ onActivated(() => {
   }
 })
 
-// 统一处理：首次挂载 + 路由变化 → 同步筛选并加载
+// 首次挂载 + 从详情页返回时刷新数据（筛选条件由 v-model 自行维护）
 watch(() => route.fullPath, () => {
-  filterStatus.value = (route.query.status as string) || ''
-  filterSeverity.value = (route.query.severity as string) || ''
-  filterUnassigned.value = route.query.unassigned === 'true'
   loadBugs()
 }, { immediate: true })
 </script>

@@ -17,6 +17,7 @@ router.get("/list", authMiddleware, backupController.list);
 router.get("/export", authMiddleware, backupController.backup);
 router.get("/download/:filename", authMiddleware, backupController.download);
 router.post("/backup-now", authMiddleware, backupController.backupNow);
+router.post("/toggle", authMiddleware, backupController.toggleAutoBackup);
 
 // 写操作（仅管理员可访问）
 router.post("/import", authMiddleware, roleMiddleware(["admin"]), upload.single("file"), backupController.restore);
