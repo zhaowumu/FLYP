@@ -573,6 +573,10 @@
           <el-divider content-position="left">基础配置</el-divider>
 
           <el-form label-width="120px" style="margin-bottom: 24px">
+            <el-form-item label="通知开关">
+              <el-switch v-model="dingtalkEnabled" active-text="开启" inactive-text="暂停" />
+              <span style="margin-left: 12px; color: var(--nb-text-secondary); font-size: var(--nb-font-size-sm);">暂停后所有钉钉通知停止推送</span>
+            </el-form-item>
             <el-form-item label="Webhook地址">
               <el-input
                 v-model="dingtalkWebhook"
@@ -713,6 +717,10 @@
           <el-divider content-position="left">基础配置</el-divider>
 
           <el-form label-width="120px" style="margin-bottom: 24px">
+            <el-form-item label="通知开关">
+              <el-switch v-model="feishuEnabled" active-text="开启" inactive-text="暂停" />
+              <span style="margin-left: 12px; color: var(--nb-text-secondary); font-size: var(--nb-font-size-sm);">暂停后所有飞书通知停止推送</span>
+            </el-form-item>
             <el-form-item label="Webhook地址">
               <el-input
                 v-model="feishuWebhook"
@@ -858,6 +866,8 @@ const feishuWebhook = ref('')
 const feishuSecret = ref('')
 const feishuKeyword = ref('')
 const feishuBaseUrl = ref('')
+const feishuEnabled = ref(true)
+const dingtalkEnabled = ref(true)
 const savingFeishu = ref(false)
 const testingFeishu = ref(false)
 
@@ -940,13 +950,13 @@ async function loadMarkdownFiles() {
 
 async function loadDingTalkConfig() {
   try {
-    const res = await getDingTalkConfig()
+    const [res, genRes] = await Promise.all([getDingTalkConfig(), api.get('/system-config')])
     if (res.data) {
       dingtalkWebhook.value = res.data.webhook || ''
       dingtalkSecret.value = res.data.secret || ''
       dingtalkKeyword.value = res.data.keyword || ''
       dingtalkBaseUrl.value = res.data.baseUrl || ''
-      
+
       const notify = res.data.notify || {}
       const configs: Record<string, any> = {}
       // 只加载有效的通知类型，跳过废弃的 priority_change
@@ -960,6 +970,7 @@ async function loadDingTalkConfig() {
         }
       }
       notifyConfigs.value = configs
+      if (genRes.data) dingtalkEnabled.value = genRes.data.dingtalk_enabled !== 'false'
     }
   } catch {
     dingtalkWebhook.value = ''
@@ -987,6 +998,7 @@ async function saveDingTalkConfig() {
       baseUrl: dingtalkBaseUrl.value,
       notify
     })
+    await api.put('/system-config', { key: 'dingtalk_enabled', value: dingtalkEnabled.value ? 'true' : 'false' })
     ElMessage.success('钉钉配置已保存')
   } catch {
     ElMessage.error('保存失败')
@@ -1368,6 +1380,7 @@ async function loadFeishuConfig() {
       feishuSecret.value = res.data.feishu_secret || ''
       feishuKeyword.value = res.data.feishu_keyword || ''
       feishuBaseUrl.value = res.data.feishu_base_url || ''
+      feishuEnabled.value = res.data.feishu_enabled !== 'false'
 
       // 加载通知模板配置（复用 notifyConfigs，key 前缀为 feishu_notify_）
       const configs: Record<string, any> = {}
@@ -1395,6 +1408,7 @@ async function saveFeishuConfig() {
     await api.put('/system-config', { key: 'feishu_secret', value: feishuSecret.value })
     await api.put('/system-config', { key: 'feishu_keyword', value: feishuKeyword.value })
     await api.put('/system-config', { key: 'feishu_base_url', value: feishuBaseUrl.value })
+    await api.put('/system-config', { key: 'feishu_enabled', value: feishuEnabled.value ? 'true' : 'false' })
     // 保存通知模板
     for (const [key, item] of Object.entries(feishuNotifyConfigs.value)) {
       await api.put('/system-config', {

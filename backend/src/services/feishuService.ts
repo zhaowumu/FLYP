@@ -4,6 +4,7 @@ import { AppDataSource } from "../config/database";
 import { SystemConfig } from "../entities/SystemConfig";
 
 interface FeishuConfig {
+  enabled: boolean;
   webhook: string;
   secret: string;
   keyword: string;
@@ -32,8 +33,8 @@ const CARD_COLORS: Record<string, "blue" | "green" | "red" | "orange" | "purple"
 export class FeishuService {
   private async getConfig(): Promise<FeishuConfig> {
     const configRepo = AppDataSource.getRepository(SystemConfig);
-    const keys = ["feishu_webhook", "feishu_secret", "feishu_keyword", "feishu_base_url"];
-    const [webhookCfg, secretCfg, keywordCfg, baseUrlCfg] = await Promise.all(
+    const keys = ["feishu_webhook", "feishu_secret", "feishu_keyword", "feishu_base_url", "feishu_enabled"];
+    const [webhookCfg, secretCfg, keywordCfg, baseUrlCfg, enabledCfg] = await Promise.all(
       keys.map(k => configRepo.findOne({ where: { key: k } }))
     );
 
@@ -44,6 +45,7 @@ export class FeishuService {
     }
 
     return {
+      enabled: enabledCfg?.value !== "false",
       webhook: webhookCfg?.value || "",
       secret: secretCfg?.value || "",
       keyword: keywordCfg?.value || "",
@@ -84,6 +86,9 @@ export class FeishuService {
   ): Promise<{ success: boolean; error?: string }> {
     try {
       const config = await this.getConfig();
+      if (!config.enabled) {
+        return { success: false, error: "飞书通知已暂停" };
+      }
       if (!config.webhook) {
         return { success: false, error: "Webhook 地址未配置" };
       }

@@ -19,6 +19,7 @@ export interface DingTalkMessage {
 }
 
 interface DingTalkConfig {
+  enabled: boolean;
   webhook: string;
   secret: string;
   keyword: string;
@@ -37,15 +38,17 @@ export class DingTalkService {
     const secretConfig = await configRepo.findOne({ where: { key: "dingtalk_secret" } });
     const keywordConfig = await configRepo.findOne({ where: { key: "dingtalk_keyword" } });
     const baseUrlConfig = await configRepo.findOne({ where: { key: "dingtalk_base_url" } });
-    
+    const enabledConfig = await configRepo.findOne({ where: { key: "dingtalk_enabled" } });
+
     const notifyTypes = ["create_task", "create_bug", "assign_task", "complete_task", "reject_task", "submit_test_task", "pass_test_task", "restart_task", "feedback_task", "reject_test_task", "assign_bug", "fix_bug", "verify_bug", "reject_bug", "restart_bug", "feedback_bug"];
     const notify: Record<string, { enabled: boolean; template: string }> = {};
     for (const type of notifyTypes) {
       const cfg = await configRepo.findOne({ where: { key: `dingtalk_notify_${type}` } });
       notify[type] = cfg ? JSON.parse(cfg.value) : { enabled: true, template: "" };
     }
-    
+
     return {
+      enabled: enabledConfig?.value !== "false",
       webhook: webhookConfig?.value || "",
       secret: secretConfig?.value || "",
       keyword: keywordConfig?.value || "",
@@ -224,6 +227,7 @@ export class DingTalkService {
   ): Promise<boolean> {
     try {
       const config = await this.getDingTalkConfig();
+      if (!config.enabled) return false;
       if (!config.webhook) return false;
 
       if (!variables.baseUrl && config.baseUrl) {
