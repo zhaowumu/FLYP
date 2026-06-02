@@ -399,6 +399,7 @@ const filterUser = ref<number | null>(null)
 const filterCreator = ref<number | null>(null)
 const filterCategory = ref('')
 const filterUpdatedRange = ref<[string, string] | null>(null)
+const filterUnassigned = ref(false)
 const parentTask = ref<any>(null)
 const activeTab = ref(userStore.isPM ? 'all' : 'assigned')
 const currentPage = ref(1)
@@ -409,7 +410,7 @@ const lastLoadTime = ref(0)
 const STALE_TTL = 60_000 // 数据缓存60秒
 
 // 筛选条件变化时重置到第一页并重新加载
-watch([activeTab, filterStatus, filterPriority, filterUser, filterCreator, filterCategory, filterUpdatedRange], () => {
+watch([activeTab, filterStatus, filterPriority, filterUser, filterCreator, filterCategory, filterUpdatedRange, filterUnassigned], () => {
   currentPage.value = 1
   loadTasks()
 })
@@ -540,6 +541,7 @@ const loadTasks = async () => {
     if (activeTab.value === 'my' && !filterUser.value && !filterCreator.value) {
       params.myUserId = userId
     }
+    if (filterUnassigned.value) params.unassigned = 'true'
     if (filterUpdatedRange.value) {
       params.updatedAfter = filterUpdatedRange.value[0]
       params.updatedBefore = filterUpdatedRange.value[1]
@@ -677,8 +679,13 @@ onActivated(() => {
   }
 })
 
-// 首次挂载 + 从详情页返回时刷新数据（筛选条件由 v-model 自行维护）
+// 首次挂载 + 路由变化时同步 URL 查询参数到筛选条件
+// 只有 URL 中显式存在的参数才会覆盖，避免从详情页返回时丢失筛选
 watch(() => route.fullPath, () => {
+  if (route.query.status !== undefined) filterStatus.value = route.query.status as string
+  if (route.query.priority !== undefined) filterPriority.value = route.query.priority as string
+  if (route.query.assigneeId !== undefined) filterUser.value = Number(route.query.assigneeId)
+  if (route.query.unassigned !== undefined) filterUnassigned.value = route.query.unassigned === 'true'
   loadTasks()
 }, { immediate: true })
 </script>

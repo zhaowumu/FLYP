@@ -140,7 +140,8 @@ export const taskController = {
 
   async getAllTasks(req: Request, res: Response) {
     try {
-      const { projectId, status, assigneeId, creatorId, priority, sortBy, sortOrder, category, page, pageSize, myUserId, updatedAfter, updatedBefore } = req.query;
+      const { projectId, status, assigneeId, creatorId, priority, sortBy, sortOrder, category, page, pageSize, myUserId, updatedAfter, updatedBefore, unassigned } = req.query;
+      const isUnassigned = unassigned === "true" || unassigned === "1";
       const where: any = {};
 
       const statuses = status ? (status as string).split(",").filter(Boolean) : [];
@@ -171,21 +172,28 @@ export const taskController = {
       const currentPage = page ? parseInt(page as string) || 1 : undefined;
       const skip = currentPage ? (currentPage - 1) * (take || 50) : undefined;
 
-      // 如果按 assigneeId 过滤，需要通过关联表查询
-      if (assigneeId) {
+      // 如果按 assigneeId 过滤或筛选待指派，需要通过 QueryBuilder 关联表查询
+      if (assigneeId || isUnassigned) {
         const query = taskRepository
           .createQueryBuilder("task")
           .leftJoinAndSelect("task.assignees", "assignees")
           .leftJoinAndSelect("task.creator", "creator")
-          .leftJoinAndSelect("task.subtasks", "subtasks")
-          .leftJoin("task.assignees", "filterAssignee", "filterAssignee.id = :aid", { aid: assigneeId })
-          .where("filterAssignee.id IS NOT NULL")
-          .andWhere(projectId ? "project.id = :pid" : "1=1", { pid: projectId })
+          .leftJoinAndSelect("task.subtasks", "subtasks");
+
+        if (assigneeId) {
+          query
+            .leftJoin("task.assignees", "filterAssignee", "filterAssignee.id = :aid", { aid: assigneeId })
+            .where("filterAssignee.id IS NOT NULL");
+        }
+
+        query
+          .andWhere(projectId ? "task.projectId = :pid" : "1=1", { pid: projectId })
           .andWhere(statuses.length === 1 ? "task.status = :status" : statuses.length > 1 ? "task.status IN (:...statuses)" : "1=1", statuses.length === 1 ? { status: statuses[0] } : statuses.length > 1 ? { statuses } : {})
           .andWhere(priority ? "task.priority = :priority" : "1=1", { priority })
           .andWhere(category ? "task.category = :category" : "1=1", { category })
           .andWhere(updatedAfter ? "task.updatedAt >= :updatedAfter" : "1=1", { updatedAfter: updatedAfter ? new Date(updatedAfter as string) : undefined })
           .andWhere(updatedBefore ? "task.updatedAt <= :updatedBefore" : "1=1", { updatedBefore: updatedBefore ? new Date(updatedBefore as string) : undefined })
+          .andWhere(isUnassigned ? "NOT EXISTS (SELECT 1 FROM task_assignees_user tau WHERE tau.taskId = task.id)" : "1=1")
           .orderBy(`task.${sortField}`, order);
         
         const finalTake = Math.min(take || 50, 200);
@@ -231,6 +239,7 @@ export const taskController = {
           .andWhere(category ? "task.category = :category" : "1=1", { category })
           .andWhere(updatedAfter ? "task.updatedAt >= :updatedAfter" : "1=1", { updatedAfter: updatedAfter ? new Date(updatedAfter as string) : undefined })
           .andWhere(updatedBefore ? "task.updatedAt <= :updatedBefore" : "1=1", { updatedBefore: updatedBefore ? new Date(updatedBefore as string) : undefined })
+          .andWhere(isUnassigned ? "NOT EXISTS (SELECT 1 FROM task_assignees_user tau WHERE tau.taskId = task.id)" : "1=1")
           .orderBy(`task.${sortField}`, order);
 
         const finalTake = Math.min(take || 50, 200);

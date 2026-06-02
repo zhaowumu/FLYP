@@ -254,44 +254,32 @@ export const getDashboard = async (req: Request, res: Response) => {
         .getMany();
       const pmProjectIds = myProjects.map(p => p.id);
 
-      // PM 统计 — 待指派/待关闭
+      // PM 统计 — 待指派/待关闭（不限制项目范围，与列表页一致）
       const [unassignedTasks, closeableTasks, unassignedBugs, closeableBugs] = await Promise.all([
         // 待指派的任务：pending 状态且无 assignee（通过 LEFT JOIN 中间表判断）
-        pmProjectIds.length
-          ? taskRepository
-              .createQueryBuilder("task")
-              .leftJoin("task.assignees", "uaAssignee")
-              .where("task.projectId IN (:...ids)", { ids: pmProjectIds })
-              .andWhere("task.status = :status", { status: "pending" })
-              .andWhere("uaAssignee.id IS NULL")
-              .getCount()
-          : Promise.resolve(0),
-        // 待关闭的任务：completed 或 testing 状态
-        pmProjectIds.length
-          ? taskRepository
-              .createQueryBuilder("task")
-              .where("task.projectId IN (:...ids)", { ids: pmProjectIds })
-              .andWhere("task.status IN (:...statuses)", { statuses: ["completed", "testing"] })
-              .getCount()
-          : Promise.resolve(0),
+        taskRepository
+          .createQueryBuilder("task")
+          .leftJoin("task.assignees", "uaAssignee")
+          .where("task.status = :status", { status: "pending" })
+          .andWhere("uaAssignee.id IS NULL")
+          .getCount(),
+        // 待关闭的任务：completed 状态
+        taskRepository
+          .createQueryBuilder("task")
+          .where("task.status = :status", { status: "completed" })
+          .getCount(),
         // 待指派的 Bug：非关闭状态且无 assignee
-        pmProjectIds.length
-          ? bugRepository
-              .createQueryBuilder("bug")
-              .leftJoin("bug.assignee", "ubAssignee")
-              .where("bug.projectId IN (:...ids)", { ids: pmProjectIds })
-              .andWhere("bug.status NOT IN (:...closedStatuses)", { closedStatuses: ["closed", "verified"] })
-              .andWhere("ubAssignee.id IS NULL")
-              .getCount()
-          : Promise.resolve(0),
+        bugRepository
+          .createQueryBuilder("bug")
+          .leftJoin("bug.assignee", "ubAssignee")
+          .where("bug.status NOT IN (:...closedStatuses)", { closedStatuses: ["closed", "verified"] })
+          .andWhere("ubAssignee.id IS NULL")
+          .getCount(),
         // 待关闭的 Bug：verified 状态
-        pmProjectIds.length
-          ? bugRepository
-              .createQueryBuilder("bug")
-              .where("bug.projectId IN (:...ids)", { ids: pmProjectIds })
-              .andWhere("bug.status = :status", { status: "verified" })
-              .getCount()
-          : Promise.resolve(0),
+        bugRepository
+          .createQueryBuilder("bug")
+          .where("bug.status = :status", { status: "verified" })
+          .getCount(),
       ]);
 
       // PM 视图中团队成员 = 所管理项目中被分配了任务的用户 + 管理者自己
