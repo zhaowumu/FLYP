@@ -140,7 +140,7 @@ export const taskController = {
 
   async getAllTasks(req: Request, res: Response) {
     try {
-      const { projectId, status, assigneeId, creatorId, priority, sortBy, sortOrder, category, page, pageSize, myUserId, updatedAfter, updatedBefore, unassigned } = req.query;
+      const { projectId, status, assigneeId, creatorId, priority, sortBy, sortOrder, category, page, pageSize, myUserId, recentUserId, updatedAfter, updatedBefore, unassigned } = req.query;
       const isUnassigned = unassigned === "true" || unassigned === "1";
       const where: any = {};
 
@@ -205,7 +205,19 @@ export const taskController = {
         let tabs;
         if (finalPage === 1) {
           const allTotal = await taskRepository.count();
-          tabs = { assigned: 0, created: 0, my: 0, all: allTotal };
+          let recentCount = 0;
+          if (uid) {
+            try {
+              const recentRows = await operationLogRepository.createQueryBuilder("log")
+                .select("log.targetId")
+                .where("log.targetType = :tt", { tt: "task" })
+                .andWhere("log.userId = :uid", { uid })
+                .groupBy("log.targetId")
+                .getRawMany();
+              recentCount = recentRows.length;
+            } catch { recentCount = 0; }
+          }
+          tabs = { assigned: 0, created: 0, my: 0, all: allTotal, recent: recentCount };
           if (uid) {
             const [assigned, created] = await Promise.all([
               taskRepository.createQueryBuilder("task")
@@ -218,10 +230,75 @@ export const taskController = {
               .leftJoin("task.assignees", "tabM")
               .where("tabM.id = :uid OR task.creatorId = :uid", { uid })
               .getCount();
-            tabs = { assigned, created, my: myCount, all: allTotal };
+            tabs = { assigned, created, my: myCount, all: allTotal, recent: recentCount };
           }
         }
         return res.json({ data: tasks, total, page: finalPage, pageSize: finalTake, tabs });
+      }
+
+      // "最近打开"：查询当前用户最近操作过的任务（从 OperationLog 取最近30条）
+      if (recentUserId) {
+        const recentLogs = await operationLogRepository
+          .createQueryBuilder("log")
+          .select("log.targetId", "targetId")
+          .addSelect("MAX(log.createdAt)", "lastOpened")
+          .where("log.targetType = :targetType", { targetType: "task" })
+          .andWhere("log.userId = :userId", { userId: recentUserId })
+          .groupBy("log.targetId")
+          .orderBy("lastOpened", "DESC")
+          .getRawMany();
+
+        const recentIds = recentLogs.map((r) => Number(r.targetId)).filter((id) => id > 0);
+
+        if (recentIds.length === 0) {
+          const allTotal = await taskRepository.count();
+          return res.json({ data: [], total: 0, page: 1, pageSize: 20, tabs: { assigned: 0, created: 0, my: 0, all: allTotal, recent: 0 } });
+        }
+
+        const query = taskRepository
+          .createQueryBuilder("task")
+          .leftJoinAndSelect("task.assignees", "assignees")
+          .leftJoinAndSelect("task.creator", "creator")
+          .leftJoinAndSelect("task.subtasks", "subtasks")
+          .where("task.id IN (:...ids)", { ids: recentIds })
+          .andWhere(projectId ? "task.projectId = :pid" : "1=1", { pid: projectId })
+          .andWhere(statuses.length === 1 ? "task.status = :status" : statuses.length > 1 ? "task.status IN (:...statuses)" : "1=1", statuses.length === 1 ? { status: statuses[0] } : statuses.length > 1 ? { statuses } : {})
+          .andWhere(priority ? "task.priority = :priority" : "1=1", { priority })
+          .andWhere(category ? "task.category = :category" : "1=1", { category })
+          .andWhere(updatedAfter ? "task.updatedAt >= :updatedAfter" : "1=1", { updatedAfter: updatedAfter ? new Date(updatedAfter as string) : undefined })
+          .andWhere(updatedBefore ? "task.updatedAt <= :updatedBefore" : "1=1", { updatedBefore: updatedBefore ? new Date(updatedBefore as string) : undefined })
+          .orderBy("task.updatedAt", "DESC");
+
+        const finalTake = Math.min(take || 50, 200);
+        const finalSkip = skip || 0;
+        const finalPage = currentPage || 1;
+
+        const [tasks, total] = await query.skip(finalSkip).take(finalTake).getManyAndCount();
+
+        const idOrder = new Map(recentIds.map((id, idx) => [id, idx]));
+        tasks.sort((a, b) => (idOrder.get(a.id) ?? 999) - (idOrder.get(b.id) ?? 999));
+
+        const uid = (req as any).user?.id;
+        let tabs;
+        if (finalPage === 1) {
+          const allTotal = await taskRepository.count();
+          tabs = { assigned: 0, created: 0, my: 0, all: allTotal, recent: recentIds.length };
+          if (uid) {
+            const [assigned, created] = await Promise.all([
+              taskRepository.createQueryBuilder("task")
+                .leftJoin("task.assignees", "tabA")
+                .where("tabA.id = :uid", { uid })
+                .getCount(),
+              taskRepository.count({ where: { creator: { id: uid } } }),
+            ]);
+            const myCount = await taskRepository.createQueryBuilder("task")
+              .leftJoin("task.assignees", "tabM")
+              .where("tabM.id = :uid OR task.creatorId = :uid", { uid })
+              .getCount();
+            tabs = { assigned, created, my: myCount, all: allTotal, recent: recentIds.length };
+          }
+        }
+        return res.json({ data: tasks, total: total > recentIds.length ? recentIds.length : total, page: finalPage, pageSize: finalTake, tabs });
       }
 
       // "我参与的"：OR 逻辑（我是负责人 OR 我是创建人），必须用 QueryBuilder
@@ -251,7 +328,19 @@ export const taskController = {
         let tabs;
         if (finalPage === 1) {
           const allTotal = await taskRepository.count();
-          tabs = { assigned: 0, created: 0, my: 0, all: allTotal };
+          let recentCount = 0;
+          if (uid) {
+            try {
+              const recentRows = await operationLogRepository.createQueryBuilder("log")
+                .select("log.targetId")
+                .where("log.targetType = :tt", { tt: "task" })
+                .andWhere("log.userId = :uid", { uid })
+                .groupBy("log.targetId")
+                .getRawMany();
+              recentCount = recentRows.length;
+            } catch { recentCount = 0; }
+          }
+          tabs = { assigned: 0, created: 0, my: 0, all: allTotal, recent: recentCount };
           if (uid) {
             const [assigned, created] = await Promise.all([
               taskRepository.createQueryBuilder("task")
@@ -264,7 +353,7 @@ export const taskController = {
               .leftJoin("task.assignees", "tabM")
               .where("tabM.id = :uid OR task.creatorId = :uid", { uid })
               .getCount();
-            tabs = { assigned, created, my: myCount, all: allTotal };
+            tabs = { assigned, created, my: myCount, all: allTotal, recent: recentCount };
           }
         }
         return res.json({ data: tasks, total, page: finalPage, pageSize: finalTake, tabs });
@@ -287,7 +376,19 @@ export const taskController = {
       let tabs;
       if (finalPage === 1) {
         const allTotal = await taskRepository.count();
-        tabs = { assigned: 0, created: 0, my: 0, all: allTotal };
+          let recentCount = 0;
+          if (uid) {
+            try {
+              const recentRows = await operationLogRepository.createQueryBuilder("log")
+                .select("log.targetId")
+                .where("log.targetType = :tt", { tt: "task" })
+                .andWhere("log.userId = :uid", { uid })
+                .groupBy("log.targetId")
+                .getRawMany();
+              recentCount = recentRows.length;
+            } catch { recentCount = 0; }
+          }
+        tabs = { assigned: 0, created: 0, my: 0, all: allTotal, recent: recentCount };
         if (uid) {
           const [assigned, created] = await Promise.all([
             taskRepository.createQueryBuilder("task")
@@ -300,7 +401,7 @@ export const taskController = {
             .leftJoin("task.assignees", "tabM")
             .where("tabM.id = :uid OR task.creatorId = :uid", { uid })
             .getCount();
-          tabs = { assigned, created, my: myCount, all: allTotal };
+          tabs = { assigned, created, my: myCount, all: allTotal, recent: recentCount };
         }
       }
       return res.json({ data: tasks, total, page: finalPage, pageSize: finalTake, tabs });
@@ -320,6 +421,12 @@ export const taskController = {
 
       if (!task) {
         return res.status(404).json({ error: "Task not found" });
+      }
+
+            // 记录最近查看（用于"最近打开"标签）
+      const viewerId = (req as any).user?.id;
+      if (viewerId) {
+        createOperationLog(task.id, viewerId, "", "view").catch(() => {});
       }
 
       const logs = await getTaskLogs(task.id);

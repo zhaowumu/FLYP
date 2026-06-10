@@ -405,7 +405,7 @@ const activeTab = ref(userStore.isPM ? 'all' : 'assigned')
 const currentPage = ref(1)
 const pageSize = ref(20)
 const total = ref(0)
-const tabCounts = ref({ assigned: 0, created: 0, my: 0, all: 0 })
+const tabCounts = ref({ assigned: 0, created: 0, my: 0, all: 0, recent: 0 })
 const lastLoadTime = ref(0)
 const STALE_TTL = 60_000 // 数据缓存60秒
 
@@ -453,6 +453,7 @@ const tabs = computed(() => {
     { key: 'assigned', label: '我负责的', count: tabCounts.value.assigned },
     { key: 'created', label: '我创建的', count: tabCounts.value.created },
     { key: 'my', label: '我参与的', count: tabCounts.value.my },
+    { key: 'recent', label: '最近打开', count: tabCounts.value.recent },
     { key: 'all', label: '全部', count: tabCounts.value.all },
   ]
 })
@@ -540,6 +541,9 @@ const loadTasks = async () => {
     // 'my' 传 myUserId 由后端做 OR 查询，不再前端过滤
     if (activeTab.value === 'my' && !filterUser.value && !filterCreator.value) {
       params.myUserId = userId
+    }
+    if (activeTab.value === 'recent') {
+      params.recentUserId = userId
     }
     if (filterUnassigned.value) params.unassigned = 'true'
     if (filterUpdatedRange.value) {

@@ -127,7 +127,7 @@ export const bugController = {
 
   async getAllBugs(req: Request, res: Response) {
     try {
-      const { projectId, status, severity, assigneeId, reporterId, sortBy, sortOrder, category, page, pageSize, myUserId, updatedAfter, updatedBefore, unassigned } = req.query;
+      const { projectId, status, severity, assigneeId, reporterId, sortBy, sortOrder, category, page, pageSize, myUserId, recentUserId, updatedAfter, updatedBefore, unassigned } = req.query;
       const where: any = {};
       const statuses = status ? (status as string).split(",").filter(Boolean) : [];
       const isUnassigned = unassigned === "true" || unassigned === "1";
@@ -155,6 +155,70 @@ export const bugController = {
       const sortField = sortBy && validSortFields.includes(sortBy as string) ? sortBy as string : "createdAt";
       const order = sortOrder === "ASC" ? "ASC" : "DESC";
 
+      // "最近打开"：查询当前用户最近操作过的缺陷（从 OperationLog 取最近30条）
+      if (recentUserId) {
+        const recentLogs = await operationLogRepository
+          .createQueryBuilder("log")
+          .select("log.targetId", "targetId")
+          .addSelect("MAX(log.createdAt)", "lastOpened")
+          .where("log.targetType = :targetType", { targetType: "bug" })
+          .andWhere("log.userId = :userId", { userId: recentUserId })
+          .groupBy("log.targetId")
+          .orderBy("lastOpened", "DESC")
+          .getRawMany();
+
+        const recentIds = recentLogs.map((r) => Number(r.targetId)).filter((id) => id > 0);
+
+        if (recentIds.length === 0) {
+          const allTotal = await bugRepository.count();
+          return res.json({ data: [], total: 0, page: 1, pageSize: 20, tabs: { assigned: 0, reported: 0, my: 0, all: allTotal, recent: 0 } });
+        }
+
+        const query = bugRepository
+          .createQueryBuilder("bug")
+          .leftJoinAndSelect("bug.assignee", "assignee")
+          .leftJoinAndSelect("bug.reporter", "reporter")
+          .where("bug.id IN (:...ids)", { ids: recentIds })
+          .andWhere(projectId ? "bug.projectId = :pid" : "1=1", { pid: projectId })
+          .andWhere(statuses.length === 1 ? "bug.status = :status" : statuses.length > 1 ? "bug.status IN (:...statuses)" : "1=1", statuses.length === 1 ? { status: statuses[0] } : statuses.length > 1 ? { statuses } : {})
+          .andWhere(isUnassigned ? "bug.assigneeId IS NULL" : "1=1")
+          .andWhere(severity ? "bug.severity = :severity" : "1=1", { severity })
+          .andWhere(category ? "bug.category = :category" : "1=1", { category })
+          .andWhere(updatedAfter ? "bug.updatedAt >= :updatedAfter" : "1=1", { updatedAfter: updatedAfter ? new Date(updatedAfter as string) : undefined })
+          .andWhere(updatedBefore ? "bug.updatedAt <= :updatedBefore" : "1=1", { updatedBefore: updatedBefore ? new Date(updatedBefore as string) : undefined })
+          .orderBy("bug.updatedAt", "DESC");
+
+        const finalTake = Math.min(parseInt(pageSize as string) || 50, 200);
+        const finalPage = parseInt(page as string) || 1;
+        const finalSkip = (finalPage - 1) * finalTake;
+
+        const [bugs, total] = await query.skip(finalSkip).take(finalTake).getManyAndCount();
+
+        const idOrder = new Map(recentIds.map((id, idx) => [id, idx]));
+        bugs.sort((a, b) => (idOrder.get(a.id) ?? 999) - (idOrder.get(b.id) ?? 999));
+
+        const uid = (req as any).user?.id;
+        let tabs;
+        if (finalPage === 1) {
+          const allTotal = await bugRepository.count();
+          tabs = { assigned: 0, reported: 0, my: 0, all: allTotal, recent: recentIds.length };
+          if (uid) {
+            const [assigned, reported] = await Promise.all([
+              bugRepository.count({ where: { assignee: { id: uid } } }),
+              bugRepository.count({ where: { reporter: { id: uid } } }),
+            ]);
+            const myCount = await bugRepository
+              .createQueryBuilder("bug")
+              .leftJoin("bug.assignee", "tabAssignee")
+              .leftJoin("bug.reporter", "tabReporter")
+              .where("tabAssignee.id = :uid OR tabReporter.id = :uid", { uid })
+              .getCount();
+            tabs = { assigned, reported, my: myCount, all: allTotal, recent: recentIds.length };
+          }
+        }
+        return res.json({ data: bugs, total: total > recentIds.length ? recentIds.length : total, page: finalPage, pageSize: finalTake, tabs });
+      }
+
       // "我参与的"：OR 逻辑（我是负责人 OR 我是报告人），需用 QueryBuilder
       if (myUserId) {
         const query = bugRepository
@@ -180,7 +244,19 @@ export const bugController = {
         let tabs;
         if (finalPage === 1) {
           const allTotal = await bugRepository.count();
-          tabs = { assigned: 0, reported: 0, my: 0, all: allTotal };
+          let recentCount = 0;
+          if (uid) {
+            try {
+              const recentRows = await operationLogRepository.createQueryBuilder("log")
+                .select("log.targetId")
+                .where("log.targetType = :tt", { tt: "bug" })
+                .andWhere("log.userId = :uid", { uid })
+                .groupBy("log.targetId")
+                .getRawMany();
+              recentCount = recentRows.length;
+            } catch { recentCount = 0; }
+          }
+          tabs = { assigned: 0, reported: 0, my: 0, all: allTotal, recent: recentCount };
           if (uid) {
             const [assigned, reported] = await Promise.all([
               bugRepository.count({ where: { assignee: { id: uid } } }),
@@ -192,7 +268,7 @@ export const bugController = {
               .leftJoin("bug.reporter", "tabReporter")
               .where("tabAssignee.id = :uid OR tabReporter.id = :uid", { uid })
               .getCount();
-            tabs = { assigned, reported, my: myCount, all: allTotal };
+            tabs = { assigned, reported, my: myCount, all: allTotal, recent: recentCount };
           }
         }
         return res.json({ data: bugs, total, page: finalPage, pageSize: finalTake, tabs });
@@ -215,7 +291,19 @@ export const bugController = {
       let tabs;
       if (finalPage === 1) {
         const allTotal = await bugRepository.count();
-        tabs = { assigned: 0, reported: 0, my: 0, all: allTotal };
+          let recentCount = 0;
+          if (uid) {
+            try {
+              const recentRows = await operationLogRepository.createQueryBuilder("log")
+                .select("log.targetId")
+                .where("log.targetType = :tt", { tt: "bug" })
+                .andWhere("log.userId = :uid", { uid })
+                .groupBy("log.targetId")
+                .getRawMany();
+              recentCount = recentRows.length;
+            } catch { recentCount = 0; }
+          }
+        tabs = { assigned: 0, reported: 0, my: 0, all: allTotal, recent: recentCount };
         if (uid) {
           const [assigned, reported] = await Promise.all([
             bugRepository.count({ where: { assignee: { id: uid } } }),
@@ -227,7 +315,7 @@ export const bugController = {
             .leftJoin("bug.reporter", "tabReporter")
             .where("tabAssignee.id = :uid OR tabReporter.id = :uid", { uid })
             .getCount();
-          tabs = { assigned, reported, my: myCount, all: allTotal };
+          tabs = { assigned, reported, my: myCount, all: allTotal, recent: recentCount };
         }
       }
       return res.json({ data: bugs, total, page: finalPage, pageSize: finalTake, tabs });
@@ -247,6 +335,12 @@ export const bugController = {
 
       if (!bug) {
         return res.status(404).json({ error: "Bug not found" });
+      }
+
+            // 记录最近查看（用于"最近打开"标签）
+      const viewerId = (req as any).user?.id;
+      if (viewerId) {
+        createOperationLog(bug.id, viewerId, "", "view").catch(() => {});
       }
 
       const logs = await getBugLogs(bug.id);
