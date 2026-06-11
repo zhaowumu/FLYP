@@ -21,7 +21,7 @@ cd /d "%~dp0backend"
 start "Backend Service" cmd /k "npm run dev"
 
 echo Waiting for backend to start...
-timeout /t 5 /nobreak >nul
+timeout /t 12 /nobreak >nul
 
 echo.
 echo [3/3] Starting frontend service (Port: 5173)...

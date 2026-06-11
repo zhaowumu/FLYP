@@ -453,7 +453,7 @@ const tabs = computed(() => {
     { key: 'assigned', label: '我负责的', count: tabCounts.value.assigned },
     { key: 'created', label: '我创建的', count: tabCounts.value.created },
     { key: 'my', label: '我参与的', count: tabCounts.value.my },
-    { key: 'recent', label: '最近打开', count: tabCounts.value.recent },
+    { key: 'recent', label: '最近操作', count: tabCounts.value.recent },
     { key: 'all', label: '全部', count: tabCounts.value.all },
   ]
 })
