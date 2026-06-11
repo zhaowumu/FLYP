@@ -423,12 +423,6 @@ export const taskController = {
         return res.status(404).json({ error: "Task not found" });
       }
 
-            // 记录最近查看（用于"最近打开"标签）
-      const viewerId = (req as any).user?.id;
-      if (viewerId) {
-        createOperationLog(task.id, viewerId, "", "view").catch(() => {});
-      }
-
       const logs = await getTaskLogs(task.id);
       // user 为 null 时（用户已删除）显示"已删除人员"
       const normalizedLogs = logs.map(log => ({

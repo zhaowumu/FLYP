@@ -337,12 +337,6 @@ export const bugController = {
         return res.status(404).json({ error: "Bug not found" });
       }
 
-            // 记录最近查看（用于"最近打开"标签）
-      const viewerId = (req as any).user?.id;
-      if (viewerId) {
-        createOperationLog(bug.id, viewerId, "", "view").catch(() => {});
-      }
-
       const logs = await getBugLogs(bug.id);
       // user 为 null 时（用户已删除）显示"已删除人员"
       const normalizedLogs = logs.map(log => ({
