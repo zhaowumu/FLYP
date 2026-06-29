@@ -171,7 +171,7 @@ export const bugController = {
 
         if (recentIds.length === 0) {
           const allTotal = await bugRepository.count();
-          return res.json({ data: [], total: 0, page: 1, pageSize: 20, tabs: { assigned: 0, reported: 0, my: 0, all: allTotal, recent: 0 } });
+          return res.json({ data: [], total: 0, page: 1, pageSize: 20, tabs: { assigned: 0, reported: 0, my: 0, all: allTotal, recent: 0, completed_closed: 0 } });
         }
 
         const query = bugRepository
@@ -201,7 +201,7 @@ export const bugController = {
         let tabs;
         if (finalPage === 1) {
           const allTotal = await bugRepository.count();
-          tabs = { assigned: 0, reported: 0, my: 0, all: allTotal, recent: recentIds.length };
+          tabs = { assigned: 0, reported: 0, my: 0, all: allTotal, recent: recentIds.length, completed_closed: 0 };
           if (uid) {
             const [assigned, reported] = await Promise.all([
               bugRepository.count({ where: { assignee: { id: uid } } }),
@@ -213,7 +213,7 @@ export const bugController = {
               .leftJoin("bug.reporter", "tabReporter")
               .where("tabAssignee.id = :uid OR tabReporter.id = :uid", { uid })
               .getCount();
-            tabs = { assigned, reported, my: myCount, all: allTotal, recent: recentIds.length };
+            tabs = { assigned, reported, my: myCount, all: allTotal, recent: recentIds.length, completed_closed: 0 };
           }
         }
         return res.json({ data: bugs, total: total > recentIds.length ? recentIds.length : total, page: finalPage, pageSize: finalTake, tabs });
@@ -256,7 +256,7 @@ export const bugController = {
               recentCount = recentRows.length;
             } catch { recentCount = 0; }
           }
-          tabs = { assigned: 0, reported: 0, my: 0, all: allTotal, recent: recentCount };
+          tabs = { assigned: 0, reported: 0, my: 0, all: allTotal, recent: recentCount, completed_closed: 0 };
           if (uid) {
             const [assigned, reported] = await Promise.all([
               bugRepository.count({ where: { assignee: { id: uid } } }),
@@ -268,7 +268,7 @@ export const bugController = {
               .leftJoin("bug.reporter", "tabReporter")
               .where("tabAssignee.id = :uid OR tabReporter.id = :uid", { uid })
               .getCount();
-            tabs = { assigned, reported, my: myCount, all: allTotal, recent: recentCount };
+            tabs = { assigned, reported, my: myCount, all: allTotal, recent: recentCount, completed_closed: 0 };
           }
         }
         return res.json({ data: bugs, total, page: finalPage, pageSize: finalTake, tabs });
@@ -303,7 +303,7 @@ export const bugController = {
               recentCount = recentRows.length;
             } catch { recentCount = 0; }
           }
-        tabs = { assigned: 0, reported: 0, my: 0, all: allTotal, recent: recentCount };
+        tabs = { assigned: 0, reported: 0, my: 0, all: allTotal, recent: recentCount, completed_closed: 0 };
         if (uid) {
           const [assigned, reported] = await Promise.all([
             bugRepository.count({ where: { assignee: { id: uid } } }),
@@ -315,7 +315,7 @@ export const bugController = {
             .leftJoin("bug.reporter", "tabReporter")
             .where("tabAssignee.id = :uid OR tabReporter.id = :uid", { uid })
             .getCount();
-          tabs = { assigned, reported, my: myCount, all: allTotal, recent: recentCount };
+          tabs = { assigned, reported, my: myCount, all: allTotal, recent: recentCount, completed_closed: 0 };
         }
       }
       return res.json({ data: bugs, total, page: finalPage, pageSize: finalTake, tabs });

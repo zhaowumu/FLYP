@@ -19,5 +19,6 @@ export const config = {
   },
   backup: {
     autoBackup: process.env.AUTO_BACKUP_ENABLED !== "false",
+    remotePath: process.env.REMOTE_BACKUP_PATH || "",
   },
 };
