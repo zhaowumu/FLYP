@@ -176,6 +176,7 @@ export const taskController = {
       if (assigneeId || isUnassigned) {
         const query = taskRepository
           .createQueryBuilder("task")
+          .addSelect("task.transferred")
           .leftJoinAndSelect("task.assignees", "assignees")
           .leftJoinAndSelect("task.creator", "creator")
           .leftJoinAndSelect("task.subtasks", "subtasks");
@@ -257,6 +258,7 @@ export const taskController = {
 
         const query = taskRepository
           .createQueryBuilder("task")
+          .addSelect("task.transferred")
           .leftJoinAndSelect("task.assignees", "assignees")
           .leftJoinAndSelect("task.creator", "creator")
           .leftJoinAndSelect("task.subtasks", "subtasks")
@@ -305,6 +307,7 @@ export const taskController = {
       if (myUserId) {
         const query = taskRepository
           .createQueryBuilder("task")
+          .addSelect("task.transferred")
           .leftJoinAndSelect("task.assignees", "assignees")
           .leftJoinAndSelect("task.creator", "creator")
           .leftJoinAndSelect("task.subtasks", "subtasks")

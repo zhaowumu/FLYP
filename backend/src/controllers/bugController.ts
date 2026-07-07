@@ -176,6 +176,7 @@ export const bugController = {
 
         const query = bugRepository
           .createQueryBuilder("bug")
+          .addSelect("bug.transferred")
           .leftJoinAndSelect("bug.assignee", "assignee")
           .leftJoinAndSelect("bug.reporter", "reporter")
           .where("bug.id IN (:...ids)", { ids: recentIds })
@@ -223,6 +224,7 @@ export const bugController = {
       if (myUserId) {
         const query = bugRepository
           .createQueryBuilder("bug")
+          .addSelect("bug.transferred")
           .leftJoinAndSelect("bug.assignee", "assignee")
           .leftJoinAndSelect("bug.reporter", "reporter")
           .where("bug.assigneeId = :myUid OR bug.reporterId = :myUid", { myUid: myUserId })
