@@ -488,7 +488,7 @@ const showCreateDialog = () => {
 }
 
 const viewBug = (bug: any) => {
-  router.push(`/bugs/${bug.id}`)
+  window.open(`/bugs/${bug.id}`, '_blank')
 }
 
 const submitBug = async () => {

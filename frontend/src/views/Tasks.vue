@@ -605,7 +605,7 @@ const showCreateDialog = () => {
 }
 
 const handleRowClick = (row: any) => {
-  router.push(`/tasks/${row.id}`)
+  window.open(`/tasks/${row.id}`, '_blank')
 }
 
 const viewTask = (task: any) => {
