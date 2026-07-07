@@ -1,1 +1,0 @@
-{"version":3,"file":"sharedFolderController.d.ts","sourceRoot":"","sources":["../../src/controllers/sharedFolderController.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,OAAO,EAAE,QAAQ,EAAE,MAAM,SAAS,CAAC;AAI5C,eAAO,MAAM,sBAAsB;oBACX,OAAO,OAAO,QAAQ;sBA2DpB,OAAO,OAAO,QAAQ;CA8B/C,CAAC"}
