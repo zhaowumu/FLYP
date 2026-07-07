@@ -49,6 +49,7 @@
         <el-table-column label="操作" width="150" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" size="small" @click="editUser(row)">编辑</el-button>
+            <el-button v-if="userStore.isAdmin && row.id !== currentUserId" link type="warning" size="small" @click="showTransferDialog(row)">转移任务</el-button>
             <el-button link type="danger" size="small" @click="deleteUser(row)">删除</el-button>
           </template>
         </el-table-column>
@@ -113,16 +114,22 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getUsers, updateUser, deleteUser as deleteUserApi } from '../api/user'
+import { getUsers, updateUser, deleteUser as deleteUserApi, transferTasks } from '../api/user'
 import api from '../api'
+import { useUserStore } from '../stores/user'
 
+const userStore = useUserStore()
 const users = ref<any[]>([])
 const dialogVisible = ref(false)
 const isEdit = ref(false)
 const userFormRef = ref()
 const currentUserId = ref<number | null>(null)
+const transferVisible = ref(false)
+const transferSourceUser = ref<any>(null)
+const transferTargetId = ref<number | null>(null)
+const transferring = ref(false)
 const submitting = ref(false)
 
 const userForm = reactive({
@@ -139,6 +146,8 @@ const userRules = {
   phone: [{ required: true, message: '请输入手机号', trigger: 'blur' }],
   role: [{ required: true, message: '请选择角色', trigger: 'change' }]
 }
+
+const availableTargets = computed(() => users.value.filter(u => u.id !== transferSourceUser.value?.id))
 
 const getRoleType = (role: string) => {
   const map: Record<string, string> = {
@@ -261,6 +270,28 @@ const submitUser = async () => {
       }
     }
   })
+}
+const showTransferDialog = (user: any) => {
+  transferSourceUser.value = user
+  transferTargetId.value = null
+  transferVisible.value = true
+}
+
+const executeTransfer = async () => {
+  if (!transferTargetId.value || !transferSourceUser.value) return
+  transferring.value = true
+  try {
+    const res = await transferTasks(transferSourceUser.value.id, transferTargetId.value)
+    const data = res.data
+    ElMessage.success("转移完成：任务 " + data.tasksTransferred + " 个，缺陷 " + data.bugsTransferred + " 个")
+    transferVisible.value = false
+    loadUsers()
+  } catch (error: any) {
+    const msg = error?.response?.data?.error || "转移失败"
+    ElMessage.error(msg)
+  } finally {
+    transferring.value = false
+  }
 }
 
 onMounted(() => {

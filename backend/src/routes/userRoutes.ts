@@ -26,6 +26,9 @@ router.get("/", authMiddleware, userController.getAllUsers);
 router.get("/:id", authMiddleware, userController.getUserById);
 
 // 更新用户信息（需管理员权限）
+// 转移任务/缺陷负责人（仅 admin）
+router.post("/transfer-tasks", authMiddleware, roleMiddleware(["admin"]), userController.transferTasks);
+
 router.put("/:id", authMiddleware, roleMiddleware(["admin"]), userController.updateUser);
 
 // 删除用户（需管理员权限）

@@ -40,6 +40,12 @@ export const changePassword = (data: { currentPassword: string; newPassword: str
 }
 
 // 上传头像文件
+
+// 批量转移任务/缺陷负责人
+export const transferTasks = (sourceUserId: number, targetUserId: number) => {
+  return api.post('/users/transfer-tasks', { sourceUserId, targetUserId })
+}
+
 export const uploadAvatar = (file: File) => {
   const formData = new FormData()
   formData.append('file', file)

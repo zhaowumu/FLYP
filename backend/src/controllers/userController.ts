@@ -270,6 +270,86 @@ export const userController = {
     }
   },
 
+
+  // 批量转移任务/缺陷负责人
+  async transferTasks(req: Request, res: Response) {
+    try {
+      const { sourceUserId, targetUserId } = req.body;
+
+      if (!sourceUserId || !targetUserId) {
+        return res.status(400).json({ error: "请提供 sourceUserId 和 targetUserId" });
+      }
+      if (sourceUserId === targetUserId) {
+        return res.status(400).json({ error: "源用户和目标用户不能相同" });
+      }
+
+      // 检查用户是否存在
+      const [sourceUser, targetUser] = await Promise.all([
+        userRepository.findOne({ where: { id: sourceUserId } }),
+        userRepository.findOne({ where: { id: targetUserId } }),
+      ]);
+      if (!sourceUser) return res.status(404).json({ error: "源用户不存在" });
+      if (!targetUser) return res.status(404).json({ error: "目标用户不存在" });
+
+      const details: string[] = [];
+
+      // 查询源用户未完成的任务（作为负责人）
+      const activeStatuses = ["pending", "in_progress", "testing"];
+      const uncompletedTasks = await taskRepository
+        .createQueryBuilder("task")
+        .innerJoinAndSelect("task.assignees", "assignee")
+        .where("assignee.id = :uid", { uid: sourceUserId })
+        .andWhere("task.status IN (:...statuses)", { statuses: activeStatuses })
+        .getMany();
+
+      // 转移任务负责人
+      for (const task of uncompletedTasks) {
+        task.assignees = task.assignees.filter((a: any) => a.id !== sourceUserId);
+        if (!task.assignees.some((a: any) => a.id === targetUserId)) {
+          task.assignees.push(targetUser);
+        }
+        await taskRepository.save(task);
+        details.push("任务 #" + task.id + " 负责人已转移");
+      }
+
+      // 查询源用户未完成的缺陷（作为负责人）
+      const uncompletedBugs = await bugRepository
+        .createQueryBuilder("bug")
+        .leftJoinAndSelect("bug.assignee", "assignee")
+        .where("assignee.id = :uid", { uid: sourceUserId })
+        .andWhere("bug.status IN (:...statuses)", { statuses: activeStatuses })
+        .getMany();
+
+      // 转移缺陷负责人
+      for (const bug of uncompletedBugs) {
+        bug.assignee = targetUser;
+        await bugRepository.save(bug);
+        details.push("缺陷 #" + bug.id + " 负责人已转移");
+      }
+
+      // 记录操作日志
+      const operatorId = (req as any).user?.id;
+      const detailsStr = "任务" + uncompletedTasks.length + "个，缺陷" + uncompletedBugs.length + "个";
+      if (operatorId) {
+        await AppDataSource.query(
+          "INSERT INTO operation_log (targetType, targetId, userId, action, remark, createdAt) VALUES (?, ?, ?, ?, ?, ?)",
+          ["user", sourceUserId, operatorId, "transfer_tasks",
+           "从 " + sourceUser.realName + " 转移至 " + targetUser.realName + "：" + detailsStr,
+           new Date()]
+        );
+      }
+
+      res.json({
+        tasksTransferred: uncompletedTasks.length,
+        bugsTransferred: uncompletedBugs.length,
+        details,
+      });
+    } catch (error) {
+      console.error("Error transferring tasks:", error);
+      res.status(500).json({ error: "转移失败，请查看服务端日志" });
+    }
+  },
+
   // 修改密码
   async changePassword(req: Request, res: Response) {
     try {
