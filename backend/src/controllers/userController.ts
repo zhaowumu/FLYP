@@ -335,7 +335,7 @@ export const userController = {
           "INSERT INTO operation_log (targetType, targetId, userId, action, remark, createdAt) VALUES (?, ?, ?, ?, ?, ?)",
           ["user", sourceUserId, operatorId, "transfer_tasks",
            "从 " + sourceUser.realName + " 转移至 " + targetUser.realName + "：" + detailsStr,
-           new Date()]
+           new Date().toISOString().replace("T", " ").replace("Z", "")]
         );
       }
 
