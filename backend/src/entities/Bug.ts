@@ -49,4 +49,7 @@ export class Bug {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @Column({ default: false })
+  transferred: boolean;
 }

@@ -309,6 +309,7 @@ export const userController = {
         if (!task.assignees.some((a: any) => a.id === targetUserId)) {
           task.assignees.push(targetUser);
         }
+        task.transferred = true;
         await taskRepository.save(task);
         details.push("任务 #" + task.id + " 负责人已转移");
         if (operatorId) {
@@ -334,6 +335,7 @@ export const userController = {
       // 转移缺陷负责人
       for (const bug of uncompletedBugs) {
         bug.assignee = targetUser;
+        bug.transferred = true;
         await bugRepository.save(bug);
         details.push("缺陷 #" + bug.id + " 负责人已转移");
         if (operatorId) {

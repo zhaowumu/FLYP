@@ -101,6 +101,7 @@
           <template #default="{ row }">
             <div class="task-cell">
               <span class="task-name">{{ row.title }}</span>
+              <el-tag v-if="row.transferred" size="small" type="warning" effect="light" style="margin-left:6px">已转移</el-tag>
               <el-tag 
                 v-if="row.level === 0 && row.subtasks && row.subtasks.length > 0" 
                 size="small" 

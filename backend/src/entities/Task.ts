@@ -53,4 +53,7 @@ export class Task {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @Column({ default: false })
+  transferred: boolean;
 }

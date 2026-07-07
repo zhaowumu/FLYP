@@ -93,7 +93,10 @@
         </el-table-column>
         <el-table-column prop="title" label="缺陷标题" min-width="250">
           <template #default="{ row }">
-            <div class="bug-title" @click="viewBug(row)">{{ row.title }}</div>
+            <div style="display:flex;align-items:center;gap:4px">
+              <div class="bug-title" @click="viewBug(row)">{{ row.title }}</div>
+              <el-tag v-if="row.transferred" size="small" type="warning" effect="light" style="flex-shrink:0">已转移</el-tag>
+            </div>
           </template>
         </el-table-column>
         <el-table-column label="分类" width="120">
