@@ -93,10 +93,7 @@
         </el-table-column>
         <el-table-column prop="title" label="缺陷标题" min-width="250">
           <template #default="{ row }">
-            <div style="display:flex;align-items:center;gap:4px">
-              <div class="bug-title" @click="viewBug(row)">{{ row.title }}</div>
-              <el-tag v-if="row.transferred" size="small" type="warning" effect="light" style="flex-shrink:0">已转移</el-tag>
-            </div>
+            <div class="bug-title" @click="viewBug(row)">{{ row.title }}</div>
           </template>
         </el-table-column>
         <el-table-column label="分类" width="120">
@@ -124,6 +121,7 @@
             <div v-if="row.assignee" class="assignee-cell">
               <el-avatar :size="24" :src="row.assignee.avatar || undefined">{{ row.assignee.realName?.charAt(0) }}</el-avatar>
               <span>{{ row.assignee.realName }}</span>
+              <el-tag v-if="row.transferred" size="small" type="warning" effect="dark" style="margin-left:4px;height:18px;line-height:16px;padding:0 4px;font-size:11px">转</el-tag>
             </div>
             <span v-else class="text-muted">未分配</span>
           </template>

@@ -101,7 +101,6 @@
           <template #default="{ row }">
             <div class="task-cell">
               <span class="task-name">{{ row.title }}</span>
-              <el-tag v-if="row.transferred" size="small" type="warning" effect="light" style="margin-left:6px">已转移</el-tag>
               <el-tag 
                 v-if="row.level === 0 && row.subtasks && row.subtasks.length > 0" 
                 size="small" 
@@ -165,6 +164,7 @@
             <div v-if="row.assignees && row.assignees.length > 0" class="assignee-cell">
               <el-avatar v-for="a in row.assignees" :key="a.id" :size="24" :src="a.avatar || undefined" class="assignee-avatar">{{ a.realName?.charAt(0) }}</el-avatar>
               <span>{{ row.assignees.map((a: any) => a.realName).join('、') }}</span>
+              <el-tag v-if="row.transferred" size="small" type="warning" effect="dark" style="margin-left:4px;height:18px;line-height:16px;padding:0 4px;font-size:11px">转</el-tag>
             </div>
             <span v-else class="text-muted">未分配</span>
           </template>
