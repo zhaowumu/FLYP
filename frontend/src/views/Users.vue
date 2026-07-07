@@ -49,7 +49,6 @@
         <el-table-column label="操作" width="150" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" size="small" @click="editUser(row)">编辑</el-button>
-            <el-button v-if="userStore.isAdmin && row.id !== currentUserId" link type="warning" size="small" @click="showTransferDialog(row)">转移任务</el-button>
             <el-button link type="danger" size="small" @click="deleteUser(row)">删除</el-button>
           </template>
         </el-table-column>
@@ -104,6 +103,18 @@
             <el-option label="运营" value="operations" />
           </el-select>
         </el-form-item>
+        <el-form-item label="接手人" v-if="isEdit && !userForm.isActive">
+          <el-select v-model="editTransferTargetId" placeholder="请选择接手人" style="width: 100%" filterable>
+            <el-option v-for="u in editAvailableTargets" :key="u.id" :label="u.realName + ' (@' + u.username + ') - ' + getRoleText(u.role)" :value="u.id" />
+          </el-select>
+          <div style="color:var(--nb-text-secondary);font-size:12px;margin-top:4px">仅转移未完成的任务/缺陷，已完成的保留不动</div>
+        </el-form-item>
+        <el-form-item label="状态" prop="isActive" v-if="isEdit">
+          <el-select v-model="userForm.isActive" placeholder="请选择状态" style="width: 100%">
+            <el-option label="在职" :value="true" />
+            <el-option label="离职" :value="false" />
+          </el-select>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -126,10 +137,8 @@ const dialogVisible = ref(false)
 const isEdit = ref(false)
 const userFormRef = ref()
 const currentUserId = ref<number | null>(null)
-const transferVisible = ref(false)
-const transferSourceUser = ref<any>(null)
-const transferTargetId = ref<number | null>(null)
 const transferring = ref(false)
+const editTransferTargetId = ref<number | null>(null)
 const submitting = ref(false)
 
 const userForm = reactive({
@@ -137,7 +146,8 @@ const userForm = reactive({
   realName: '',
   phone: '',
   password: '',
-  role: 'developer'
+  role: 'developer',
+  isActive: true
 })
 
 const userRules = {
@@ -147,7 +157,7 @@ const userRules = {
   role: [{ required: true, message: '请选择角色', trigger: 'change' }]
 }
 
-const availableTargets = computed(() => users.value.filter(u => u.id !== transferSourceUser.value?.id))
+const editAvailableTargets = computed(() => users.value.filter(u => u.id !== currentUserId.value))
 
 const getRoleType = (role: string) => {
   const map: Record<string, string> = {
@@ -199,7 +209,8 @@ const showCreateDialog = () => {
     realName: '',
     phone: '',
     password: '',
-    role: 'developer'
+    role: 'developer',
+    isActive: true
   })
   dialogVisible.value = true
 }
@@ -212,7 +223,8 @@ const editUser = (user: any) => {
     realName: user.realName,
     phone: user.phone || '',
     password: '',
-    role: user.role
+    role: user.role,
+    isActive: user.isActive
   })
   dialogVisible.value = true
 }
@@ -245,13 +257,25 @@ const submitUser = async () => {
           const updateData: any = {
             realName: userForm.realName,
             phone: userForm.phone,
-            role: userForm.role
+            role: userForm.role,
+            isActive: userForm.isActive
           }
           if (userForm.password) {
             updateData.password = userForm.password
           }
           await updateUser(currentUserId.value, updateData)
-          ElMessage.success('更新成功')
+          // 如果设为离职且选择了接手人，自动执行转移
+          if (!userForm.isActive && editTransferTargetId.value && currentUserId.value !== editTransferTargetId.value) {
+            try {
+              const transferRes = await transferTasks(currentUserId.value, editTransferTargetId.value)
+              const td = transferRes.data
+              ElMessage.success('更新成功，已自动转移任务 ' + td.tasksTransferred + ' 个、缺陷 ' + td.bugsTransferred + ' 个')
+            } catch (transferError) {
+              ElMessage.warning('用户已更新，但转移失败，请手动操作')
+            }
+          } else {
+            ElMessage.success('更新成功')
+          }
         } else {
           if (!userForm.password) {
             ElMessage.error('请输入密码')
@@ -271,30 +295,7 @@ const submitUser = async () => {
     }
   })
 }
-const showTransferDialog = (user: any) => {
-  transferSourceUser.value = user
-  transferTargetId.value = null
-  transferVisible.value = true
-}
-
-const executeTransfer = async () => {
-  if (!transferTargetId.value || !transferSourceUser.value) return
-  transferring.value = true
-  try {
-    const res = await transferTasks(transferSourceUser.value.id, transferTargetId.value)
-    const data = res.data
-    ElMessage.success("转移完成：任务 " + data.tasksTransferred + " 个，缺陷 " + data.bugsTransferred + " 个")
-    transferVisible.value = false
-    loadUsers()
-  } catch (error: any) {
-    const msg = error?.response?.data?.error || "转移失败"
-    ElMessage.error(msg)
-  } finally {
-    transferring.value = false
-  }
-}
-
-onMounted(() => {
+onMounted(() => {
   loadUsers()
 })
 </script>
