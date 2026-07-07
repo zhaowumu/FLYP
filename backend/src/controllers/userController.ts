@@ -303,6 +303,7 @@ export const userController = {
         .getMany();
 
       // 转移任务负责人
+      const operatorId = (req as any).user?.id;
       for (const task of uncompletedTasks) {
         task.assignees = task.assignees.filter((a: any) => a.id !== sourceUserId);
         if (!task.assignees.some((a: any) => a.id === targetUserId)) {
@@ -310,6 +311,16 @@ export const userController = {
         }
         await taskRepository.save(task);
         details.push("任务 #" + task.id + " 负责人已转移");
+        if (operatorId) {
+          await operationLogRepository.save({
+            targetType: "task",
+            targetId: task.id,
+            user: { id: operatorId },
+            action: "transferred",
+            remark: "从 " + sourceUser.realName + " 转移至 " + targetUser.realName,
+            createdAt: new Date(),
+          } as any);
+        }
       }
 
       // 查询源用户未完成的缺陷（作为负责人）
@@ -325,10 +336,19 @@ export const userController = {
         bug.assignee = targetUser;
         await bugRepository.save(bug);
         details.push("缺陷 #" + bug.id + " 负责人已转移");
+        if (operatorId) {
+          await operationLogRepository.save({
+            targetType: "bug",
+            targetId: bug.id,
+            user: { id: operatorId },
+            action: "transferred",
+            remark: "从 " + sourceUser.realName + " 转移至 " + targetUser.realName,
+            createdAt: new Date(),
+          } as any);
+        }
       }
 
       // 记录操作日志
-      const operatorId = (req as any).user?.id;
       const detailsStr = "任务" + uncompletedTasks.length + "个，缺陷" + uncompletedBugs.length + "个";
       if (operatorId) {
         await AppDataSource.query(

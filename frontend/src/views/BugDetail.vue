@@ -90,7 +90,7 @@
           </div>
 
           <div class="activity-list">
-            <div class="activity-item" v-for="log in operationLogs" :key="log.id">
+            <div class="activity-item" v-for="log in operationLogs" :key="log.id" :class="{ 'activity-transferred': log.action === 'transferred' }">
               <div class="activity-avatar">
                 <el-avatar :size="32" :src="log.user?.avatar || undefined">{{ log.user?.realName?.charAt(0) || 'U' }}</el-avatar>
               </div>
@@ -863,6 +863,9 @@ const formatLogAction = (log: any) => {
       text += '，状态改为处理中'
       return text
     }
+    case 'transferred':
+      return '→ 负责人已转移：' + (log.remark || '')
+
     case 'restart': {
       let text = '重启了缺陷'
       if (oldAssignee && newAssignee && oldAssignee !== newAssignee) {
@@ -1766,5 +1769,13 @@ onBeforeUnmount(() => {
 .text-muted {
   color: var(--nb-text-secondary);
   font-size: var(--nb-font-size-md);
+}
+
+.activity-transferred {
+  background: #fff7e6;
+  border-left: 3px solid #faad14;
+  border-radius: 4px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
 }
 </style>
