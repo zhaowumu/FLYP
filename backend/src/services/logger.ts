@@ -11,7 +11,7 @@ if (!fs.existsSync(LOG_DIR)) {
 const logFormat = winston.format.combine(
   winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss.SSS" }),
   winston.format.errors({ stack: true }),
-  winston.format.printf(({ timestamp, level, message, stack }) => {
+  winston.format.printf(({ timestamp, level, message, stack }: any) => {
     return `${timestamp} [${level.toUpperCase()}] ${message}${stack ? "\n" + stack : ""}`;
   })
 );
@@ -45,7 +45,7 @@ if (process.env.NODE_ENV !== "production") {
     format: winston.format.combine(
       winston.format.colorize(),
       winston.format.timestamp({ format: "HH:mm:ss" }),
-      winston.format.printf(({ timestamp, level, message, stack }) => {
+      winston.format.printf(({ timestamp, level, message, stack }: any) => {
         return `${timestamp} [${level}] ${message}${stack ? "\n" + stack : ""}`;
       })
     ),
