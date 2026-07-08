@@ -31,7 +31,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // 静态文件服务 - 提供上传的图片
-app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 // 公开路由（不需要认证）
 app.use("/api/users", userRoutes);
