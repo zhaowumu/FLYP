@@ -28,7 +28,7 @@ echo Backend build success
 
 echo.
 echo [3/4] Starting backend service (Port: 3000)...
-start "Backend Service" cmd /k "node dist/server.js"
+start "Backend Service" cmd /k "node --max-old-space-size=1024 dist/server.js"
 
 echo Waiting for backend to start...
 timeout /t 8 /nobreak >/dev/null
