@@ -4,12 +4,25 @@ import { AppDataSource } from "./config/database";
 import { User } from "./entities/User";
 import bcrypt from "bcryptjs";
 import { startAutoBackup } from "./services/backupService";
+import { logger } from "./services/logger";
+
+// 全局崩溃捕获
+process.on("uncaughtException", (error) => {
+  logger.error("UNCAUGHT EXCEPTION: " + error.message, { stack: error.stack });
+  // 等日志写完再退出
+  setTimeout(() => process.exit(1), 1000);
+});
+
+process.on("unhandledRejection", (reason) => {
+  const error = reason instanceof Error ? reason : new Error(String(reason));
+  logger.error("UNHANDLED REJECTION: " + error.message, { stack: error.stack });
+});
 
 const startServer = async () => {
   try {
     // 初始化数据库连接
     await AppDataSource.initialize();
-    console.log("Database connection established");
+    logger.info("Database connection established");
 
     // 创建默认用户（仅在数据库为空时）
     const userRepository = AppDataSource.getRepository(User);
@@ -39,15 +52,15 @@ const startServer = async () => {
     if (config.backup.autoBackup) {
       startAutoBackup("0 3 * * *");
     } else {
-      console.log("Auto backup disabled (AUTO_BACKUP_ENABLED=false)");
+      logger.info("Auto backup disabled (AUTO_BACKUP_ENABLED=false)");
     }
 
     // 启动服务器
     app.listen(config.server.port, "0.0.0.0", () => {
-      console.log(`Server is running on port ${config.server.port}`);
+      logger.info(`Server is running on port ${config.server.port}`);
     });
   } catch (error) {
-    console.error("Error starting server:", error);
+    logger.error("Error starting server: " + error);
     process.exit(1);
   }
 };

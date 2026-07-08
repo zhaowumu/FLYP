@@ -3,6 +3,7 @@ import path from "path";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
+import { logger, morganStream } from "./services/logger";
 import { config } from "./config";
 import { AppDataSource } from "./config/database";
 import { authMiddleware } from "./middleware/authMiddleware";
@@ -26,7 +27,7 @@ const app = express();
 // 中间件
 app.use(helmet({ crossOriginResourcePolicy: false }));
 app.use(cors({ origin: config.cors.origin }));
-app.use(morgan("dev"));
+app.use(morgan("combined", { stream: morganStream }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -58,7 +59,7 @@ app.get("/health", (req, res) => {
 
 // 错误处理中间件
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error(err.stack);
+  logger.error("Request error: " + err.message, { stack: err.stack, url: req.url, method: req.method });
   res.status(500).json({ error: "Something went wrong!" });
 });
 

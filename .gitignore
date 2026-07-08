@@ -27,3 +27,6 @@ Thumbs.db
 .workbuddy/
 /.workbuddy
 __pycache__/
+
+# 日志
+/backend/logs
