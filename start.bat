@@ -6,8 +6,8 @@ echo    Game Project Management System
 echo ========================================
 echo.
 
-echo [1/3] Checking Node.js environment...
-node --version >nul 2>&1
+echo [1/4] Checking Node.js environment...
+node --version >/dev/null 2>&1
 if %errorlevel% neq 0 (
     echo [ERROR] Node.js not found, please install Node.js first
     pause
@@ -16,15 +16,25 @@ if %errorlevel% neq 0 (
 echo Node.js environment OK
 
 echo.
-echo [2/3] Starting backend service (Port: 3000)...
+echo [2/4] Building backend...
 cd /d "%~dp0backend"
-start "Backend Service" cmd /k "npm run dev"
-
-echo Waiting for backend to start...
-timeout /t 12 /nobreak >nul
+call npm run build
+if %errorlevel% neq 0 (
+    echo [ERROR] Build failed
+    pause
+    exit /b 1
+)
+echo Backend build success
 
 echo.
-echo [3/3] Starting frontend service (Port: 5173)...
+echo [3/4] Starting backend service (Port: 3000)...
+start "Backend Service" cmd /k "node dist/server.js"
+
+echo Waiting for backend to start...
+timeout /t 8 /nobreak >/dev/null
+
+echo.
+echo [4/4] Starting frontend service (Port: 5173)...
 cd /d "%~dp0frontend"
 start "Frontend Service" cmd /k "npm run dev"
 
@@ -37,4 +47,4 @@ echo Backend API: http://localhost:3000
 echo Frontend: http://localhost:5173
 echo.
 echo Press any key to close this window (services will continue running)
-pause >nul
+pause >/dev/null
