@@ -154,7 +154,13 @@ export const bugController = {
       const validSortFields = ["createdAt", "updatedAt", "severity", "dueDate", "status", "title"];
       const sortField = sortBy && validSortFields.includes(sortBy as string) ? sortBy as string : "createdAt";
       const order = sortOrder === "ASC" ? "ASC" : "DESC";
-
+      let completedClosedCount = 0;
+      // 在分页前先计算 completed_closed 数量
+      const completedClosedStatuses = statuses.length > 0 ? statuses : ["completed", "closed"];
+      const completedClosedQuery = bugRepository.createQueryBuilder("bug").where("bug.status IN (:...s)", { s: completedClosedStatuses });
+      if (projectId) completedClosedQuery.andWhere("bug.projectId = :pid", { pid: projectId });
+      completedClosedCount = await completedClosedQuery.getCount();
+      
       // "最近打开"：查询当前用户最近操作过的缺陷（从 OperationLog 取最近30条）
       if (recentUserId) {
         const recentLogs = await operationLogRepository
@@ -171,7 +177,7 @@ export const bugController = {
 
         if (recentIds.length === 0) {
           const allTotal = await bugRepository.count();
-          return res.json({ data: [], total: 0, page: 1, pageSize: 20, tabs: { assigned: 0, reported: 0, my: 0, all: allTotal, recent: 0, completed_closed: 0 } });
+          return res.json({ data: [], total: 0, page: 1, pageSize: 20, tabs: { assigned: 0, reported: 0, my: 0, all: allTotal, recent: 0, completed_closed: completedClosedCount } });
         }
 
         const query = bugRepository
@@ -202,7 +208,7 @@ export const bugController = {
         let tabs;
         if (finalPage === 1) {
           const allTotal = await bugRepository.count();
-          tabs = { assigned: 0, reported: 0, my: 0, all: allTotal, recent: recentIds.length, completed_closed: 0 };
+          tabs = { assigned: 0, reported: 0, my: 0, all: allTotal, recent: recentIds.length, completed_closed: completedClosedCount };
           if (uid) {
             const [assigned, reported] = await Promise.all([
               bugRepository.count({ where: { assignee: { id: uid } } }),
@@ -214,7 +220,7 @@ export const bugController = {
               .leftJoin("bug.reporter", "tabReporter")
               .where("tabAssignee.id = :uid OR tabReporter.id = :uid", { uid })
               .getCount();
-            tabs = { assigned, reported, my: myCount, all: allTotal, recent: recentIds.length, completed_closed: 0 };
+            tabs = { assigned, reported, my: myCount, all: allTotal, recent: recentIds.length, completed_closed: completedClosedCount };
           }
         }
         return res.json({ data: bugs, total: total > recentIds.length ? recentIds.length : total, page: finalPage, pageSize: finalTake, tabs });
@@ -258,7 +264,7 @@ export const bugController = {
               recentCount = recentRows.length;
             } catch { recentCount = 0; }
           }
-          tabs = { assigned: 0, reported: 0, my: 0, all: allTotal, recent: recentCount, completed_closed: 0 };
+          tabs = { assigned: 0, reported: 0, my: 0, all: allTotal, recent: recentCount, completed_closed: completedClosedCount };
           if (uid) {
             const [assigned, reported] = await Promise.all([
               bugRepository.count({ where: { assignee: { id: uid } } }),
@@ -270,7 +276,7 @@ export const bugController = {
               .leftJoin("bug.reporter", "tabReporter")
               .where("tabAssignee.id = :uid OR tabReporter.id = :uid", { uid })
               .getCount();
-            tabs = { assigned, reported, my: myCount, all: allTotal, recent: recentCount, completed_closed: 0 };
+            tabs = { assigned, reported, my: myCount, all: allTotal, recent: recentCount, completed_closed: completedClosedCount };
           }
         }
         return res.json({ data: bugs, total, page: finalPage, pageSize: finalTake, tabs });
@@ -305,7 +311,7 @@ export const bugController = {
               recentCount = recentRows.length;
             } catch { recentCount = 0; }
           }
-        tabs = { assigned: 0, reported: 0, my: 0, all: allTotal, recent: recentCount, completed_closed: 0 };
+        tabs = { assigned: 0, reported: 0, my: 0, all: allTotal, recent: recentCount, completed_closed: completedClosedCount };
         if (uid) {
           const [assigned, reported] = await Promise.all([
             bugRepository.count({ where: { assignee: { id: uid } } }),
@@ -317,7 +323,7 @@ export const bugController = {
             .leftJoin("bug.reporter", "tabReporter")
             .where("tabAssignee.id = :uid OR tabReporter.id = :uid", { uid })
             .getCount();
-          tabs = { assigned, reported, my: myCount, all: allTotal, recent: recentCount, completed_closed: 0 };
+          tabs = { assigned, reported, my: myCount, all: allTotal, recent: recentCount, completed_closed: completedClosedCount };
         }
       }
       return res.json({ data: bugs, total, page: finalPage, pageSize: finalTake, tabs });
