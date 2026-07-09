@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { logger } from "../services/logger";
 import fs from "fs";
 import path from "path";
 import { AppDataSource } from "../config/database";
@@ -39,7 +40,7 @@ export const backupController = {
       res.setHeader("Content-Length", stats.size);
       res.send(fileBuffer);
     } catch (error) {
-      console.error("Error backing up database:", error);
+      logger.error("Error backing up database:", error);
       res.status(500).json({ error: "备份失败" });
     }
   },
@@ -71,14 +72,14 @@ export const backupController = {
 
       res.json({ success: true, message: "数据恢复成功" });
     } catch (error) {
-      console.error("Error restoring database:", error);
+      logger.error("Error restoring database:", error);
       // 尝试重新连接数据库
       try {
         if (!AppDataSource.isInitialized) {
           await AppDataSource.initialize();
         }
       } catch (e) {
-        console.error("Failed to reconnect database:", e);
+        logger.error("Failed to reconnect database:", e);
       }
       res.status(500).json({ error: "恢复失败: " + (error as Error).message });
     }
@@ -104,7 +105,7 @@ export const backupController = {
       console.log("Business data cleared, user data preserved");
       res.json({ success: true, message: "业务数据已清空（用户和系统配置保留）" });
     } catch (error) {
-      console.error("Error clearing database:", error);
+      logger.error("Error clearing database:", error);
       res.status(500).json({ error: "清空失败: " + (error as Error).message });
     }
   },
@@ -125,7 +126,7 @@ export const backupController = {
       console.log("All data cleared");
       res.json({ success: true, message: "所有数据已清空（包含用户），重启服务后自动创建管理员账户" });
     } catch (error) {
-      console.error("Error clearing all database:", error);
+      logger.error("Error clearing all database:", error);
       res.status(500).json({ error: "清空失败: " + (error as Error).message });
     }
   },

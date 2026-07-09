@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { logger } from "../services/logger";
 import { AppDataSource } from "../config/database";
 import { User } from "../entities/User";
 import { Task } from "../entities/Task";
@@ -43,7 +44,7 @@ export const userController = {
       const { password: _, ...userWithoutPassword } = user;
       res.status(201).json(userWithoutPassword);
     } catch (error) {
-      console.error("Error registering user:", error);
+      logger.error("Error registering user:", error);
       res.status(500).json({ error: "Failed to register user" });
     }
   },
@@ -84,7 +85,7 @@ export const userController = {
         },
       });
     } catch (error) {
-      console.error("Error logging in:", error);
+      logger.error("Error logging in:", error);
       res.status(500).json({ error: "Failed to login" });
     }
   },
@@ -97,7 +98,7 @@ export const userController = {
       });
       res.json(users);
     } catch (error) {
-      console.error("Error getting users:", error);
+      logger.error("Error getting users:", error);
       res.status(500).json({ error: "Failed to get users" });
     }
   },
@@ -117,7 +118,7 @@ export const userController = {
       const { password, ...userWithoutPassword } = user;
       res.json(userWithoutPassword);
     } catch (error) {
-      console.error("Error getting user:", error);
+      logger.error("Error getting user:", error);
       res.status(500).json({ error: "Failed to get user" });
     }
   },
@@ -141,7 +142,7 @@ export const userController = {
 
       res.json(updatedUser);
     } catch (error) {
-      console.error("Error updating user:", error);
+      logger.error("Error updating user:", error);
       res.status(500).json({ error: "Failed to update user" });
     }
   },
@@ -218,7 +219,7 @@ export const userController = {
       await userRepository.delete(userId);
       res.json({ message: "用户删除成功" });
     } catch (error) {
-      console.error("Error deleting user:", error);
+      logger.error("Error deleting user:", error);
       res.status(500).json({ error: "删除用户失败，请稍后重试" });
     }
   },
@@ -238,7 +239,7 @@ export const userController = {
 
       res.json(user);
     } catch (error) {
-      console.error("Error getting current user:", error);
+      logger.error("Error getting current user:", error);
       res.status(500).json({ error: "Failed to get user info" });
     }
   },
@@ -265,7 +266,7 @@ export const userController = {
 
       res.json(updatedUser);
     } catch (error) {
-      console.error("Error updating profile:", error);
+      logger.error("Error updating profile:", error);
       res.status(500).json({ error: "Failed to update profile" });
     }
   },
@@ -367,7 +368,7 @@ export const userController = {
         details,
       });
     } catch (error) {
-      console.error("Error transferring tasks:", error);
+      logger.error("Error transferring tasks:", error);
       res.status(500).json({ error: "转移失败，请查看服务端日志" });
     }
   },
@@ -407,7 +408,7 @@ export const userController = {
 
       res.json({ message: "密码修改成功" });
     } catch (error) {
-      console.error("Error changing password:", error);
+      logger.error("Error changing password:", error);
       res.status(500).json({ error: "Failed to change password" });
     }
   },

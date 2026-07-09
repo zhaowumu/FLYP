@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { logger } from "../services/logger";
 import { AppDataSource } from "../config/database";
 import { SystemConfig } from "../entities/SystemConfig";
 import { DingTalkService } from "../services/dingtalkService";
@@ -32,7 +33,7 @@ export const systemConfigController = {
       });
       res.json(result);
     } catch (error) {
-      console.error("Error getting config:", error);
+      logger.error("Error getting config:", error);
       res.status(500).json({ error: "Failed to get config" });
     }
   },
@@ -56,7 +57,7 @@ export const systemConfigController = {
       await configRepository.save(config);
       res.json({ success: true });
     } catch (error) {
-      console.error("Error updating config:", error);
+      logger.error("Error updating config:", error);
       res.status(500).json({ error: "Failed to update config" });
     }
   },
@@ -83,7 +84,7 @@ export const systemConfigController = {
         notify: notifyConfigs
       });
     } catch (error) {
-      console.error("Error getting DingTalk config:", error);
+      logger.error("Error getting DingTalk config:", error);
       res.status(500).json({ error: "Failed to get DingTalk config" });
     }
   },
@@ -158,7 +159,7 @@ export const systemConfigController = {
       
       res.json({ success: true });
     } catch (error) {
-      console.error("Error updating DingTalk config:", error);
+      logger.error("Error updating DingTalk config:", error);
       res.status(500).json({ error: "Failed to update DingTalk config" });
     }
   },
@@ -353,7 +354,7 @@ export const systemConfigController = {
         res.json({ success: false, error: `钉钉返回错误码: ${response.data.errcode} - ${response.data.errmsg || '未知错误'}` });
       }
     } catch (error: any) {
-      console.error("Error testing DingTalk notification:", error);
+      logger.error("Error testing DingTalk notification:", error);
       res.json({ success: false, error: error.response?.data?.errmsg || error.message || "发送失败" });
     }
   },
@@ -365,7 +366,7 @@ export const systemConfigController = {
       const config = await getGiteeBackupConfig();
       res.json(config);
     } catch (error) {
-      console.error("Error getting Gitee backup config:", error);
+      logger.error("Error getting Gitee backup config:", error);
       res.status(500).json({ error: "获取 Gitee 备份配置失败" });
     }
   },
@@ -376,7 +377,7 @@ export const systemConfigController = {
       await saveGiteeBackupConfig({ enabled, token, owner, repo, branch });
       res.json({ success: true, message: "Gitee 备份配置已保存" });
     } catch (error) {
-      console.error("Error updating Gitee backup config:", error);
+      logger.error("Error updating Gitee backup config:", error);
       res.status(500).json({ error: "保存 Gitee 备份配置失败" });
     }
   },
@@ -387,7 +388,7 @@ export const systemConfigController = {
       const result = await testGiteeConnection({ enabled: true, token, owner, repo, branch });
       res.json(result);
     } catch (error: any) {
-      console.error("Error testing Gitee connection:", error);
+      logger.error("Error testing Gitee connection:", error);
       res.json({ success: false, message: error.message || "测试失败" });
     }
   },
@@ -421,7 +422,7 @@ export const systemConfigController = {
 
       res.json({ success: result.success, message: result.success ? "发送成功" : (result.error || "发送失败") });
     } catch (error: any) {
-      console.error("Error testing Feishu notification:", error);
+      logger.error("Error testing Feishu notification:", error);
       res.json({ success: false, message: error.message || "测试失败" });
     }
   },

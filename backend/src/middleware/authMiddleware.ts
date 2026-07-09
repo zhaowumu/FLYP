@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import { logger } from "../services/logger";
 import jwt from "jsonwebtoken";
 import { config } from "../config";
 
@@ -18,7 +19,7 @@ export const authMiddleware = (req: AuthRequest, res: Response, next: NextFuncti
     req.user = decoded;
     next();
   } catch (error) {
-    console.error("Auth middleware error:", error);
+    logger.error("Auth middleware error:", error);
     res.status(401).json({ error: "Invalid token." });
   }
 };

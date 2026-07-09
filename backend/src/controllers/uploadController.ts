@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { logger } from "../services/logger";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -186,7 +187,7 @@ export const uploadController = {
         data: [{ url: imageUrl, alt: req.file.originalname, href: imageUrl }],
       });
     } catch (error) {
-      console.error("Upload image error:", error);
+      logger.error("Upload image error:", error);
       res.status(500).json({ errno: 1, message: "上传失败" });
     }
   },
@@ -211,7 +212,7 @@ export const uploadController = {
 
       res.json({ errno: 0, data: urls });
     } catch (error) {
-      console.error("Upload images error:", error);
+      logger.error("Upload images error:", error);
       res.status(500).json({ errno: 1, message: "上传失败" });
     }
   },
@@ -230,7 +231,7 @@ export const uploadController = {
         data: [{ url: videoUrl, poster: "" }],
       });
     } catch (error) {
-      console.error("Upload video error:", error);
+      logger.error("Upload video error:", error);
       res.status(500).json({ errno: 1, message: "上传失败" });
     }
   },
@@ -247,7 +248,7 @@ export const uploadController = {
 
       res.json({ url: avatarUrl });
     } catch (error) {
-      console.error("Upload avatar error:", error);
+      logger.error("Upload avatar error:", error);
       res.status(500).json({ error: "头像上传失败" });
     }
   },

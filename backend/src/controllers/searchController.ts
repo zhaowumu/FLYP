@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { logger } from "../services/logger";
 import { AppDataSource } from "../config/database";
 import { Task } from "../entities/Task";
 import { Bug } from "../entities/Bug";
@@ -95,7 +96,7 @@ export const searchController = {
 
       res.json({ tasks, bugs });
     } catch (error) {
-      console.error("Error performing global search:", error);
+      logger.error("Error performing global search:", error);
       res.status(500).json({ error: "Failed to perform search" });
     }
   },

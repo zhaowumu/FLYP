@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { logger } from "../services/logger";
 import { AppDataSource } from "../config/database";
 import { OperationLog } from "../entities/OperationLog";
 import { Task } from "../entities/Task";
@@ -53,7 +54,7 @@ export const getOperationLogs = async (req: Request, res: Response) => {
 
     res.json({ data });
   } catch (error) {
-    console.error("Failed to fetch operation logs:", error);
+    logger.error("Failed to fetch operation logs:", error);
     res.status(500).json({ error: "Failed to fetch operation logs" });
   }
 };

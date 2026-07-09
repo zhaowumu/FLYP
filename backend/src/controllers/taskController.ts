@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { logger } from "../services/logger";
 import { AppDataSource } from "../config/database";
 import { Between, LessThanOrEqual, MoreThanOrEqual, In } from "typeorm";
 import { Task } from "../entities/Task";
@@ -133,7 +134,7 @@ export const taskController = {
 
       res.status(201).json(savedTask);
     } catch (error) {
-      console.error("Error creating task:", error);
+      logger.error("Error creating task:", error);
       res.status(500).json({ error: "Failed to create task" });
     }
   },
@@ -416,7 +417,7 @@ export const taskController = {
       }
       return res.json({ data: tasks, total, page: finalPage, pageSize: finalTake, tabs });
     } catch (error) {
-      console.error("Error getting tasks:", error);
+      logger.error("Error getting tasks:", error);
       res.status(500).json({ error: "Failed to get tasks" });
     }
   },
@@ -444,7 +445,7 @@ export const taskController = {
 
       res.json({ ...task, operationLogs: normalizedLogs });
     } catch (error) {
-      console.error("Error getting task:", error);
+      logger.error("Error getting task:", error);
       res.status(500).json({ error: "Failed to get task" });
     }
   },
@@ -648,7 +649,7 @@ export const taskController = {
 
       res.json(updatedTask);
     } catch (error) {
-      console.error("Error updating task:", error);
+      logger.error("Error updating task:", error);
       res.status(500).json({ error: "Failed to update task" });
     }
   },
@@ -785,7 +786,7 @@ export const taskController = {
 
       res.json(updatedTask);
     } catch (error) {
-      console.error("Error updating task status:", error);
+      logger.error("Error updating task status:", error);
       res.status(500).json({ error: "Failed to update task status" });
     }
   },
@@ -867,7 +868,7 @@ export const taskController = {
 
       res.json(updatedTask);
     } catch (error) {
-      console.error("Error adding comment:", error);
+      logger.error("Error adding comment:", error);
       res.status(500).json({ error: "Failed to add comment" });
     }
   },
@@ -885,13 +886,13 @@ export const taskController = {
       // 后台异步清理孤儿文件，不阻塞响应
       if (imageUrls.length > 0) {
         deleteUnreferencedFiles([...new Set(imageUrls)]).catch(err => {
-          console.error('清理孤儿文件失败:', err);
+          logger.error('清理孤儿文件失败:', err);
         });
       }
 
       res.json({ message: "Task deleted successfully" });
     } catch (error) {
-      console.error("Error deleting task:", error);
+      logger.error("Error deleting task:", error);
       res.status(500).json({ error: "Failed to delete task" });
     }
   },
@@ -962,7 +963,7 @@ export const taskController = {
 
       res.json(updatedTask);
     } catch (error) {
-      console.error("Error rejecting task:", error);
+      logger.error("Error rejecting task:", error);
       res.status(500).json({ error: "Failed to reject task" });
     }
   },
@@ -1034,7 +1035,7 @@ export const taskController = {
 
       res.json(updatedTask);
     } catch (error) {
-      console.error("Error restarting task:", error);
+      logger.error("Error restarting task:", error);
       res.status(500).json({ error: "Failed to restart task" });
     }
   },
@@ -1095,7 +1096,7 @@ export const taskController = {
 
       res.json(updatedTask);
     } catch (error) {
-      console.error("Error passing test task:", error);
+      logger.error("Error passing test task:", error);
       res.status(500).json({ error: "Failed to pass test task" });
     }
   },
@@ -1166,7 +1167,7 @@ export const taskController = {
 
       res.json(updatedTask);
     } catch (error) {
-      console.error("Error rejecting test task:", error);
+      logger.error("Error rejecting test task:", error);
       res.status(500).json({ error: "Failed to reject test task" });
     }
   },
@@ -1195,7 +1196,7 @@ export const taskController = {
       await taskRepository.save(subtask);
       res.status(201).json(subtask);
     } catch (error) {
-      console.error("Error adding subtask:", error);
+      logger.error("Error adding subtask:", error);
       res.status(500).json({ error: "Failed to add subtask" });
     }
   },
@@ -1242,7 +1243,7 @@ export const taskController = {
 
       res.json(updatedTask);
     } catch (error) {
-      console.error("Error extending task due date:", error);
+      logger.error("Error extending task due date:", error);
       res.status(500).json({ error: "Failed to extend task due date" });
     }
   },
@@ -1257,7 +1258,7 @@ export const taskController = {
       const categories = result.map((r: any) => r.category).filter(Boolean);
       res.json(categories);
     } catch (error) {
-      console.error("Error getting task categories:", error);
+      logger.error("Error getting task categories:", error);
       res.status(500).json({ error: "Failed to get task categories" });
     }
   },

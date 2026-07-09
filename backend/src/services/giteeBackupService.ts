@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import { AppDataSource } from "../config/database";
 import { SystemConfig } from "../entities/SystemConfig";
+import { logger } from "./logger";
 
 const GITEE_API_BASE = "https://gitee.com/api/v5";
 
@@ -165,7 +166,7 @@ export async function uploadBackupToGitee(backupFilePath: string): Promise<{ suc
     return { success: true, message: `已上传到 Gitee: ${remotePath} (${fileSizeKB} KB)` };
   } catch (error: any) {
     const msg = error.response?.data?.message || error.message;
-    console.error(`[GiteeBackup] 上传失败:`, msg);
+    logger.error(`[GiteeBackup] 上传失败:`, msg);
     return { success: false, message: `上传到 Gitee 失败: ${msg}` };
   }
 }

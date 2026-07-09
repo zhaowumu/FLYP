@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { logger } from "../services/logger";
 import { AppDataSource } from "../config/database";
 import { SystemConfig } from "../entities/SystemConfig";
 
@@ -14,7 +15,7 @@ export const customLinkController = {
         res.json([]);
       }
     } catch (error) {
-      console.error("Error getting custom links:", error);
+      logger.error("Error getting custom links:", error);
       res.status(500).json({ error: "Failed to get custom links" });
     }
   },
@@ -38,7 +39,7 @@ export const customLinkController = {
 
       res.json({ message: "Custom links updated successfully" });
     } catch (error) {
-      console.error("Error updating custom links:", error);
+      logger.error("Error updating custom links:", error);
       res.status(500).json({ error: "Failed to update custom links" });
     }
   },

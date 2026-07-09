@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { logger } from "../services/logger";
 import { AppDataSource } from "../config/database";
 import { Project } from "../entities/Project";
 import { Task } from "../entities/Task";
@@ -36,7 +37,7 @@ export const projectController = {
       });
       res.status(201).json(savedProject);
     } catch (error) {
-      console.error("Error creating project:", error);
+      logger.error("Error creating project:", error);
       res.status(500).json({ error: "Failed to create project" });
     }
   },
@@ -86,7 +87,7 @@ export const projectController = {
 
       res.json(result);
     } catch (error) {
-      console.error("Error getting projects:", error);
+      logger.error("Error getting projects:", error);
       res.status(500).json({ error: "Failed to get projects" });
     }
   },
@@ -100,7 +101,7 @@ export const projectController = {
       });
       res.json(projects);
     } catch (error) {
-      console.error("Error getting project options:", error);
+      logger.error("Error getting project options:", error);
       res.status(500).json({ error: "Failed to get project options" });
     }
   },
@@ -118,7 +119,7 @@ export const projectController = {
       }
       res.json(project);
     } catch (error) {
-      console.error("Error getting project:", error);
+      logger.error("Error getting project:", error);
       res.status(500).json({ error: "Failed to get project" });
     }
   },
@@ -141,7 +142,7 @@ export const projectController = {
       });
       res.json(updatedProject);
     } catch (error) {
-      console.error("Error updating project:", error);
+      logger.error("Error updating project:", error);
       res.status(500).json({ error: "Failed to update project" });
     }
   },
@@ -153,7 +154,7 @@ export const projectController = {
       await projectRepository.update(id, { status: "archived" });
       res.json({ message: "Project archived successfully" });
     } catch (error) {
-      console.error("Error archiving project:", error);
+      logger.error("Error archiving project:", error);
       res.status(500).json({ error: "Failed to archive project" });
     }
   },
@@ -165,7 +166,7 @@ export const projectController = {
       await projectRepository.delete(id);
       res.json({ message: "Project deleted successfully" });
     } catch (error) {
-      console.error("Error deleting project:", error);
+      logger.error("Error deleting project:", error);
       res.status(500).json({ error: "Failed to delete project" });
     }
   },
@@ -198,7 +199,7 @@ export const projectController = {
       });
       res.json(updatedProject);
     } catch (error) {
-      console.error("Error updating project managers:", error);
+      logger.error("Error updating project managers:", error);
       res.status(500).json({ error: "Failed to update project managers" });
     }
   },

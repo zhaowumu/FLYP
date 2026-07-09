@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { logger } from "../services/logger";
 import { AppDataSource } from "../config/database";
 import { Between, LessThanOrEqual, MoreThanOrEqual, In, IsNull } from "typeorm";
 import { Bug } from "../entities/Bug";
@@ -120,7 +121,7 @@ export const bugController = {
 
       res.status(201).json(savedBug);
     } catch (error) {
-      console.error("Error creating bug:", error);
+      logger.error("Error creating bug:", error);
       res.status(500).json({ error: "Failed to create bug" });
     }
   },
@@ -328,7 +329,7 @@ export const bugController = {
       }
       return res.json({ data: bugs, total, page: finalPage, pageSize: finalTake, tabs });
     } catch (error) {
-      console.error("Error getting bugs:", error);
+      logger.error("Error getting bugs:", error);
       res.status(500).json({ error: "Failed to get bugs" });
     }
   },
@@ -356,7 +357,7 @@ export const bugController = {
 
       res.json({ ...bug, operationLogs: normalizedLogs });
     } catch (error) {
-      console.error("Error getting bug:", error);
+      logger.error("Error getting bug:", error);
       res.status(500).json({ error: "Failed to get bug" });
     }
   },
@@ -496,7 +497,7 @@ export const bugController = {
 
       res.json(updatedBug);
     } catch (error) {
-      console.error("Error updating bug:", error);
+      logger.error("Error updating bug:", error);
       res.status(500).json({ error: "Failed to update bug" });
     }
   },
@@ -585,7 +586,7 @@ export const bugController = {
 
       res.json(updatedBug);
     } catch (error) {
-      console.error("Error updating bug status:", error);
+      logger.error("Error updating bug status:", error);
       res.status(500).json({ error: "Failed to update bug status" });
     }
   },
@@ -671,7 +672,7 @@ export const bugController = {
 
       res.json(updatedBug);
     } catch (error) {
-      console.error("Error adding comment:", error);
+      logger.error("Error adding comment:", error);
       res.status(500).json({ error: "Failed to add comment" });
     }
   },
@@ -737,7 +738,7 @@ export const bugController = {
 
       res.json(savedBug);
     } catch (error) {
-      console.error("Error assigning bug:", error);
+      logger.error("Error assigning bug:", error);
       res.status(500).json({ error: "Failed to assign bug" });
     }
   },
@@ -759,13 +760,13 @@ export const bugController = {
       // 后台异步清理孤儿文件，不阻塞响应
       if (imageUrls.length > 0) {
         deleteUnreferencedFiles([...new Set(imageUrls)]).catch(err => {
-          console.error('清理孤儿文件失败:', err);
+          logger.error('清理孤儿文件失败:', err);
         });
       }
 
       res.json({ message: "Bug deleted successfully" });
     } catch (error) {
-      console.error("Error deleting bug:", error);
+      logger.error("Error deleting bug:", error);
       res.status(500).json({ error: "Failed to delete bug" });
     }
   },
@@ -832,7 +833,7 @@ export const bugController = {
 
       res.json(updatedBug);
     } catch (error) {
-      console.error("Error rejecting bug:", error);
+      logger.error("Error rejecting bug:", error);
       res.status(500).json({ error: "Failed to reject bug" });
     }
   },
@@ -902,7 +903,7 @@ export const bugController = {
 
       res.json(updatedBug);
     } catch (error) {
-      console.error("Error restarting bug:", error);
+      logger.error("Error restarting bug:", error);
       res.status(500).json({ error: "Failed to restart bug" });
     }
   },
@@ -935,7 +936,7 @@ export const bugController = {
 
       res.json(stats);
     } catch (error) {
-      console.error("Error getting bug stats:", error);
+      logger.error("Error getting bug stats:", error);
       res.status(500).json({ error: "Failed to get bug stats" });
     }
   },
@@ -982,7 +983,7 @@ export const bugController = {
 
       res.json(updatedBug);
     } catch (error) {
-      console.error("Error extending bug due date:", error);
+      logger.error("Error extending bug due date:", error);
       res.status(500).json({ error: "Failed to extend bug due date" });
     }
   },
@@ -997,7 +998,7 @@ export const bugController = {
       const categories = result.map((r: any) => r.category).filter(Boolean);
       res.json(categories);
     } catch (error) {
-      console.error("Error getting bug categories:", error);
+      logger.error("Error getting bug categories:", error);
       res.status(500).json({ error: "Failed to get bug categories" });
     }
   },

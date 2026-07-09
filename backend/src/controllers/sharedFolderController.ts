@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { logger } from "../services/logger";
 import fs from "fs";
 import path from "path";
 
@@ -66,7 +67,7 @@ export const sharedFolderController = {
         items,
       });
     } catch (error: any) {
-      console.error("Error listing folder:", error);
+      logger.error("Error listing folder:", error);
       res.status(403).json({ error: error.message || "读取文件夹失败" });
     }
   },
@@ -91,7 +92,7 @@ export const sharedFolderController = {
       res.setHeader("Content-Length", stat.size.toString());
       res.sendFile(safePath);
     } catch (error: any) {
-      console.error("Error downloading file:", error);
+      logger.error("Error downloading file:", error);
       res.status(403).json({ error: error.message || "下载失败" });
     }
   },

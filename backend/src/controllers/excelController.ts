@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { logger } from "../services/logger";
 import * as XLSX from "xlsx";
 import { AppDataSource } from "../config/database";
 import { Task } from "../entities/Task";
@@ -211,7 +212,7 @@ export const excelController = {
       res.setHeader("Content-Disposition", `attachment; filename=${filename}`);
       res.send(buffer);
     } catch (error) {
-      console.error("Error exporting data:", error);
+      logger.error("Error exporting data:", error);
       res.status(500).json({ error: "导出失败" });
     }
   },

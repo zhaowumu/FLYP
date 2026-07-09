@@ -5,6 +5,8 @@ import { User } from "./entities/User";
 import bcrypt from "bcryptjs";
 import { startAutoBackup } from "./services/backupService";
 import { logger } from "./services/logger";
+import fs from "fs";
+import path from "path";
 
 // 全局崩溃捕获
 process.on("uncaughtException", (error) => {
@@ -46,6 +48,24 @@ const startServer = async () => {
       console.log("  test03 / 123456 / 策划 / designer");
       console.log("  test04 / 123456 / 美术 / artist");
       console.log("  test05 / 123456 / 测试 / tester");
+    }
+
+    // 清理数据库中的孤儿头像引用（关联文件已不存在时置空）
+    try {
+      const usersWithAvatar = await userRepository.createQueryBuilder("user").where("user.avatar IS NOT NULL").getMany();
+      const avatarDir = path.join(__dirname, "../uploads/avatars");
+      for (const user of usersWithAvatar) {
+        if (user.avatar) {
+          const filename = path.basename(user.avatar);
+          if (!fs.existsSync(path.join(avatarDir, filename))) {
+            logger.warn(`Avatar file not found for user ${user.realName} (${user.username}): ${user.avatar}, clearing`);
+            user.avatar = null as any;
+            await userRepository.save(user);
+          }
+        }
+      }
+    } catch (e) {
+      logger.warn("Avatar cleanup check failed (non-fatal): " + e);
     }
 
     // 启动定时自动备份（每天凌晨 3 点），测试环境可通过 AUTO_BACKUP_ENABLED=false 关闭
