@@ -144,6 +144,18 @@
             <span v-else class="text-muted">-</span>
           </template>
         </el-table-column>
+        <el-table-column label="" width="50" fixed="right">
+          <template #default="{ row }">
+            <el-button
+              text
+              size="small"
+              title="新窗口打开"
+              @click.stop="openInNewTab(`/bugs/${row.id}`)"
+            >
+              <el-icon><Link /></el-icon>
+            </el-button>
+          </template>
+        </el-table-column>
       </el-table>
       <el-pagination
         v-if="total > 0"
@@ -491,6 +503,10 @@ const showCreateDialog = () => {
 
 const viewBug = (bug: any) => {
   router.push(`/bugs/${bug.id}`)
+}
+
+const openInNewTab = (path: string) => {
+  window.open(path, '_blank')
 }
 
 const submitBug = async () => {

@@ -182,8 +182,16 @@
             {{ new Date(row.updatedAt).toLocaleString() }}
           </template>
         </el-table-column>
-        <el-table-column label="" width="50" fixed="right">
+        <el-table-column label="" width="80" fixed="right">
           <template #default="{ row }">
+            <el-button
+              text
+              size="small"
+              title="新窗口打开"
+              @click.stop="openInNewTab(`/tasks/${row.id}`)"
+            >
+              <el-icon><Link /></el-icon>
+            </el-button>
             <el-button
               v-if="row.level < 2 && userStore.getTaskPermission('create') && row.status !== 'closed' && row.status !== 'testing'"
               text
@@ -608,6 +616,10 @@ const showCreateDialog = () => {
 
 const handleRowClick = (row: any) => {
   router.push(`/tasks/${row.id}`)
+}
+
+const openInNewTab = (path: string) => {
+  window.open(path, '_blank')
 }
 
 const viewTask = (task: any) => {
