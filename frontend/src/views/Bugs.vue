@@ -256,7 +256,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, watch, onMounted, onActivated } from 'vue'
+import { ref, reactive, computed, watch, onMounted, onActivated, onDeactivated, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getBugs, createBug, getBugCategories } from '../api/bug'
@@ -291,6 +291,7 @@ const total = ref(0)
 const tabCounts = ref({ assigned: 0, reported: 0, my: 0, all: 0, recent: 0, completed_closed: 0 })
 const lastLoadTime = ref(0)
 const STALE_TTL = 60_000 // 数据缓存60秒
+const savedScrollTop = ref(0)
 
 // 筛选条件变化时重置到第一页并重新加载
 watch([activeTab, filterStatus, filterSeverity, filterUser, filterReporter, filterCategory, filterUpdatedRange, filterUnassigned], () => {
@@ -489,7 +490,7 @@ const showCreateDialog = () => {
 }
 
 const viewBug = (bug: any) => {
-  window.open(`/bugs/${bug.id}`, '_blank')
+  router.push(`/bugs/${bug.id}`)
 }
 
 const submitBug = async () => {
@@ -523,6 +524,15 @@ onActivated(() => {
   if (lastLoadTime.value && Date.now() - lastLoadTime.value > STALE_TTL) {
     loadBugs()
   }
+  nextTick(() => {
+    const container = document.querySelector('.main-content')
+    if (container) container.scrollTop = savedScrollTop.value
+  })
+})
+
+onDeactivated(() => {
+  const container = document.querySelector('.main-content')
+  if (container) savedScrollTop.value = container.scrollTop
 })
 
 // 首次挂载 + 路由变化时同步 URL 查询参数到筛选条件
