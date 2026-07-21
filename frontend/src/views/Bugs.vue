@@ -304,6 +304,7 @@ const tabCounts = ref({ assigned: 0, reported: 0, my: 0, all: 0, recent: 0, comp
 const lastLoadTime = ref(0)
 const STALE_TTL = 60_000 // 数据缓存60秒
 const savedScrollTop = ref(0)
+const pendingScrollRestore = ref(false)
 
 // 筛选条件变化时重置到第一页并重新加载
 watch([activeTab, filterStatus, filterSeverity, filterUser, filterReporter, filterCategory, filterUpdatedRange, filterUnassigned], () => {
@@ -456,6 +457,13 @@ const loadBugs = async () => {
     total.value = res.data.total
     if (res.data.tabs) tabCounts.value = res.data.tabs
     lastLoadTime.value = Date.now()
+    if (pendingScrollRestore.value) {
+      pendingScrollRestore.value = false
+      nextTick(() => {
+        const container = document.querySelector('.main-content')
+        if (container) container.scrollTop = savedScrollTop.value
+      })
+    }
   } catch (error) {
     ElMessage.error('加载缺陷列表失败')
   }
@@ -537,13 +545,10 @@ onMounted(() => {
 
 // keep-alive 激活时，仅当数据过期才刷新列表（辅助数据不频繁变化，不刷新）
 onActivated(() => {
+  pendingScrollRestore.value = true
   if (lastLoadTime.value && Date.now() - lastLoadTime.value > STALE_TTL) {
     loadBugs()
   }
-  nextTick(() => {
-    const container = document.querySelector('.main-content')
-    if (container) container.scrollTop = savedScrollTop.value
-  })
 })
 
 onDeactivated(() => {
