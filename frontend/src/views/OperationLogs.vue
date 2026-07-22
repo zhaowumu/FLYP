@@ -1,15 +1,35 @@
 <template>
   <div class="operation-logs-page">
     <div class="page-header">
-      <h2>操作历史</h2>
-      <div class="header-actions">
+      <div class="header-left">
+        <h2>操作管理</h2>
+      </div>
+    </div>
+
+    <div class="content-card">
+      <div class="filter-tabs">
+        <div
+          class="filter-tab"
+          :class="{ active: activeTab === 'mine' }"
+          @click="activeTab = 'mine'"
+        >
+          我的操作
+        </div>
+        <div
+          class="filter-tab"
+          :class="{ active: activeTab === 'all' }"
+          @click="activeTab = 'all'"
+        >
+          全部
+        </div>
+      </div>
+
+      <div class="table-toolbar">
         <el-select v-model="filterType" placeholder="全部类型" clearable style="width: 120px">
-          <el-option label="全部" value="" />
           <el-option label="任务" value="task" />
           <el-option label="缺陷" value="bug" />
         </el-select>
         <el-select v-model="filterAction" placeholder="全部操作" clearable style="width: 130px">
-          <el-option label="全部" value="" />
           <el-option label="创建" value="create" />
           <el-option label="状态变更" value="status_change" />
           <el-option label="分配" value="assign" />
@@ -20,39 +40,90 @@
           <el-option label="关闭" value="close" />
           <el-option label="备注" value="comment" />
           <el-option label="重新打开" value="reopen" />
+          <el-option label="转交" value="transfer" />
+          <el-option label="反馈" value="feedback" />
+          <el-option label="打回" value="reject" />
+          <el-option label="修复" value="fix" />
+          <el-option label="验证" value="verify" />
+          <el-option label="重启" value="restart" />
+        </el-select>
+        <el-input
+          v-model="filterKeyword"
+          placeholder="搜索标题/备注"
+          clearable
+          style="width: 200px"
+          :prefix-icon="Search"
+        />
+        <el-select v-model="filterUser" placeholder="操作人" clearable filterable style="width: 150px">
+          <el-option
+            v-for="user in users"
+            :key="user.id"
+            :label="user.realName"
+            :value="user.id"
+          />
         </el-select>
       </div>
-    </div>
 
-    <div class="timeline-list">
-      <div v-for="log in filteredLogs" :key="log.id" class="timeline-item clickable" @click="goToTarget(log)">
-        <div class="timeline-dot" :class="getLogActionClass(log.action)"></div>
-        <div class="timeline-content">
-          <div class="timeline-main">
-            <span class="timeline-user">{{ log.user?.realName || '未知' }}</span>
-            <span class="timeline-action" :class="getLogActionClass(log.action)">{{ getLogActionText(log) }}</span>
-            <span class="timeline-target" v-if="log.title">《{{ log.title }}》</span>
-          </div>
-          <div class="timeline-meta">
-            <span class="timeline-type tag">{{ log.targetType === 'task' ? '任务' : '缺陷' }}</span>
-            <span class="timeline-time">{{ formatLogTime(log.createdAt) }}</span>
+      <div class="timeline-list">
+        <div v-for="log in displayedLogs" :key="log.id" class="timeline-item clickable" @click="goToTarget(log)">
+          <div class="timeline-dot" :class="getLogActionClass(log.action)"></div>
+          <div class="timeline-content">
+            <div class="timeline-meta">
+              <span class="timeline-type tag">{{ log.targetType === 'task' ? '任务' : '缺陷' }}</span>
+              <span class="timeline-user">{{ log.user?.realName || '未知' }}</span>
+              <span class="timeline-time">{{ formatLogTime(log.createdAt) }}</span>
+            </div>
+            <div class="timeline-main">
+              <span class="timeline-action" :class="getLogActionClass(log.action)">{{ getLogActionText(log) }}</span>
+              <span class="timeline-target" v-if="log.title">《{{ log.title }}》</span>
+            </div>
+            <div class="timeline-remark" v-if="log.remark">{{ log.remark }}</div>
           </div>
         </div>
+        <div v-if="displayedLogs.length === 0" class="empty">暂无操作记录</div>
       </div>
-      <div v-if="filteredLogs.length === 0" class="empty">暂无操作记录</div>
+      <el-pagination
+        v-if="total > 0"
+        v-model:current-page="currentPage"
+        v-model:page-size="pageSize"
+        :page-sizes="[20, 50, 100]"
+        :total="total"
+        layout="total, sizes, prev, pager, next"
+        background
+        @current-change="loadLogs"
+        @size-change="handleSizeChange"
+        style="margin-top: 16px; justify-content: flex-end; padding: 0 4px 4px;"
+      />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onActivated, onDeactivated, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
+import { Search } from '@element-plus/icons-vue'
 import { getOperationLogs } from '../api/operationLog'
+import { useUserStore } from '../stores/user'
+import { getUsers } from '../api/user'
+
+defineOptions({ name: 'OperationLogs' })
 
 const router = useRouter()
+const userStore = useUserStore()
 const logs = ref<any[]>([])
+const users = ref<any[]>([])
+const loading = ref(false)
+const total = ref(0)
+const currentPage = ref(1)
+const pageSize = ref(20)
+
+const activeTab = ref('mine')
 const filterType = ref('')
 const filterAction = ref('')
+const filterKeyword = ref('')
+const filterUser = ref<number | null>(null)
+const savedScrollTop = ref(0)
+const pendingScrollRestore = ref(false)
 
 const statusTextMap: Record<string, string> = {
   pending: '待处理', in_progress: '进行中', completed: '已完成', closed: '已关闭',
@@ -61,15 +132,13 @@ const statusTextMap: Record<string, string> = {
 const priorityTextMap: Record<string, string> = { low: '低', medium: '中', high: '高', urgent: '紧急' }
 const severityTextMap: Record<string, string> = { low: '低', medium: '中', high: '高', critical: '严重' }
 
-const filteredLogs = computed(() => {
-  let result = logs.value
-  if (filterType.value) {
-    result = result.filter(log => log.targetType === filterType.value)
-  }
-  if (filterAction.value) {
-    result = result.filter(log => log.action === filterAction.value)
-  }
-  return result
+const displayedLogs = computed(() => {
+  if (!filterKeyword.value) return logs.value
+  const kw = filterKeyword.value.toLowerCase()
+  return logs.value.filter(log =>
+    (log.title && log.title.toLowerCase().includes(kw)) ||
+    (log.remark && log.remark.toLowerCase().includes(kw))
+  )
 })
 
 const formatLogTime = (dateStr: string | Date | null | undefined) => {
@@ -205,20 +274,68 @@ const goToTarget = (log: any) => {
   }
 }
 
-onMounted(async () => {
+const loadLogs = async () => {
+  loading.value = true
   try {
-    const res = await getOperationLogs({ limit: 100 })
-    logs.value = res.data?.data || res.data || []
+    const params: any = {
+      page: currentPage.value,
+      pageSize: pageSize.value,
+    }
+    if (activeTab.value === 'mine' && userStore.user?.id) {
+      params.userId = userStore.user.id
+    }
+    if (filterType.value) params.targetType = filterType.value
+    if (filterAction.value) params.action = filterAction.value
+    if (filterUser.value) params.userId = filterUser.value
+    const res = await getOperationLogs(params)
+    logs.value = res.data?.data || []
+    total.value = res.data?.total || 0
+    if (pendingScrollRestore.value) {
+      pendingScrollRestore.value = false
+      nextTick(() => {
+        const container = document.querySelector('.main-content')
+        if (container) container.scrollTop = savedScrollTop.value
+      })
+    }
   } catch (err) {
     console.error('Failed to load operation logs:', err)
+  } finally {
+    loading.value = false
   }
+}
+
+const handleSizeChange = () => {
+  currentPage.value = 1
+  loadLogs()
+}
+
+watch([activeTab, filterType, filterAction, filterUser], () => {
+  currentPage.value = 1
+  loadLogs()
+})
+
+onMounted(async () => {
+  loadLogs()
+  try {
+    const res = await getUsers()
+    users.value = res.data
+  } catch {}
+})
+
+onActivated(() => {
+  pendingScrollRestore.value = true
+  loadLogs()
+})
+
+onDeactivated(() => {
+  const container = document.querySelector('.main-content')
+  if (container) savedScrollTop.value = container.scrollTop
 })
 </script>
 
 <style scoped>
 .operation-logs-page {
-  padding: 24px;
-  background: var(--nb-bg-page, #f5f7fa);
+  background: var(--nb-bg-page);
   min-height: 100%;
 }
 
@@ -232,21 +349,52 @@ onMounted(async () => {
 .page-header h2 {
   font-size: 20px;
   font-weight: 600;
-  color: var(--nb-text-primary, #1a202c);
+  color: var(--nb-text-primary);
   margin: 0;
 }
 
-.header-actions {
+.content-card {
+  background: var(--nb-bg-elevated, #fff);
+  border-radius: 12px;
+  padding: 0;
+  box-shadow: var(--nb-shadow-sm, 0 1px 3px rgba(0,0,0,0.06));
+}
+
+.filter-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--nb-border-light, #e2e8f0);
+  padding: 0 20px;
+}
+
+.filter-tab {
+  padding: 12px 20px;
+  font-size: 14px;
+  color: var(--nb-text-secondary, #4a5568);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+}
+
+.filter-tab:hover {
+  color: var(--nb-primary, #667eea);
+}
+
+.filter-tab.active {
+  color: var(--nb-primary, #667eea);
+  border-bottom-color: var(--nb-primary, #667eea);
+  font-weight: 500;
+}
+
+.table-toolbar {
   display: flex;
   gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--nb-border-light, #e2e8f0);
 }
 
 .timeline-list {
-  background: white;
-  border-radius: 12px;
   padding: 8px 0;
-  max-width: 900px;
-  margin: 0 auto;
 }
 
 .timeline-item {
@@ -287,6 +435,15 @@ onMounted(async () => {
   min-width: 0;
 }
 
+.timeline-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--nb-text-tertiary, #9ca3af);
+  margin-bottom: 4px;
+}
+
 .timeline-main {
   display: flex;
   align-items: center;
@@ -295,14 +452,9 @@ onMounted(async () => {
   font-size: 14px;
 }
 
-.timeline-user {
-  font-weight: 500;
-  color: var(--nb-text-primary, #1a202c);
-}
-
 .timeline-action {
-  color: var(--nb-text-secondary, #4a5568);
-  font-size: 13px;
+  color: var(--nb-text-primary, #1a202c);
+  font-size: 14px;
 }
 
 .timeline-action.log-status { color: #d97706; }
@@ -312,27 +464,19 @@ onMounted(async () => {
 
 .timeline-target {
   color: var(--nb-primary, #667eea);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
-  margin-left: 4px;
-  max-width: 300px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-.timeline-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 4px;
-  font-size: 12px;
+.timeline-remark {
   color: var(--nb-text-tertiary, #9ca3af);
+  font-size: 13px;
+  margin-top: 4px;
+  line-height: 1.5;
 }
 
-.timeline-type {
-  font-size: 11px;
-  padding: 1px 6px;
+.timeline-user {
+  font-size: 12px;
 }
 
 .timeline-time {

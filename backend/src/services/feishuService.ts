@@ -2,6 +2,7 @@ import axios from "axios";
 import crypto from "crypto";
 import { AppDataSource } from "../config/database";
 import { SystemConfig } from "../entities/SystemConfig";
+import { logger } from "./logger";
 
 interface FeishuConfig {
   enabled: boolean;
@@ -144,7 +145,7 @@ export class FeishuService {
 
       return { success: true };
     } catch (error: any) {
-      console.error("[Feishu] Error:", error.message);
+      logger.error("[Feishu] Error:", error.message);
       return { success: false, error: error.message };
     }
   }
@@ -250,7 +251,7 @@ export class FeishuService {
 
       return response.data.code === 0;
     } catch (error) {
-      console.error("Error sending Feishu text message:", error);
+      logger.error("Error sending Feishu text message:", error);
       return false;
     }
   }

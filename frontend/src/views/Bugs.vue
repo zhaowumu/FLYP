@@ -144,6 +144,18 @@
             <span v-else class="text-muted">-</span>
           </template>
         </el-table-column>
+        <el-table-column label="" width="50" fixed="right">
+          <template #default="{ row }">
+            <el-button
+              text
+              size="small"
+              title="新窗口打开"
+              @click.stop="openInNewTab(`/bugs/${row.id}`)"
+            >
+              <el-icon><Link /></el-icon>
+            </el-button>
+          </template>
+        </el-table-column>
       </el-table>
       <el-pagination
         v-if="total > 0"
@@ -256,7 +268,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, watch, onMounted, onActivated } from 'vue'
+import { ref, reactive, computed, watch, onMounted, onActivated, onDeactivated, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getBugs, createBug, getBugCategories } from '../api/bug'
@@ -291,6 +303,8 @@ const total = ref(0)
 const tabCounts = ref({ assigned: 0, reported: 0, my: 0, all: 0, recent: 0, completed_closed: 0 })
 const lastLoadTime = ref(0)
 const STALE_TTL = 60_000 // 数据缓存60秒
+const savedScrollTop = ref(0)
+const pendingScrollRestore = ref(false)
 
 // 筛选条件变化时重置到第一页并重新加载
 watch([activeTab, filterStatus, filterSeverity, filterUser, filterReporter, filterCategory, filterUpdatedRange, filterUnassigned], () => {
@@ -443,6 +457,13 @@ const loadBugs = async () => {
     total.value = res.data.total
     if (res.data.tabs) tabCounts.value = res.data.tabs
     lastLoadTime.value = Date.now()
+    if (pendingScrollRestore.value) {
+      pendingScrollRestore.value = false
+      nextTick(() => {
+        const container = document.querySelector('.main-content')
+        if (container) container.scrollTop = savedScrollTop.value
+      })
+    }
   } catch (error) {
     ElMessage.error('加载缺陷列表失败')
   }
@@ -489,7 +510,11 @@ const showCreateDialog = () => {
 }
 
 const viewBug = (bug: any) => {
-  window.open(`/bugs/${bug.id}`, '_blank')
+  router.push(`/bugs/${bug.id}`)
+}
+
+const openInNewTab = (path: string) => {
+  window.open(path, '_blank')
 }
 
 const submitBug = async () => {
@@ -520,9 +545,15 @@ onMounted(() => {
 
 // keep-alive 激活时，仅当数据过期才刷新列表（辅助数据不频繁变化，不刷新）
 onActivated(() => {
+  pendingScrollRestore.value = true
   if (lastLoadTime.value && Date.now() - lastLoadTime.value > STALE_TTL) {
     loadBugs()
   }
+})
+
+onDeactivated(() => {
+  const container = document.querySelector('.main-content')
+  if (container) savedScrollTop.value = container.scrollTop
 })
 
 // 首次挂载 + 路由变化时同步 URL 查询参数到筛选条件

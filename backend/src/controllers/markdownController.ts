@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { logger } from "../services/logger";
 import fs from "fs";
 import path from "path";
 import multer from "multer";
@@ -81,7 +82,7 @@ export const markdownController = {
         updatedAt: stat.mtime.toISOString(),
       });
     } catch (error: any) {
-      console.error("Error reading markdown:", error);
+      logger.error("Error reading markdown:", error);
       res.status(500).json({ error: "读取文件失败" });
     }
   },
@@ -104,7 +105,7 @@ export const markdownController = {
         .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
       res.json(files);
     } catch (error: any) {
-      console.error("Error listing markdown files:", error);
+      logger.error("Error listing markdown files:", error);
       res.status(500).json({ error: error.message || "列出文件失败" });
     }
   },

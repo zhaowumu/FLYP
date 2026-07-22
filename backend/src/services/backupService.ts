@@ -1,4 +1,5 @@
 import cron, { ScheduledTask } from "node-cron";
+import { logger } from "./logger";
 import fs from "fs";
 import path from "path";
 // @ts-expect-error better-sqlite3 类型声明缺失
@@ -36,7 +37,7 @@ function zipUploads(zipPath: string): Promise<string | null> {
     const archive = new ZipArchive({ zlib: { level: 6 } });
     output.on("close", () => resolve(zipPath));
     archive.on("error", (err: Error) => {
-      console.error("[AutoBackup] compress uploads failed:", err.message);
+      logger.error("[AutoBackup] compress uploads failed:", err.message);
       resolve(null);
     });
     archive.pipe(output);
@@ -130,12 +131,12 @@ function performBackup(): boolean {
         console.warn(`[AutoBackup] 云端备份跳过: ${result.message}`);
       }
     }).catch(err => {
-      console.error("[AutoBackup] 云端备份异常:", err);
+      logger.error("[AutoBackup] 云端备份异常:", err);
     });
 
     return true;
   } catch (error) {
-    console.error("[AutoBackup] 备份失败:", error);
+    logger.error("[AutoBackup] 备份失败:", error);
     return false;
   }
 }
@@ -196,7 +197,7 @@ export function startAutoBackup(schedule: string = "0 3 * * *"): boolean {
 
   // 验证 cron 表达式
   if (!cron.validate(schedule)) {
-    console.error(`[AutoBackup] 无效的 cron 表达式: ${schedule}`);
+    logger.error(`[AutoBackup] 无效的 cron 表达式: ${schedule}`);
     return false;
   }
 

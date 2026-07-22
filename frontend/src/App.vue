@@ -33,6 +33,10 @@
             <el-icon><Warning /></el-icon>
             <template #title>缺陷管理</template>
           </el-menu-item>
+          <el-menu-item index="/operation-logs">
+            <el-icon><Document /></el-icon>
+            <template #title>操作管理</template>
+          </el-menu-item>
           <el-menu-item index="/users" v-if="userStore.isAdmin">
             <el-icon><User /></el-icon>
             <template #title>成员管理</template>
@@ -97,7 +101,7 @@
         </el-header>
         <el-main class="main-content">
           <router-view v-slot="{ Component }">
-            <keep-alive include="Tasks,Bugs">
+            <keep-alive include="Tasks,Bugs,OperationLogs">
               <component :is="Component" />
             </keep-alive>
           </router-view>
@@ -159,7 +163,7 @@ const currentRoute = computed(() => {
     '/bugs': '缺陷管理',
     '/users': '成员管理',
     '/settings': '系统设置',
-    '/operation-logs': '操作历史',
+    '/operation-logs': '操作管理',
     '/profile': '个人设置'
   }
   if (routeMap[route.path]) return routeMap[route.path]

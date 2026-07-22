@@ -1,4 +1,5 @@
 import * as XLSX from "xlsx";
+import { logger } from "./logger";
 import { AppDataSource } from "../config/database";
 import { Task } from "../entities/Task";
 import { Bug } from "../entities/Bug";
@@ -98,7 +99,7 @@ export class ExcelService {
       const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
       return buffer;
     } catch (error) {
-      console.error("Error exporting tasks to Excel:", error);
+      logger.error("Error exporting tasks to Excel:", error);
       throw error;
     }
   }
@@ -139,7 +140,7 @@ export class ExcelService {
       const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
       return buffer;
     } catch (error) {
-      console.error("Error exporting bugs to Excel:", error);
+      logger.error("Error exporting bugs to Excel:", error);
       throw error;
     }
   }
@@ -259,7 +260,7 @@ export class ExcelService {
       const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
       return buffer;
     } catch (error) {
-      console.error("Error exporting all data to Excel:", error);
+      logger.error("Error exporting all data to Excel:", error);
       throw error;
     }
   }
@@ -312,7 +313,7 @@ export class ExcelService {
 
       return { success, failed, errors };
     } catch (error) {
-      console.error("Error importing tasks from Excel:", error);
+      logger.error("Error importing tasks from Excel:", error);
       throw error;
     }
   }
@@ -372,7 +373,7 @@ export class ExcelService {
 
       return { success, failed, errors };
     } catch (error) {
-      console.error("Error importing bugs from Excel:", error);
+      logger.error("Error importing bugs from Excel:", error);
       throw error;
     }
   }

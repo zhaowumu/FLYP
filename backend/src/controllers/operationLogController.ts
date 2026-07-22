@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { logger } from "../services/logger";
 import { AppDataSource } from "../config/database";
 import { OperationLog } from "../entities/OperationLog";
 import { Task } from "../entities/Task";
@@ -9,18 +10,28 @@ const taskRepository = AppDataSource.getRepository(Task);
 const bugRepository = AppDataSource.getRepository(Bug);
 
 /**
- * GET /api/operation-logs?limit=20
- * 获取近期操作日志（用于 Dashboard 面板展示，不含 remark）
- * 额外拼接 taskTitle / bugTitle 方便前端展示
+ * GET /api/operation-logs?page=1&pageSize=20&userId=1&action=comment&targetType=task&keyword=xxx
+ * 获取操作日志，支持后端分页和筛选
  */
 export const getOperationLogs = async (req: Request, res: Response) => {
   try {
-    const limit = Math.min(parseInt(req.query.limit as string) || 20, 50);
+    const page = Math.max(parseInt(req.query.page as string) || 1, 1);
+    const pageSize = Math.min(parseInt(req.query.pageSize as string) || 20, 100);
+    const { userId, action, targetType } = req.query;
 
-    const logs = await operationLogRepository.find({
+    const where: any = {};
+    if (userId) where.user = { id: parseInt(userId as string) };
+    if (action) where.action = action as string;
+    if (targetType) where.targetType = targetType as string;
+
+    const whereClause = Object.keys(where).length ? where : undefined;
+
+    const [logs, total] = await operationLogRepository.findAndCount({
       relations: ['user'],
       order: { createdAt: "DESC" },
-      take: limit,
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+      ...(whereClause ? { where: whereClause } : {}),
     });
 
     // 批量查任务/缺陷标题，避免 N+1
@@ -38,9 +49,7 @@ export const getOperationLogs = async (req: Request, res: Response) => {
     }
 
     const data = logs.map(log => {
-      const { remark, ...rest } = log as any;
       const title = log.targetType === "task" ? taskMap[log.targetId] : bugMap[log.targetId];
-      // user 为 null 时（用户已删除）显示"已删除人员"
       const user = log.user ? {
         id: log.user.id,
         username: log.user.username,
@@ -48,12 +57,31 @@ export const getOperationLogs = async (req: Request, res: Response) => {
         avatar: log.user.avatar || undefined,
         role: log.user.role || ''
       } : { id: 0, username: '', realName: '已删除人员', avatar: undefined, role: '' };
-      return { ...rest, user, title };
+      return {
+        id: log.id,
+        targetType: log.targetType,
+        targetId: log.targetId,
+        action: log.action,
+        oldStatus: log.oldStatus,
+        newStatus: log.newStatus,
+        oldAssignee: log.oldAssignee,
+        newAssignee: log.newAssignee,
+        oldPriority: log.oldPriority,
+        newPriority: log.newPriority,
+        oldSeverity: log.oldSeverity,
+        newSeverity: log.newSeverity,
+        oldDueDate: log.oldDueDate,
+        newDueDate: log.newDueDate,
+        remark: (log as any).remark || null,
+        createdAt: log.createdAt,
+        user,
+        title,
+      };
     });
 
-    res.json({ data });
+    res.json({ data, total });
   } catch (error) {
-    console.error("Failed to fetch operation logs:", error);
+    logger.error("Failed to fetch operation logs:", error);
     res.status(500).json({ error: "Failed to fetch operation logs" });
   }
 };

@@ -2,6 +2,7 @@ import axios from "axios";
 import crypto from "crypto";
 import { AppDataSource } from "../config/database";
 import { SystemConfig } from "../entities/SystemConfig";
+import { logger } from "./logger";
 
 export interface DingTalkMessage {
   msgtype: "text" | "markdown";
@@ -269,7 +270,7 @@ export class DingTalkService {
 
       return response.data.errcode === 0;
     } catch (error) {
-      console.error("Error sending DingTalk notification:", error);
+      logger.error("Error sending DingTalk notification:", error);
       return false;
     }
   }
@@ -301,7 +302,7 @@ export class DingTalkService {
 
       return response.data.errcode === 0;
     } catch (error) {
-      console.error("Error sending DingTalk message:", error);
+      logger.error("Error sending DingTalk message:", error);
       return false;
     }
   }
@@ -333,7 +334,7 @@ export class DingTalkService {
 
       return response.data.errcode === 0;
     } catch (error) {
-      console.error("Error sending DingTalk markdown message:", error);
+      logger.error("Error sending DingTalk markdown message:", error);
       return false;
     }
   }

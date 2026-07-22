@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { logger } from "../services/logger";
 import { AppDataSource } from "../config/database";
 import { Task } from "../entities/Task";
 import { Bug } from "../entities/Bug";
@@ -13,9 +14,10 @@ const projectRepository = AppDataSource.getRepository(Project);
 const userRepository = AppDataSource.getRepository(User);
 const operationLogRepository = AppDataSource.getRepository(OperationLog);
 
-// 简单的内存缓存
+// 内存缓存 - 带大小限制和定期清理
+const CACHE_TTL = 30_000;
+const MAX_CACHE_SIZE = 50;
 const cache = new Map<string, { data: any; expiry: number }>();
-const CACHE_TTL = 30_000; // 30 秒
 
 function getCached(key: string): any | undefined {
   const entry = cache.get(key);
@@ -27,8 +29,22 @@ function getCached(key: string): any | undefined {
 }
 
 function setCache(key: string, data: any): void {
+  if (cache.size >= MAX_CACHE_SIZE) {
+    const oldestKey = cache.keys().next().value;
+    if (oldestKey) cache.delete(oldestKey);
+  }
   cache.set(key, { data, expiry: Date.now() + CACHE_TTL });
 }
+
+// 每分钟清理过期缓存
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of cache) {
+    if (entry.expiry <= now) {
+      cache.delete(key);
+    }
+  }
+}, 60_000);
 
 /**
  * GET /api/dashboard
@@ -636,7 +652,7 @@ export const getDashboard = async (req: Request, res: Response) => {
     setCache(cacheKey, data);
     return res.json(data);
   } catch (error) {
-    console.error("Error loading dashboard:", error);
+    logger.error("Error loading dashboard:", error);
     res.status(500).json({ error: "Failed to load dashboard data" });
   }
 };
@@ -689,7 +705,7 @@ export const getLeaderboard = async (req: Request, res: Response) => {
 
     return res.json(leaderboard);
   } catch (error) {
-    console.error("Error loading leaderboard:", error);
+    logger.error("Error loading leaderboard:", error);
     res.status(500).json({ error: "Failed to load leaderboard" });
   }
 };

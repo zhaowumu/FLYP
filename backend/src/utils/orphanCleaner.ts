@@ -1,6 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import { AppDataSource } from '../config/database'
+import { logger } from '../services/logger'
 
 /**
  * 从 HTML 内容中提取所有 /uploads/ 路径的文件 URL
@@ -91,7 +92,7 @@ export async function deleteUnreferencedFiles(urls: string[]): Promise<string[]>
         deleted.push(url)
       }
     } catch (err) {
-      console.error(`删除文件失败: ${filePath}`, err)
+      logger.error(`删除文件失败: ${filePath}`, err)
     }
   }
 
@@ -134,7 +135,7 @@ export async function cleanAllOrphanedFiles(): Promise<{ deleted: string[]; tota
         deleted.push(url)
       }
     } catch (err) {
-      console.error(`删除文件失败: ${filePath}`, err)
+      logger.error(`删除文件失败: ${filePath}`, err)
     }
   }
 

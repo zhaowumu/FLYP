@@ -182,8 +182,16 @@
             {{ new Date(row.updatedAt).toLocaleString() }}
           </template>
         </el-table-column>
-        <el-table-column label="" width="50" fixed="right">
+        <el-table-column label="" width="80" fixed="right">
           <template #default="{ row }">
+            <el-button
+              text
+              size="small"
+              title="新窗口打开"
+              @click.stop="openInNewTab(`/tasks/${row.id}`)"
+            >
+              <el-icon><Link /></el-icon>
+            </el-button>
             <el-button
               v-if="row.level < 2 && userStore.getTaskPermission('create') && row.status !== 'closed' && row.status !== 'testing'"
               text
@@ -371,7 +379,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, watch, onMounted, onActivated } from 'vue'
+import { ref, reactive, computed, watch, onMounted, onActivated, onDeactivated, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getTasks, createTask, addSubtask, getTaskCategories } from '../api/task'
@@ -409,6 +417,8 @@ const total = ref(0)
 const tabCounts = ref({ assigned: 0, created: 0, my: 0, all: 0, recent: 0, completed_closed: 0 })
 const lastLoadTime = ref(0)
 const STALE_TTL = 60_000 // 数据缓存60秒
+const savedScrollTop = ref(0)
+const pendingScrollRestore = ref(false)
 
 // 筛选条件变化时重置到第一页并重新加载
 watch([activeTab, filterStatus, filterPriority, filterUser, filterCreator, filterCategory, filterUpdatedRange, filterUnassigned], () => {
@@ -560,6 +570,13 @@ const loadTasks = async () => {
     total.value = res.data.total
     if (res.data.tabs) tabCounts.value = res.data.tabs
     lastLoadTime.value = Date.now()
+    if (pendingScrollRestore.value) {
+      pendingScrollRestore.value = false
+      nextTick(() => {
+        const container = document.querySelector('.main-content')
+        if (container) container.scrollTop = savedScrollTop.value
+      })
+    }
   } catch (error) {
     ElMessage.error('加载任务列表失败')
   }
@@ -606,7 +623,11 @@ const showCreateDialog = () => {
 }
 
 const handleRowClick = (row: any) => {
-  window.open(`/tasks/${row.id}`, '_blank')
+  router.push(`/tasks/${row.id}`)
+}
+
+const openInNewTab = (path: string) => {
+  window.open(path, '_blank')
 }
 
 const viewTask = (task: any) => {
@@ -683,9 +704,15 @@ onMounted(() => {
 
 // keep-alive 激活时，仅当数据过期才刷新列表（辅助数据不频繁变化，不刷新）
 onActivated(() => {
+  pendingScrollRestore.value = true
   if (lastLoadTime.value && Date.now() - lastLoadTime.value > STALE_TTL) {
     loadTasks()
   }
+})
+
+onDeactivated(() => {
+  const container = document.querySelector('.main-content')
+  if (container) savedScrollTop.value = container.scrollTop
 })
 
 // 首次挂载 + 路由变化时同步 URL 查询参数到筛选条件

@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { logger } from "../services/logger";
 import { uploadController, upload, uploadVideo, uploadAvatar } from "../controllers/uploadController";
 import { authMiddleware, roleMiddleware } from "../middleware/authMiddleware";
 import { cleanAllOrphanedFiles } from "../utils/orphanCleaner";
@@ -26,7 +27,7 @@ router.post("/cleanup-orphaned", authMiddleware, roleMiddleware(["admin"]), asyn
       ...result
     });
   } catch (error) {
-    console.error("清理孤儿文件失败:", error);
+    logger.error("清理孤儿文件失败:", error);
     res.status(500).json({ error: "清理孤儿文件失败" });
   }
 });
