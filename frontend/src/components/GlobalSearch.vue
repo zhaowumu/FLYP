@@ -12,7 +12,7 @@
         <el-input
           ref="inputRef"
           v-model="query"
-          placeholder="搜索项目、任务、缺陷..."
+          placeholder="搜索项目、任务、缺陷... 支持多关键词（空格分隔）"
           class="search-input"
           @input="handleSearch"
           @keydown.esc="handleClose"

@@ -120,6 +120,8 @@ function performBackup(): boolean {
     // 清理旧备份
     cleanOldBackups();
 
+    // 清理已完成任务的操作日志
+
     // 异步上传到 Gitee（不阻塞备份流程）
     uploadBackupToGitee(destPath).then(result => {
       if (result.success) {
@@ -184,6 +186,8 @@ function cleanOldBackups() {
  * 启动定时自动备份
  * @param schedule cron 表达式，默认每天凌晨 3 点
  */
+
+/** 启动定时备份 */
 export function startAutoBackup(schedule: string = "0 3 * * *"): boolean {
   if (cronTask) {
     console.log("[AutoBackup] 定时备份已在运行中");
