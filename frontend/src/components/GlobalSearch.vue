@@ -173,8 +173,15 @@ function handleSearch() {
 
 function highlightText(text: string) {
   if (!query.value.trim()) return text
-  const regex = new RegExp(`(${query.value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')
-  return text.replace(regex, '<mark>$1</mark>')
+  const keywords = query.value.trim().split(/\s+/).filter(k => k.length > 0)
+  let result = text
+  for (const kw of keywords) {
+    const safe = kw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    const regex = new RegExp('(' + safe + ')', 'gi')
+    result = result.replace(regex, "<mark>$1</mark>")
+  }
+  return result
+
 }
 
 function handleSelect(type: string, item: any) {
