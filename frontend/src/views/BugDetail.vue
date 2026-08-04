@@ -766,7 +766,7 @@ const canVerify = computed(() => userStore.getBugPermission('verify', { isReport
 const canReject = computed(() => userStore.getBugPermission('rejectBug', { isReporter: isReporter.value }) && isReporter.value && isFixed.value)
 const canClose = computed(() => (isReporter.value || isAdmin.value || isProjectManager.value) && isVerified.value)
 const canRestart = computed(() => userStore.getBugPermission('restartBug') && bug.value?.status === 'closed')
-const canTransfer = computed(() => userStore.getBugPermission('transfer', { isAssignee: isAssignee.value }) && isAssignee.value && isActive.value)
+const canTransfer = computed(() => userStore.getBugPermission('transfer', { isAssignee: isAssignee.value }) && (isAssignee.value || isAdmin.value || isProjectManager.value) && !isClosed.value)
 const canFeedback = computed(() => userStore.getBugPermission('feedback', { isAssignee: isAssignee.value }) && isAssignee.value && isInProgress.value)
 const canChangeSeverity = computed(() => isAdmin.value || userStore.user?.role === 'project_manager')
 const canChangeStatus = computed(() => isAdmin.value || userStore.user?.role === 'project_manager')

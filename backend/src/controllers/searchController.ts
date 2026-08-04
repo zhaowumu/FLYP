@@ -7,50 +7,6 @@ import { Bug } from "../entities/Bug";
 const taskRepository = AppDataSource.getRepository(Task);
 const bugRepository = AppDataSource.getRepository(Bug);
 
-/** 单关键词相关性分数：分值越低越靠前 */
-function getRelevanceScore(item: any, query: string, isNumeric: boolean, numericId: number): number {
-  const title = (item.title || "").toLowerCase();
-  const desc = (item.description || "").toLowerCase();
-  const q = query.toLowerCase();
-
-  if (isNumeric && item.id === numericId) return 0;
-  if (title === q) return 1;
-  if (title.startsWith(q)) return 2;
-  if (title.includes(q)) return 3;
-  if (desc.includes(q)) return 4;
-  return 5;
-}
-
-function sortByRelevance(items: any[], query: string): any[] {
-  const isNumeric = /^\d+$/.test(query.trim());
-  const numericId = isNumeric ? parseInt(query.trim()) : 0;
-  return items
-    .map((item) => ({
-      item,
-      score: getRelevanceScore(item, query, isNumeric, numericId),
-    }))
-    .sort((a, b) => a.score - b.score)
-    .map((x) => x.item);
-}
-
-/** 多关键词相关性排序：每个关键词在标题中匹配+1，仅在描述中匹配+2 */
-function sortByMultiKeywords(items: any[], keywords: string[]): any[] {
-  return items
-    .map((item) => {
-      const title = (item.title || "").toLowerCase();
-      const desc = (item.description || "").toLowerCase();
-      let score = 0;
-      for (const kw of keywords) {
-        const k = kw.toLowerCase();
-        if (title.includes(k)) score += 1;
-        else score += 2;
-      }
-      return { item, score };
-    })
-    .sort((a, b) => a.score - b.score)
-    .map((x) => x.item);
-}
-
 /** 对多个关键词构建 AND 查询条件 */
 function buildKeywordQuery(qb: any, alias: string, keywords: string[], extraFields: string[] = []): void {
   keywords.forEach((keyword, i) => {
@@ -103,12 +59,7 @@ export const searchController = {
 
           buildKeywordQuery(qb, "task", keywords);
 
-          const raw = await qb.orderBy("task.updatedAt", "DESC").limit(20).getMany();
-
-          if (keywords.length === 1) {
-            return sortByRelevance(raw, keywords[0]);
-          }
-          return sortByMultiKeywords(raw, keywords);
+          return qb.orderBy("task.updatedAt", "DESC").limit(20).getMany();
         })(),
 
         // -------- 缺陷搜索 --------
@@ -121,12 +72,7 @@ export const searchController = {
 
           buildKeywordQuery(qb, "bug", keywords, ["reproduceSteps"]);
 
-          const raw = await qb.orderBy("bug.updatedAt", "DESC").limit(20).getMany();
-
-          if (keywords.length === 1) {
-            return sortByRelevance(raw, keywords[0]);
-          }
-          return sortByMultiKeywords(raw, keywords);
+          return qb.orderBy("bug.updatedAt", "DESC").limit(20).getMany();
         })(),
       ]);
 

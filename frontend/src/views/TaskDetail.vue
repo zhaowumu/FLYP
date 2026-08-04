@@ -867,7 +867,7 @@ const isInProgress = computed(() => task.value?.status === 'in_progress')
 // 按钮权限配置（角色权限 + 关系权限）
 const canAssign = computed(() => (isAdmin.value || userStore.user?.role === 'project_manager' || isCreator.value) && isActive.value)
 const canComplete = computed(() => userStore.getTaskPermission('complete', { isAssignee: isAssignee.value }) && isAssignee.value && isActive.value)
-const canTransfer = computed(() => userStore.getTaskPermission('transfer', { isAssignee: isAssignee.value }) && isAssignee.value && isActive.value)
+const canTransfer = computed(() => userStore.getTaskPermission('transfer', { isAssignee: isAssignee.value }) && (isAssignee.value || isAdmin.value || userStore.user?.role === 'project_manager') && !isClosed.value)
 const canFeedback = computed(() => userStore.getTaskPermission('feedback', { isAssignee: isAssignee.value }) && isAssignee.value && isInProgress.value)
 const canReject = computed(() => userStore.getTaskPermission('reject', { isCreator: isCreator.value }) && isCreator.value && isCompleted.value)
 const canClose = computed(() => (isCreator.value || isAdmin.value || isProjectManager.value) && isCompleted.value)

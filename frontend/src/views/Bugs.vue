@@ -215,22 +215,8 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="缺陷描述" prop="description" class="flex-grow-item">
-          <RichEditor
-            v-model="bugForm.description"
-            placeholder="请描述缺陷现象... 支持粘贴图片 (Ctrl+V)"
-            :height="0"
-          />
-        </el-form-item>
-        <el-form-item label="重现步骤" prop="reproduceSteps" class="flex-grow-item">
-          <RichEditor
-            v-model="bugForm.reproduceSteps"
-            placeholder="请描述重现步骤... 支持粘贴图片 (Ctrl+V)"
-            :height="0"
-          />
-        </el-form-item>
         <el-row :gutter="20">
-          <el-col :span="8">
+          <el-col :span="12">
             <el-form-item label="严重程度" prop="severity">
               <el-select v-model="bugForm.severity" placeholder="请选择严重程度" style="width: 100%">
                 <el-option label="低" value="low" />
@@ -240,7 +226,7 @@
               </el-select>
             </el-form-item>
           </el-col>
-          <el-col :span="8">
+          <el-col :span="12">
             <el-form-item label="负责人" prop="assigneeId">
               <el-select v-model="bugForm.assigneeId" placeholder="请选择负责人" clearable filterable style="width: 100%">
                 <el-option
@@ -258,6 +244,20 @@
             </el-form-item>
           </el-col>
         </el-row>
+        <el-form-item label="缺陷描述" prop="description" class="flex-grow-item">
+          <RichEditor
+            v-model="bugForm.description"
+            placeholder="请描述缺陷现象... 支持粘贴图片 (Ctrl+V)"
+            :height="220"
+          />
+        </el-form-item>
+        <el-form-item label="重现步骤" prop="reproduceSteps" class="flex-grow-item">
+          <RichEditor
+            v-model="bugForm.reproduceSteps"
+            placeholder="请描述重现步骤... 支持粘贴图片 (Ctrl+V)"
+            :height="220"
+          />
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -698,9 +698,10 @@ watch(() => route.fullPath, () => {
 
 :deep(.el-dialog__body) {
   flex: 1;
-  overflow: hidden;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 
 :deep(.el-dialog__header),
@@ -713,7 +714,7 @@ watch(() => route.fullPath, () => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .fullscreen-form :deep(.el-form-item) {
@@ -721,10 +722,9 @@ watch(() => route.fullPath, () => {
 }
 
 .fullscreen-form .flex-grow-item {
-  flex: 1;
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
 }
 
 .fullscreen-form .flex-grow-item :deep(.el-form-item__content) {
