@@ -556,13 +556,24 @@ onDeactivated(() => {
   if (container) savedScrollTop.value = container.scrollTop
 })
 
-// 首次挂载 + 路由变化时同步 URL 查询参数到筛选条件
-// 只有 URL 中显式存在的参数才会覆盖，避免从详情页返回时丢失筛选
+// 首次挂载 + 路由变化：带筛选意图（status/unassigned）跳入时重置全部筛选，避免与残留 Tab/筛选叠加；
+// 无意图（从详情页返回等）时保留现有筛选，避免丢失用户选择
 watch(() => route.fullPath, () => {
-  if (route.query.status !== undefined) filterStatus.value = route.query.status as string
-  if (route.query.severity !== undefined) filterSeverity.value = route.query.severity as string
-  if (route.query.unassigned !== undefined) filterUnassigned.value = route.query.unassigned === 'true'
-  loadBugs()
+  const q = route.query
+  const hasIntent = q.status !== undefined || q.unassigned !== undefined
+  const prevTab = activeTab.value
+  if (hasIntent) {
+    activeTab.value = userStore.isPM ? 'all' : 'assigned'
+    filterStatus.value = (q.status as string) || ''
+    filterSeverity.value = (q.severity as string) || ''
+    filterUser.value = q.assigneeId !== undefined && q.assigneeId !== '' ? Number(q.assigneeId) : null
+    filterReporter.value = null
+    filterCategory.value = ''
+    filterUpdatedRange.value = null
+    filterUnassigned.value = q.unassigned === 'true'
+  }
+  // Tab 变化会由筛选 watch 触发加载；未变化时手动加载一次，避免重复请求
+  if (activeTab.value === prevTab) loadBugs()
 }, { immediate: true })
 </script>
 
